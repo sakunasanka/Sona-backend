@@ -203,6 +203,148 @@ export const createPost = async (req: Request, res: Response) => {
   }
 };
 
+// Update a post
+export const updatePost = async (req: Request, res: Response) => {
+  try {
+    const { postId } = req.params;
+    const { content, hashtags, backgroundColor, image } = req.body;
+    // const userId = req.user?.id;
+
+    // if (!userId) {
+    //   return res.status(401).json({
+    //     success: false,
+    //     message: 'Authentication required',
+    //   });
+    // }
+
+    // Find the post
+    const post = await Post.findByPk(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found',
+      });
+    }
+
+    // // Verify the user owns the post
+    // if (post.userId !== userId) {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: 'You can only update your own posts',
+    //   });
+    // }
+
+    // Update the post
+    await post.update({
+      content: content?.trim() || post.content,
+      hashtags: hashtags || post.hashtags,
+      backgroundColor: backgroundColor || post.backgroundColor,
+      // image: image || post.image,
+    });
+
+    // Fetch the updated post with user data
+    const updatedPost = await Post.findByPk(postId, {
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'avatar', 'badge'],
+        },
+      ],
+    });
+
+    if (!updatedPost) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found after update',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: updatedPost.id,
+        author: {
+          name: updatedPost.user?.name || 'Unknown User',
+          avatar: updatedPost.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+          badge: updatedPost.user?.badge || 'User',
+        },
+        timeAgo: getTimeAgo(updatedPost.createdAt),
+        content: updatedPost.content,
+        hashtags: updatedPost.hashtags,
+        stats: {
+          views: updatedPost.views,
+          likes: updatedPost.likes,
+          comments: updatedPost.comments,
+        },
+        backgroundColor: updatedPost.backgroundColor,
+        liked: false, // You might want to check if the current user liked this post
+      },
+    });
+  } catch (error) {
+    console.error('Error updating post:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating post',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+// Delete a post
+export const deletePost = async (req: Request, res: Response) => {
+  try {
+    const { postId } = req.params;
+    // const userId = req.user?.id;
+
+    // if (!userId) {
+    //   return res.status(401).json({
+    //     success: false,
+    //     message: 'Authentication required',
+    //   });
+    // }
+
+    // Find the post
+    const post = await Post.findByPk(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found',
+      });
+    }
+
+    // // Verify the user owns the post
+    // if (post.userId !== userId) {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: 'You can only delete your own posts',
+    //   });
+    // }
+
+    // Delete associated likes first
+    await Like.destroy({
+      where: { postId },
+    });
+
+    // Then delete the post
+    await post.destroy();
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Post deleted successfully',
+      },
+    });
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting post',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
 // Like/Unlike a post
 export const toggleLikePost = async (req: Request, res: Response) => {
   try {
