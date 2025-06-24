@@ -6,6 +6,8 @@ class User extends Model {
   public name!: string;
   public email!: string;
   public password!: string;
+  public avatar?: string;
+  public badge!: 'User' | 'Premium';
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -29,6 +31,14 @@ User.init(
     password: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    avatar: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    badge: {
+      type: DataTypes.ENUM('User', 'Premium'),
+      defaultValue: 'User',
     },
   },
   {
