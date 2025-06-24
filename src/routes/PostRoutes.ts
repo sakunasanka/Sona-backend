@@ -1,22 +1,21 @@
+// routes/postRoutes.ts
 import express from 'express';
 import {
+  createPost,
   getPosts,
   getPostsWithLikes,
-  createPost,
   toggleLikePost,
   incrementViews,
 } from '../controllers/PostController';
-import { authenticateToken, optionalAuth } from '../middlewares/auth';
+import { authenticateToken } from '../middlewares/auth';
+import { asyncHandler } from '../utils/asyncHandler';
 
 const router = express.Router();
 
-// Public routes (no authentication required)
-router.get('/', getPosts);
-// router.post('/:postId/view', incrementViews);
-
-// // Protected routes (authentication required)
-// router.get('/with-likes', authenticateToken, getPostsWithLikes);
-// router.post('/', authenticateToken, createPost);
-// router.post('/:postId/like', authenticateToken, toggleLikePost);
+router.get('/', asyncHandler(getPosts));
+router.get('/likes', asyncHandler(getPostsWithLikes));
+router.post('/', asyncHandler(createPost));
+router.post('/:postId/like', asyncHandler(toggleLikePost));
+router.post('/:postId/view', asyncHandler(incrementViews));
 
 export default router;
