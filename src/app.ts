@@ -9,6 +9,7 @@ import { syncDatabase } from './config/sync';
 // Import routes
 import userRoutes from './routes/UserRoutes';
 import postRoutes from './routes/PostRoutes';
+import sessionRoutes from './routes/SessionRoutes';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.get('/', (req, res) => {
     endpoints: {
       users: '/api/users',
       posts: '/api/posts',
+      sessions: '/api/sessions',
     },
   });
 });
@@ -37,6 +39,7 @@ app.get('/', (req, res) => {
 // API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/posts', postRoutes);
+app.use('/api/sessions', sessionRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
