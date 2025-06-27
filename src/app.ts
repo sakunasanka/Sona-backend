@@ -9,6 +9,7 @@ import { syncDatabase } from './config/sync';
 // Import routes
 import userRoutes from './routes/UserRoutes';
 import postRoutes from './routes/PostRoutes';
+import sessionRoutes from './routes/SessionRoutes';
 import authRoutes from './routes/AuthRoutes';
 import { auth } from 'firebase-admin';
 
@@ -32,6 +33,7 @@ app.get('/', (req, res) => {
     endpoints: {
       users: '/api/users',
       posts: '/api/posts',
+      sessions: '/api/sessions',
       auth: '/api/auth'
     },
   });
@@ -40,6 +42,7 @@ app.get('/', (req, res) => {
 // API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/posts', postRoutes);
+app.use('/api/sessions', sessionRoutes);
 app.use('/api/auth', authRoutes)
 
 // Error handling middleware
