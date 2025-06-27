@@ -9,3 +9,5 @@ build/
 dist/
 .env
 *.log
+serviceAccount.js
+sona-client-firebase-adminsdk-fbsvc-e59af42c32.json
