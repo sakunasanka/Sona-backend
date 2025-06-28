@@ -8,6 +8,8 @@ import Client from '../models/Client';
 import Psychiatrist from '../models/Psychiatrist';
 import MTMember from '../models/MT-member';
 import Student from '../models/Student';
+import Experience from '../models/Experience';
+import EduQualification from '../models/EduQualification';
 
 export const syncDatabase = async () => {
   try {
@@ -127,6 +129,12 @@ const createSampleData = async () => {
                          ['PTSD', 'Grief Counseling', 'Mindfulness'],
             address: `${123 + user.id} Main Street, Colombo ${Math.floor(Math.random() * 15) + 1}`,
             contact_no: `+94 7${Math.floor(Math.random() * 10)} ${Math.floor(1000000 + Math.random() * 9000000)}`,
+            licenseNo: user.id === 1 ? 'SLCP-' + (10000 + user.id) : 
+                      user.id === 2 ? 'SLMHC-' + (20000 + user.id) : 
+                      'SLCP-' + (30000 + user.id),
+            idCard: user.id === 1 ? '/uploads/id_cards/counselor_naruto_id.pdf' :
+                   user.id === 2 ? '/uploads/id_cards/counselor_sakura_id.jpg' :
+                   '/uploads/id_cards/counselor_kakashi_id.png',
             isVolunteer: user.id === 3, // Only Kakashi is a volunteer
             isAvailable: user.id !== 3, // Kakashi is not available
             description: `Professional with extensive experience helping people overcome their mental health challenges. 
@@ -163,6 +171,12 @@ const createSampleData = async () => {
                            ['Geriatric Psychiatry', 'Consultation Psychiatry', 'Emergency Psychiatry'],
             address: `${300 + user.id} Medical Complex, Colombo ${Math.floor(Math.random() * 15) + 1}`,
             contact_no: `+94 7${Math.floor(Math.random() * 10)} ${Math.floor(1000000 + Math.random() * 9000000)}`,
+            licenseNo: user.id === 8 ? 'SLMC-PSY-' + (50000 + user.id) :
+                      user.id === 9 ? 'SLMC-PSY-' + (60000 + user.id) :
+                      'SLMC-PSY-' + (70000 + user.id),
+            idCard: user.id === 8 ? '/uploads/id_cards/psychiatrist_orochimaru_id.pdf' :
+                   user.id === 9 ? '/uploads/id_cards/psychiatrist_kabuto_id.jpg' :
+                   '/uploads/id_cards/psychiatrist_shizune_id.png',
             isAvailable: user.id !== 8, // Orochimaru is not available
             description: `Board-certified psychiatrist with expertise in diagnosing and treating mental disorders. 
                  Specialized in medication management and comprehensive psychiatric care.`
@@ -242,6 +256,147 @@ const createSampleData = async () => {
       }
       
       console.log('Client profiles created');
+
+      // Create experience records for professional users
+      console.log('Creating experience records...');
+      
+      // Add experiences for counselors
+      await Experience.bulkCreate([
+        {
+          userId: 1,  // Naruto
+          company: 'Konoha Mental Health Center',
+          position: 'Senior Counselor',
+          startDate: new Date('2020-06-01'),
+          endDate: null,  // currently working
+          description: 'Provide individual and group counseling sessions for clients with various mental health concerns.',
+          document: '/uploads/experiences/naruto_exp_konoha_mhc.pdf'
+        },
+        {
+          userId: 1,  // Naruto
+          company: 'Leaf Village Trauma Recovery Unit',
+          position: 'Trauma Counselor',
+          startDate: new Date('2018-03-15'),
+          endDate: new Date('2020-05-30'),
+          description: 'Specialized in supporting individuals recovering from traumatic experiences.',
+          document: '/uploads/experiences/naruto_exp_lvtru.jpg'
+        },
+        {
+          userId: 2,  // Sakura
+          company: 'Medical Ninja Academy',
+          position: 'Mental Health Therapist',
+          startDate: new Date('2019-07-01'),
+          endDate: null,  // currently working
+          description: 'Providing counseling services focused on stress management and relationship issues.',
+          document: '/uploads/experiences/sakura_exp_mna.pdf'
+        },
+        {
+          userId: 3,  // Kakashi
+          company: 'ANBU Mental Health Division',
+          position: 'Cognitive Behavioral Therapist',
+          startDate: new Date('2017-05-10'),
+          endDate: new Date('2022-12-31'),
+          description: 'Conducted specialized therapy sessions for severe PTSD and grief cases.',
+          document: '/uploads/experiences/kakashi_exp_anbu.png'
+        },
+        {
+          userId: 8,  // Orochimaru
+          company: 'Sound Village Medical Center',
+          position: 'Chief Psychiatrist',
+          startDate: new Date('2015-01-15'),
+          endDate: null,  // currently working
+          description: 'Leading a team of mental health professionals specializing in complex psychiatric cases.',
+          document: '/uploads/experiences/orochimaru_exp_svmc.pdf'
+        },
+        {
+          userId: 9,  // Kabuto
+          company: 'Hidden Leaf Hospital',
+          position: 'Child Psychiatrist',
+          startDate: new Date('2018-09-01'),
+          endDate: new Date('2023-05-30'),
+          description: 'Specialized in diagnosing and treating psychiatric conditions in children and adolescents.',
+          document: '/uploads/experiences/kabuto_exp_hlh.jpg'
+        }
+      ]);
+
+      console.log('Experience records created');
+
+      // Create educational qualification records
+      console.log('Creating educational qualification records...');
+      
+      await EduQualification.bulkCreate([
+        {
+          userId: 1,  // Naruto
+          institution: 'Konoha University',
+          degree: 'Master of Psychology',
+          field: 'Clinical Psychology',
+          startDate: new Date('2016-09-01'),
+          endDate: new Date('2018-05-30'),
+          grade: 'Distinction',
+          document: '/uploads/education/naruto_edu_ku_masters.pdf'
+        },
+        {
+          userId: 1,  // Naruto
+          institution: 'Konoha University',
+          degree: 'Bachelor of Psychology',
+          field: 'Psychology',
+          startDate: new Date('2012-09-01'),
+          endDate: new Date('2016-05-30'),
+          grade: 'First Class Honors',
+          document: '/uploads/education/naruto_edu_ku_bachelors.jpg'
+        },
+        {
+          userId: 2,  // Sakura
+          institution: 'Medical Academy of Fire Country',
+          degree: 'Master of Counseling',
+          field: 'Therapeutic Counseling',
+          startDate: new Date('2017-09-01'),
+          endDate: new Date('2019-06-30'),
+          grade: 'High Distinction',
+          document: '/uploads/education/sakura_edu_mafc_masters.pdf'
+        },
+        {
+          userId: 3,  // Kakashi
+          institution: 'Konoha Institute of Psychology',
+          degree: 'PhD in Psychology',
+          field: 'Cognitive Behavioral Therapy',
+          startDate: new Date('2014-09-01'),
+          endDate: new Date('2017-05-30'),
+          grade: 'Summa Cum Laude',
+          document: '/uploads/education/kakashi_edu_kip_phd.pdf'
+        },
+        {
+          userId: 8,  // Orochimaru
+          institution: 'Hidden Sound Medical School',
+          degree: 'Doctor of Medicine',
+          field: 'Psychiatry',
+          startDate: new Date('2010-09-01'),
+          endDate: new Date('2014-06-30'),
+          grade: 'Highest Distinction',
+          document: '/uploads/education/orochimaru_edu_hsms_md.pdf'
+        },
+        {
+          userId: 8,  // Orochimaru
+          institution: 'Snake Medical University',
+          degree: 'Specialization',
+          field: 'Neuropsychiatry',
+          startDate: new Date('2014-08-01'),
+          endDate: new Date('2015-07-30'),
+          grade: 'Excellence',
+          document: '/uploads/education/orochimaru_edu_smu_neuro.jpg'
+        },
+        {
+          userId: 9,  // Kabuto
+          institution: 'Hidden Leaf Medical University',
+          degree: 'Doctor of Medicine',
+          field: 'Child Psychiatry',
+          startDate: new Date('2014-09-01'),
+          endDate: new Date('2018-06-30'),
+          grade: 'Distinction',
+          document: '/uploads/education/kabuto_edu_hlmu_md.pdf'
+        }
+      ]);
+      
+      console.log('Educational qualification records created');
 
       // Create sample posts
       console.log('Creating sample posts...');

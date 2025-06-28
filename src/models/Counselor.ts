@@ -8,6 +8,8 @@ class Counselor extends Model {
   public specialties!: string[];  // e.g., ["Anxiety", "Depression", "Trauma"]
   public address?: string;
   public contact_no?: string;
+  public licenseNo?: string; // e.g., "SLCP-12345" (Sri Lanka College of Psychiatrists)
+  public idCard?: string;  // path to ID card image or PDF
   public isVolunteer!: boolean;
   public isAvailable!: boolean;
   public description?: string;
@@ -39,6 +41,14 @@ Counselor.init(
       allowNull: true,
     },
     contact_no: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    licenseNo: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    idCard: {
       type: DataTypes.STRING,
       allowNull: true,
     },

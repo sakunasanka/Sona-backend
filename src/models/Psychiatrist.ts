@@ -7,6 +7,8 @@ class Psychiatrist extends Model {
   public specialization!: string[];  // e.g., ["Bipolar Disorder", "Schizophrenia"]
   public address?: string;
   public contact_no?: string;
+  public licenseNo?: string;  // e.g., "SLMC-PSY-12345" (Sri Lanka Medical Council)
+  public idCard?: string;  // path to ID card image or PDF
   public isAvailable!: boolean;
   public description?: string;
   public readonly createdAt!: Date;
@@ -32,6 +34,14 @@ Psychiatrist.init(
       allowNull: true,
     },
     contact_no: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    licenseNo: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    idCard: {
       type: DataTypes.STRING,
       allowNull: true,
     },
