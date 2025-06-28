@@ -110,8 +110,16 @@ export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Resp
     }
   });
   
-  // If no time slots exist, generate default ones
-  if (!timeSlots.length) {
+  // Check if ANY time slots exist for this counselor and date, regardless of availability
+  const anyTimeSlots = await TimeSlot.findOne({
+    where: {
+      counselorId,
+      date
+    }
+  });
+  
+  // Only generate time slots if none exist at all for this counselor and date
+  if (!anyTimeSlots) {
     const parsedDate = new Date(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -127,7 +135,7 @@ export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Resp
     const isToday = parsedDate.toDateString() === today.toDateString();
     const currentHour = new Date().getHours();
     
-    // Generate default time slots (9 AM to 5 PM)
+    // Generate default time slots for all hours
     const defaultTimeSlots = [];
     for (let hour = 0; hour <= 23; hour++) {
       // If it's today, only show future time slots
