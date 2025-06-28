@@ -4,9 +4,6 @@ import User from './User';
 
 class Client extends Model {
   public userId!: number;
-  public university?: string;
-  public universityId?: string;
-  public universityEmail?: string;
   public isStudent!: boolean;
   public nickName?: string;
   public readonly createdAt!: Date;
@@ -21,21 +18,6 @@ Client.init(
       references: {
         model: User,
         key: 'id',
-      },
-    },
-    university: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    universityId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    universityEmail: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      validate: {
-        isEmail: true,
       },
     },
     isStudent: {

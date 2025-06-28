@@ -4,7 +4,7 @@ import User from './User';
 
 class Counselor extends Model {
   public userId!: number;
-  public title!: string;  // e.g., "Licensed Clinical Psychologist"
+  public title?: string;  // e.g., "Licensed Clinical Psychologist"
   public specialties!: string[];  // e.g., ["Anxiety", "Depression", "Trauma"]
   public address?: string;
   public contact_no?: string;

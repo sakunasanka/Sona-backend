@@ -7,6 +7,7 @@ import Admin from '../models/Admin';
 import Client from '../models/Client';
 import Psychiatrist from '../models/Psychiatrist';
 import MTMember from '../models/MT-member';
+import Student from '../models/Student';
 
 export const syncDatabase = async () => {
   try {
@@ -218,15 +219,22 @@ const createSampleData = async () => {
               }
             }
 
-            
-            await Client.create({
+            // Create client record
+            const client = await Client.create({
               userId: user.id,
-              university: universityName,
-              universityEmail: isStudent ? email : null,
-              universityId: isStudent ? `ST${100000 + Math.floor(Math.random() * 900000)}` : null,
               isStudent: isStudent,
               nickName: user.get('name').split(' ')[0]
             });
+            
+            // If client is a student, create a student record
+            if (isStudent && universityName) {
+              await Student.create({
+                clientId: user.id,
+                university: universityName,
+                universityEmail: email,
+                universityId: `ST${100000 + Math.floor(Math.random() * 900000)}`
+              });
+            }
           } catch (error) {
             console.error(`Error creating client profile for user ${user.id}:`, error);
           }
