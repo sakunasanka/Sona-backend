@@ -105,7 +105,8 @@ export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Resp
     where: {
       counselorId,
       date,
-      isBooked: false
+      isBooked: false,
+      isAvailable: true 
     }
   });
   
@@ -128,7 +129,7 @@ export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Resp
     
     // Generate default time slots (9 AM to 5 PM)
     const defaultTimeSlots = [];
-    for (let hour = 9; hour <= 17; hour++) {
+    for (let hour = 0; hour <= 23; hour++) {
       // If it's today, only show future time slots
       if (isToday && hour <= currentHour + 1) continue;
       
@@ -136,7 +137,8 @@ export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Resp
         counselorId,
         date,
         time: `${hour.toString().padStart(2, '0')}:00`,
-        isBooked: false
+        isBooked: false,
+        isAvailable: false
       });
       
       defaultTimeSlots.push(timeSlot);
@@ -262,7 +264,8 @@ export const bookSession = asyncHandler(async (req: Request, res: Response) => {
       counselorId,
       date,
       time: timeSlot,
-      isBooked: false
+      isBooked: false,
+      isAvailable: true 
     }
   });
   
