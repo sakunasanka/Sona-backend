@@ -5,6 +5,8 @@ import Like from '../models/Like';
 import Counselor from '../models/Counselor';
 import Admin from '../models/Admin';
 import Client from '../models/Client';
+import Psychiatrist from '../models/Psychiatrist';
+import MTMember from '../models/MT-member';
 
 export const syncDatabase = async () => {
   try {
@@ -70,6 +72,42 @@ const createSampleData = async () => {
           avatar: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg',
           role: 'Client',
         },
+        {
+          name: 'Orochimaru',
+          email: 'orochimaru@konoha.com',
+          avatar: 'https://images.pexels.com/photos/1516680/pexels-photo-1516680.jpeg',
+          role: 'Psychiatrist',
+        },
+        {
+          name: 'Kabuto Yakushi',
+          email: 'kabuto@konoha.com',
+          avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg',
+          role: 'Psychiatrist',
+        },
+        {
+          name: 'Shizune',
+          email: 'shizune@konoha.com',
+          avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg',
+          role: 'Psychiatrist',
+        },
+        {
+          name: 'Jiraiya',
+          email: 'jiraiya@konoha.com',
+          avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg',
+          role: 'MT-member',
+        },
+        {
+          name: 'Might Guy',
+          email: 'guy@konoha.com',
+          avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg',
+          role: 'MT-member',
+        },
+        {
+          name: 'Asuma Sarutobi',
+          email: 'asuma@konoha.com',
+          avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg',
+          role: 'MT-member',
+        },
       ]);
 
       console.log('Sample users created');
@@ -111,6 +149,44 @@ const createSampleData = async () => {
       }
       
       console.log('Admin profiles created');
+      
+      // Create psychiatrist profiles for users with 'Psychiatrist' role
+      console.log('Creating psychiatrist profiles...');
+      
+      for (const user of users) {
+        if (user.get('role') === 'Psychiatrist') {
+          await Psychiatrist.create({
+            userId: user.id,
+            specialization: user.id === 8 ? ['Clinical Psychiatry', 'Neuropsychiatry', 'Addiction Psychiatry'] :
+                           user.id === 9 ? ['Child Psychiatry', 'Forensic Psychiatry'] :
+                           ['Geriatric Psychiatry', 'Consultation Psychiatry', 'Emergency Psychiatry'],
+            address: `${300 + user.id} Medical Complex, Colombo ${Math.floor(Math.random() * 15) + 1}`,
+            contact_no: `+94 7${Math.floor(Math.random() * 10)} ${Math.floor(1000000 + Math.random() * 9000000)}`,
+            isAvailable: user.id !== 8, // Orochimaru is not available
+            description: `Board-certified psychiatrist with expertise in diagnosing and treating mental disorders. 
+                 Specialized in medication management and comprehensive psychiatric care.`
+          });
+        }
+      }
+      
+      console.log('Psychiatrist profiles created');
+      
+      // Create MT-member profiles for users with 'MT-member' role
+      console.log('Creating MT-member profiles...');
+      
+      for (const user of users) {
+        if (user.get('role') === 'MT-member') {
+          await MTMember.create({
+            userId: user.id,
+            memberId: `MT${1000 + user.id}`,
+            responsibility: user.id === 11 ? 'Crisis Intervention Specialist' :
+                           user.id === 12 ? 'Wellness Program Coordinator' :
+                           'Mental Health Educator'
+          });
+        }
+      }
+      
+      console.log('MT-member profiles created');
       
       // Create client profiles for users with 'Client' role
       console.log('Creating client profiles...');
