@@ -10,6 +10,7 @@ import MTMember from '../models/MT-member';
 import Student from '../models/Student';
 import Experience from '../models/Experience';
 import EduQualification from '../models/EduQualification';
+import Notification from '../models/Notification';
 
 export const syncDatabase = async () => {
   try {
@@ -397,6 +398,94 @@ const createSampleData = async () => {
       ]);
       
       console.log('Educational qualification records created');
+
+      // Create notification records
+      console.log('Creating notification records...');
+      
+      const currentDate = new Date();
+      // Helper function to create dates relative to current date
+      const getRelativeDate = (daysOffset: number): Date => {
+        const date = new Date(currentDate);
+        date.setDate(date.getDate() - daysOffset);
+        return date;
+      };
+      
+      await Notification.bulkCreate([
+        {
+          userId: users[0].id, // Naruto
+          type: 'info',
+          title: 'New Session Request',
+          message: 'You have a new counseling session request from Sasuke Uchiha for tomorrow at 3:00 PM.',
+          isRead: true,
+          relatedURL: '/sessions/upcoming',
+          createdAt: getRelativeDate(5)
+        },
+        {
+          userId: users[0].id, // Naruto
+          type: 'success',
+          title: 'Certification Approved',
+          message: 'Your clinical psychology certification has been reviewed and approved by the administration.',
+          isRead: true,
+          relatedURL: '/profile/certifications',
+          createdAt: getRelativeDate(10)
+        },
+        {
+          userId: users[1].id, // Sakura
+          type: 'warning',
+          title: 'Session Rescheduled',
+          message: 'Your session with Hinata Hyuga on June 25th has been rescheduled to June 26th.',
+          isRead: false,
+          relatedURL: '/sessions/calendar',
+          createdAt: getRelativeDate(2)
+        },
+        {
+          userId: users[2].id, // Kakashi
+          type: 'danger',
+          title: 'Urgent: System Maintenance',
+          message: 'The counseling portal will be unavailable for maintenance on June 30th from 2:00 AM to 4:00 AM.',
+          isRead: false,
+          relatedURL: null,
+          createdAt: getRelativeDate(1)
+        },
+        {
+          userId: users[4].id, // Sasuke (Client)
+          type: 'message',
+          title: 'Message from Your Counselor',
+          message: 'Naruto has shared some resources for your next session. Please review them before our meeting.',
+          isRead: false,
+          relatedURL: '/messages/inbox/12345',
+          createdAt: getRelativeDate(3)
+        },
+        {
+          userId: users[5].id, // Hinata (Client)
+          type: 'complaint',
+          title: 'Response to Your Feedback',
+          message: 'Thank you for your feedback about our services. We have addressed your concerns about the scheduling system.',
+          isRead: false,
+          relatedURL: '/feedback/responses/67890',
+          createdAt: getRelativeDate(7)
+        },
+        {
+          userId: users[7].id, // Orochimaru (Psychiatrist)
+          type: 'info',
+          title: 'New Medical Guidelines',
+          message: 'New guidelines for psychiatric medication management have been published. Please review them at your earliest convenience.',
+          isRead: true,
+          relatedURL: '/resources/guidelines',
+          createdAt: getRelativeDate(4)
+        },
+        {
+          userId: users[10].id, // Jiraiya (MT-member)
+          type: 'success',
+          title: 'Crisis Intervention Training',
+          message: 'You have successfully completed the crisis intervention training program. Certificate is now available.',
+          isRead: false,
+          relatedURL: '/training/certificates',
+          createdAt: getRelativeDate(1)
+        }
+      ]);
+      
+      console.log('Notification records created');
 
       // Create sample posts
       console.log('Creating sample posts...');
