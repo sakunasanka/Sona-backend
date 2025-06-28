@@ -3,6 +3,8 @@ import User from '../models/User';
 import Post from '../models/Post';
 import Like from '../models/Like';
 import Counselor from '../models/Counselor';
+import Admin from '../models/Admin';
+import Client from '../models/Client';
 
 export const syncDatabase = async () => {
   try {
@@ -29,23 +31,44 @@ const createSampleData = async () => {
         {
           name: 'Uzumaki Naruto',
           email: 'naruto@konoha.com',
-          password: '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZATYEKV/7kVgEgQTwdXKq', // secret123
           avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
           role: 'Counsellor',
         },
         {
           name: 'Sakura Haruno',
           email: 'sakura@konoha.com',
-          password: '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZATYEKV/7kVgEgQTwdXKq', // secret123
           avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg',
           role: 'Counsellor',
         },
         {
           name: 'Kakashi Hatake',
           email: 'kakashi@konoha.com',
-          password: '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZATYEKV/7kVgEgQTwdXKq', // secret123
           avatar: 'https://images.pexels.com/photos/2379005/pexels-photo-2379005.jpeg',
           role: 'Counsellor',
+        },
+        {
+          name: 'Tsunade Senju',
+          email: 'tsunade@konoha.com',
+          avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg',
+          role: 'Admin',
+        },
+        {
+          name: 'Sasuke Uchiha',
+          email: 'sasuke@cmb.ac.lk',
+          avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg',
+          role: 'Client',
+        },
+        {
+          name: 'Hinata Hyuga',
+          email: 'hinata@mrt.ac.lk',
+          avatar: 'https://images.pexels.com/photos/1382731/pexels-photo-1382731.jpeg',
+          role: 'Client',
+        },
+        {
+          name: 'Shikamaru Nara',
+          email: 'shikamaru@gmail.com',
+          avatar: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg',
+          role: 'Client',
         },
       ]);
 
@@ -71,6 +94,66 @@ const createSampleData = async () => {
       }
       
       console.log('Counselor profiles created');
+
+      // Create admin profiles for users with 'Admin' role
+      console.log('Creating admin profiles...');
+      
+      for (const user of users) {
+        if (user.get('role') === 'Admin') {
+          await Admin.create({
+            userId: user.id
+          });
+        }
+      }
+      
+      console.log('Admin profiles created');
+      
+      // Create client profiles for users with 'Client' role
+      console.log('Creating client profiles...');
+      
+      for (const user of users) {
+        if (user.get('role') === 'Client') {
+          try {
+            // Get email and determine university based on email domain
+            const email = user.get('email');
+            const domain = email.split('@')[1];
+            
+            // Hardcoded university mapping
+            let universityName = null;
+            let isStudent = false;
+            
+            // Check if it's a university email
+            if (domain.endsWith('.ac.lk')) {
+              isStudent = true;
+              if (domain === 'cmb.ac.lk') {
+                universityName = 'University of Colombo';
+              } else if (domain === 'mrt.ac.lk') {
+                universityName = 'University of Moratuwa';
+              } else if (domain === 'pdn.ac.lk') {
+                universityName = 'University of Peradeniya';
+              } else if (domain === 'sjp.ac.lk') {
+                universityName = 'University of Sri Jayewardenepura';
+              } else {
+                universityName = 'Unknown University';
+              }
+            }
+
+            
+            await Client.create({
+              userId: user.id,
+              university: universityName,
+              universityEmail: isStudent ? email : null,
+              universityId: isStudent ? `ST${100000 + Math.floor(Math.random() * 900000)}` : null,
+              isStudent: isStudent,
+              nickName: user.get('name').split(' ')[0]
+            });
+          } catch (error) {
+            console.error(`Error creating client profile for user ${user.id}:`, error);
+          }
+        }
+      }
+      
+      console.log('Client profiles created');
 
       // Create sample posts
       console.log('Creating sample posts...');
@@ -136,5 +219,6 @@ Though I might have to find a new place tomorrow... Naruto has a knack for findi
     }
   } catch (error) {
     console.error('Error creating sample data:', error);
+    // Continue execution without throwing error to prevent sync from failing
   }
 };
