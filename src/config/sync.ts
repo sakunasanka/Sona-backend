@@ -10,7 +10,7 @@ export const syncDatabase = async () => {
     console.log('Database synced successfully');
     
     // Create some sample data if tables are empty
-    await createSampleData();
+    // await createSampleData();
   } catch (error) {
     console.error('Error syncing database:', error);
     throw error;
