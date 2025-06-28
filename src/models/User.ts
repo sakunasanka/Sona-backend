@@ -5,9 +5,8 @@ class User extends Model {
   public id!: number;
   public name!: string;
   public email!: string;
-  public password!: string;
   public avatar?: string;
-  public badge!: 'User' | 'Premium';
+  public role!: 'Client' | 'Counsellor' | 'Psychiatrist' | 'Admin' | 'MT-member';
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -36,9 +35,10 @@ User.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    badge: {
-      type: DataTypes.ENUM('User', 'Premium'),
-      defaultValue: 'User',
+    role: {
+      type: DataTypes.ENUM('Client', 'Counsellor', 'Psychiatrist', 'Admin', 'MT-member'),
+      allowNull: false,
+      defaultValue: 'Client',
     },
   },
   {

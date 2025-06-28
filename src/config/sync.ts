@@ -2,6 +2,7 @@ import { sequelize } from './db';
 import User from '../models/User';
 import Post from '../models/Post';
 import Like from '../models/Like';
+import Counselor from '../models/Counselor';
 
 export const syncDatabase = async () => {
   try {
@@ -30,25 +31,46 @@ const createSampleData = async () => {
           email: 'naruto@konoha.com',
           password: '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZATYEKV/7kVgEgQTwdXKq', // secret123
           avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
-          badge: 'User',
+          role: 'Counsellor',
         },
         {
           name: 'Sakura Haruno',
           email: 'sakura@konoha.com',
           password: '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZATYEKV/7kVgEgQTwdXKq', // secret123
           avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg',
-          badge: 'Premium',
+          role: 'Counsellor',
         },
         {
           name: 'Kakashi Hatake',
           email: 'kakashi@konoha.com',
           password: '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZATYEKV/7kVgEgQTwdXKq', // secret123
           avatar: 'https://images.pexels.com/photos/2379005/pexels-photo-2379005.jpeg',
-          badge: 'Premium',
+          role: 'Counsellor',
         },
       ]);
 
       console.log('Sample users created');
+
+      // Create counselor profiles for users with 'Counsellor' role
+      console.log('Creating counselor profiles...');
+      
+      for (const user of users) {
+        if (user.get('role') === 'Counsellor') {
+          await Counselor.create({
+            userId: user.id,
+            title: user.id === 1 ? 'Licensed Clinical Psychologist' : 
+                   user.id === 2 ? 'Mental Health Therapist' : 'Cognitive Behavioral Therapist',
+            specialties: user.id === 1 ? ['Anxiety', 'Depression', 'Trauma'] :
+                         user.id === 2 ? ['Stress Management', 'Relationship Counseling'] :
+                         ['PTSD', 'Grief Counseling', 'Mindfulness'],
+            bio: `Professional with extensive experience helping people overcome their mental health challenges. 
+                 Specialized in providing support and guidance for various psychological issues.`,
+            rating: 4.8 + (Math.random() * 0.4 - 0.2) // Random rating between 4.6 and 5.0
+          });
+        }
+      }
+      
+      console.log('Counselor profiles created');
 
       // Create sample posts
       console.log('Creating sample posts...');

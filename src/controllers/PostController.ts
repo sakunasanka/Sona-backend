@@ -21,7 +21,7 @@ export const getPosts = async (req: Request, res: Response) => {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'name', 'avatar', 'badge'],
+          attributes: ['id', 'name', 'avatar', 'role'],
         },
       ],
       order: orderBy,
@@ -34,7 +34,7 @@ export const getPosts = async (req: Request, res: Response) => {
       author: {
         name: post.user?.name || 'Unknown User',
         avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
-        badge: post.user?.badge || 'User',
+        role: post.user?.role || 'Client',
       },
       timeAgo: getTimeAgo(post.createdAt),
       content: post.content,
@@ -85,7 +85,7 @@ export const getPostsWithLikes = async (req: Request, res: Response) => {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'name', 'avatar', 'badge'],
+          attributes: ['id', 'name', 'avatar', 'role'],
         },
       ],
       order: orderBy,
@@ -108,7 +108,7 @@ export const getPostsWithLikes = async (req: Request, res: Response) => {
       author: {
         name: post.user?.name || 'Unknown User',
         avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
-        badge: post.user?.badge || 'User',
+        role: post.user?.role || 'Client',
       },
       timeAgo: getTimeAgo(post.createdAt),
       content: post.content,
@@ -158,7 +158,7 @@ export const createPost = async (req: Request, res: Response) => {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'name', 'avatar', 'badge'],
+          attributes: ['id', 'name', 'avatar', 'role'],
         },
       ],
     });
@@ -179,7 +179,7 @@ export const createPost = async (req: Request, res: Response) => {
           avatar:
             postWithUser.user?.avatar ||
             'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
-          badge: postWithUser.user?.badge || 'User',
+          role: postWithUser.user?.role || 'Client',
         },
         timeAgo: getTimeAgo(postWithUser.createdAt),
         content: postWithUser.content,
@@ -248,7 +248,7 @@ export const updatePost = async (req: Request, res: Response) => {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'name', 'avatar', 'badge'],
+          attributes: ['id', 'name', 'avatar', 'role'],
         },
       ],
     });
@@ -267,7 +267,7 @@ export const updatePost = async (req: Request, res: Response) => {
         author: {
           name: updatedPost.user?.name || 'Unknown User',
           avatar: updatedPost.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
-          badge: updatedPost.user?.badge || 'User',
+          role: updatedPost.user?.role || 'Client',
         },
         timeAgo: getTimeAgo(updatedPost.createdAt),
         content: updatedPost.content,
