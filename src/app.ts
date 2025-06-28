@@ -10,6 +10,8 @@ import { syncDatabase } from './config/sync';
 import userRoutes from './routes/UserRoutes';
 import postRoutes from './routes/PostRoutes';
 import sessionRoutes from './routes/SessionRoutes';
+import authRoutes from './routes/AuthRoutes';
+import { auth } from 'firebase-admin';
 
 dotenv.config();
 
@@ -32,6 +34,7 @@ app.get('/', (req, res) => {
       users: '/api/users',
       posts: '/api/posts',
       sessions: '/api/sessions',
+      auth: '/api/auth'
     },
   });
 });
@@ -40,6 +43,7 @@ app.get('/', (req, res) => {
 app.use('/api/users', userRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/auth', authRoutes)
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
