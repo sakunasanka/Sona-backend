@@ -86,7 +86,11 @@ const createSampleData = async () => {
             specialties: user.id === 1 ? ['Anxiety', 'Depression', 'Trauma'] :
                          user.id === 2 ? ['Stress Management', 'Relationship Counseling'] :
                          ['PTSD', 'Grief Counseling', 'Mindfulness'],
-            bio: `Professional with extensive experience helping people overcome their mental health challenges. 
+            address: `${123 + user.id} Main Street, Colombo ${Math.floor(Math.random() * 15) + 1}`,
+            contact_no: `+94 7${Math.floor(Math.random() * 10)} ${Math.floor(1000000 + Math.random() * 9000000)}`,
+            isVolunteer: user.id === 3, // Only Kakashi is a volunteer
+            isAvailable: user.id !== 3, // Kakashi is not available
+            description: `Professional with extensive experience helping people overcome their mental health challenges. 
                  Specialized in providing support and guidance for various psychological issues.`,
             rating: 4.8 + (Math.random() * 0.4 - 0.2) // Random rating between 4.6 and 5.0
           });

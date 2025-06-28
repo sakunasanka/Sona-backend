@@ -6,7 +6,11 @@ class Counselor extends Model {
   public userId!: number;
   public title!: string;  // e.g., "Licensed Clinical Psychologist"
   public specialties!: string[];  // e.g., ["Anxiety", "Depression", "Trauma"]
-  public bio?: string;
+  public address?: string;
+  public contact_no?: string;
+  public isVolunteer!: boolean;
+  public isAvailable!: boolean;
+  public description?: string;
   public rating?: number;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -30,7 +34,23 @@ Counselor.init(
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: false,
     },
-    bio: {
+    address: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    contact_no: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    isVolunteer: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    isAvailable: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+    description: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
