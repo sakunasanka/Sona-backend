@@ -22,6 +22,13 @@ import Session from '../models/Session';
 import Complaint from '../models/Complaint';
 import Reason from '../models/Reason';
 import PaymentTransaction from '../models/PaymentTransaction';
+import UserVerificationLogs from '../models/UserVerificationLogs';
+import Questionnaire from '../models/Questionnaire';
+import Prescription from '../models/Prescription';
+import PostVerificationLogs from '../models/PostVerificationLogs';
+import DailyMood from '../models/DailyMood';
+import ComplaintLogs from '../models/ComplaintLogs';
+import Chat from '../models/Chat';
 
 export const syncDatabase = async () => {
   try {
@@ -30,7 +37,7 @@ export const syncDatabase = async () => {
     console.log('Database synced successfully');
     
     // Create some sample data if tables are empty
-    await createSampleData();
+    // await createSampleData();
   } catch (error) {
     console.error('Error syncing database:', error);
     throw error;
@@ -1038,6 +1045,168 @@ Though I might have to find a new place tomorrow... Naruto has a knack for findi
       ]);
       
       console.log('Sample comment dislikes created');
+
+      // Create sample UserVerificationLogs
+      console.log('Creating sample user verification logs...');
+      await UserVerificationLogs.bulkCreate([
+        {
+          id: 1,
+          createdAt: new Date('2025-06-25T10:30:00'),
+          updatedAt: new Date('2025-06-25T10:30:00')
+        },
+        {
+          id: 2,
+          createdAt: new Date('2025-06-26T14:45:00'),
+          updatedAt: new Date('2025-06-26T14:45:00')
+        },
+        {
+          id: 3,
+          createdAt: new Date('2025-06-28T09:15:00'),
+          updatedAt: new Date('2025-06-28T09:15:00')
+        }
+      ]);
+      console.log('Sample user verification logs created');
+
+      // Create sample Questionnaires
+      console.log('Creating sample questionnaires...');
+      await Questionnaire.bulkCreate([
+        {
+          id: 1,
+          createdAt: new Date('2025-06-20T08:00:00'),
+          updatedAt: new Date('2025-06-20T08:00:00')
+        },
+        {
+          id: 2,
+          createdAt: new Date('2025-06-22T11:30:00'),
+          updatedAt: new Date('2025-06-22T11:30:00')
+        },
+        {
+          id: 3,
+          createdAt: new Date('2025-06-27T15:45:00'),
+          updatedAt: new Date('2025-06-27T15:45:00')
+        }
+      ]);
+      console.log('Sample questionnaires created');
+
+      // Create sample Prescriptions
+      console.log('Creating sample prescriptions...');
+      await Prescription.bulkCreate([
+        {
+          id: 1,
+          createdAt: new Date('2025-06-15T09:30:00'),
+          updatedAt: new Date('2025-06-15T09:30:00')
+        },
+        {
+          id: 2,
+          createdAt: new Date('2025-06-18T14:00:00'),
+          updatedAt: new Date('2025-06-18T14:00:00')
+        },
+        {
+          id: 3,
+          createdAt: new Date('2025-06-24T11:15:00'),
+          updatedAt: new Date('2025-06-24T11:15:00')
+        }
+      ]);
+      console.log('Sample prescriptions created');
+
+      // Create sample PostVerificationLogs
+      console.log('Creating sample post verification logs...');
+      await PostVerificationLogs.bulkCreate([
+        {
+          id: 1,
+          createdAt: new Date('2025-06-20T13:45:00'),
+          updatedAt: new Date('2025-06-20T13:45:00')
+        },
+        {
+          id: 2,
+          createdAt: new Date('2025-06-25T10:30:00'),
+          updatedAt: new Date('2025-06-25T10:30:00')
+        },
+        {
+          id: 3,
+          createdAt: new Date('2025-06-28T16:20:00'),
+          updatedAt: new Date('2025-06-28T16:20:00')
+        }
+      ]);
+      console.log('Sample post verification logs created');
+
+      // Create sample DailyMoods
+      console.log('Creating sample daily moods...');
+      await DailyMood.bulkCreate([
+        {
+          id: 1,
+          createdAt: new Date('2025-06-28T08:30:00'),
+          updatedAt: new Date('2025-06-28T08:30:00')
+        },
+        {
+          id: 2,
+          createdAt: new Date('2025-06-28T10:15:00'),
+          updatedAt: new Date('2025-06-28T10:15:00')
+        },
+        {
+          id: 3,
+          createdAt: new Date('2025-06-28T14:45:00'),
+          updatedAt: new Date('2025-06-28T14:45:00')
+        },
+        {
+          id: 4,
+          createdAt: new Date('2025-06-27T09:20:00'),
+          updatedAt: new Date('2025-06-27T09:20:00')
+        },
+        {
+          id: 5,
+          createdAt: new Date('2025-06-27T19:30:00'),
+          updatedAt: new Date('2025-06-27T19:30:00')
+        }
+      ]);
+      console.log('Sample daily moods created');
+
+      // Create sample ComplaintLogs
+      console.log('Creating sample complaint logs...');
+      await ComplaintLogs.bulkCreate([
+        {
+          id: 1,
+          createdAt: new Date('2025-06-22T11:30:00'),
+          updatedAt: new Date('2025-06-22T11:30:00')
+        },
+        {
+          id: 2,
+          createdAt: new Date('2025-06-25T14:15:00'),
+          updatedAt: new Date('2025-06-25T14:15:00')
+        },
+        {
+          id: 3,
+          createdAt: new Date('2025-06-27T09:45:00'),
+          updatedAt: new Date('2025-06-27T09:45:00')
+        }
+      ]);
+      console.log('Sample complaint logs created');
+
+      // Create sample Chat data
+      console.log('Creating sample chat records...');
+      await Chat.bulkCreate([
+        {
+          id: 1,
+          createdAt: new Date('2025-06-15T10:30:00'),
+          updatedAt: new Date('2025-06-15T10:30:00')
+        },
+        {
+          id: 2,
+          createdAt: new Date('2025-06-20T14:45:00'),
+          updatedAt: new Date('2025-06-20T14:45:00')
+        },
+        {
+          id: 3,
+          createdAt: new Date('2025-06-25T16:30:00'),
+          updatedAt: new Date('2025-06-25T16:30:00')
+        },
+        {
+          id: 4,
+          createdAt: new Date('2025-06-28T11:15:00'),
+          updatedAt: new Date('2025-06-28T11:15:00')
+        }
+      ]);
+      console.log('Sample chat records created');
     }
   } catch (error) {
     console.error('Error creating sample data:', error);
