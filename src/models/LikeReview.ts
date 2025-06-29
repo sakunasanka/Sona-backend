@@ -56,6 +56,6 @@ LikeReview.init(
 LikeReview.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 LikeReview.belongsTo(Review, { foreignKey: 'reviewId', as: 'review' });
 User.hasMany(LikeReview, { foreignKey: 'userId', as: 'reviewLikes' });
-Review.hasMany(LikeReview, { foreignKey: 'reviewId', as: 'likes' });
+Review.hasMany(LikeReview, { foreignKey: 'reviewId', as: 'userLikes' });
 
 export default LikeReview;

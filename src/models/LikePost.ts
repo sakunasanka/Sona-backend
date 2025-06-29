@@ -53,6 +53,6 @@ LikePost.init(
 LikePost.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 LikePost.belongsTo(Post, { foreignKey: 'postId', as: 'post' });
 User.hasMany(LikePost, { foreignKey: 'userId', as: 'postLikes' });
-Post.hasMany(LikePost, { foreignKey: 'postId', as: 'likes' });
+Post.hasMany(LikePost, { foreignKey: 'postId', as: 'userLikes' });
 
 export default LikePost;
