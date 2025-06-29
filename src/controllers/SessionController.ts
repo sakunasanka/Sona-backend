@@ -6,7 +6,7 @@ import Counselor from '../models/Counselor';
 import Psychiatrist from '../models/Psychiatrist'; 
 import MTMember from '../models/MT-member';
 import TimeSlot from '../models/TimeSlot';
-import PaymentMethod from '../models/PaymentMethod';
+import PaymentTransaction from '../models/PaymentTransaction';
 import { Op } from 'sequelize';
 
 /**
@@ -178,64 +178,6 @@ export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Resp
 });
 
 /**
- * @desc    Get user payment methods
- * @route   GET /api/sessions/payment-methods
- * @access  Private
- */
-export const getUserPaymentMethods = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.id;
-  
-  const paymentMethods = await PaymentMethod.findAll({
-    where: { userId }
-  });
-  
-  res.status(200).json({
-    success: true,
-    data: paymentMethods
-  });
-});
-
-/**
- * @desc    Add new payment method
- * @route   POST /api/sessions/payment-methods
- * @access  Private
- */
-export const addPaymentMethod = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.id;
-  const { type, last4, brand, isDefault } = req.body;
-  
-  // Validate required fields
-  if (!type) {
-    return res.status(400).json({
-      success: false,
-      message: 'Payment type is required'
-    });
-  }
-  
-  // If this is the default payment method, update all others to non-default
-  if (isDefault) {
-    await PaymentMethod.update(
-      { isDefault: false },
-      { where: { userId } }
-    );
-  }
-  
-  // Create new payment method
-  const paymentMethod = await PaymentMethod.create({
-    userId,
-    type,
-    last4,
-    brand,
-    isDefault: isDefault || false
-  });
-  
-  res.status(201).json({
-    success: true,
-    data: paymentMethod
-  });
-});
-
-/**
  * @desc    Book a new session
  * @route   POST /api/sessions
  * @access  Private
@@ -305,21 +247,21 @@ export const bookSession = asyncHandler(async (req: Request, res: Response) => {
   }
   
   // Check if payment method exists if provided
-  if (paymentMethodId) {
-    const paymentMethod = await PaymentMethod.findOne({
-      where: {
-        id: paymentMethodId,
-        userId
-      }
-    });
+//   if (paymentMethodId) {
+//     const paymentMethod = await PaymentMethod.findOne({
+//       where: {
+//         id: paymentMethodId,
+//         userId
+//       }
+//     });
     
-    if (!paymentMethod) {
-      return res.status(404).json({
-        success: false,
-        message: 'Payment method not found'
-      });
-    }
-  }
+//     if (!paymentMethod) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Payment method not found'
+//       });
+//     }
+//   }
   
   // Create the session booking
   const session = await Session.create({

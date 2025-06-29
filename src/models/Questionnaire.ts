@@ -1,13 +1,13 @@
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/db';
 
-class UserVerificationLogs extends Model {
+class Questionnaire extends Model {
   public id!: number;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
 
-UserVerificationLogs.init(
+Questionnaire.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -17,12 +17,12 @@ UserVerificationLogs.init(
   },
   {
     sequelize,
-    modelName: 'userVerificationLogs',
-    tableName: 'user_verification_logs',
+    modelName: 'questionnaire',
+    tableName: 'questionnaires',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
   }
 );
 
-export default UserVerificationLogs;
+export default Questionnaire;

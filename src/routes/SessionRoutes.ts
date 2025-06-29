@@ -3,8 +3,6 @@ import {
   getCounselors,
   getCounselorById,
   getAvailableTimeSlots,
-  getUserPaymentMethods,
-  addPaymentMethod,
   bookSession,
   getUserSessions,
   getSessionById,
@@ -20,8 +18,6 @@ router.get('/counselors/:id', getCounselorById);
 router.get('/timeslots/:counselorId/:date', getAvailableTimeSlots);
 
 // Protected routes (require authentication)
-router.get('/payment-methods', getUserPaymentMethods);
-router.post('/payment-methods', addPaymentMethod);
 router.post('/', bookSession);
 router.get('/my-sessions', getUserSessions);
 router.get('/:id', getSessionById);

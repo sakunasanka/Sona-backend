@@ -1,4 +1,3 @@
-// filepath: /Volumes/Third Year/3rd yr sem 1/Group Project/SonaBackend/src/models/Reason.ts
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/db';
 

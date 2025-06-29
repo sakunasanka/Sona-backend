@@ -21,6 +21,7 @@ import DislikeComment from '../models/DislikeComment';
 import Session from '../models/Session';
 import Complaint from '../models/Complaint';
 import Reason from '../models/Reason';
+import PaymentTransaction from '../models/PaymentTransaction';
 
 export const syncDatabase = async () => {
   try {
@@ -762,6 +763,86 @@ const createSampleData = async () => {
       ]);
       
       console.log('Sample reasons created');
+
+      // Create sample payment transactions
+      console.log('Creating sample payment transactions...');
+      
+      await PaymentTransaction.bulkCreate([
+        {
+          userId: users[4].id, // Sasuke (Client)
+          sessionId: sessions[0].id, // Scheduled session with Naruto
+          paymentFor: 'session_fee',
+          amount: 2500.00,
+          currency: 'LKR',
+          status: 'success',
+          created_at: new Date('2025-06-28T14:30:00')
+        },
+        {
+          userId: users[5].id, // Hinata (Client)
+          sessionId: sessions[1].id, // Scheduled session with Sakura
+          paymentFor: 'session_fee',
+          amount: 3000.00,
+          currency: 'LKR',
+          status: 'success',
+          created_at: new Date('2025-06-29T09:15:00')
+        },
+        {
+          userId: users[6].id, // Shikamaru (Client)
+          sessionId: sessions[2].id, // Scheduled session with Kakashi
+          paymentFor: 'session_fee',
+          amount: 2000.00,
+          currency: 'LKR',
+          status: 'success',
+          created_at: new Date('2025-06-29T16:45:00')
+        },
+        {
+          userId: users[4].id, // Sasuke (Client)
+          sessionId: sessions[3].id, // Completed session with Naruto
+          paymentFor: 'session_fee',
+          amount: 2500.00,
+          currency: 'LKR',
+          status: 'success',
+          created_at: new Date('2025-06-22T10:20:00')
+        },
+        {
+          userId: users[5].id, // Hinata (Client)
+          sessionId: sessions[4].id, // Completed session with Sakura
+          paymentFor: 'session_fee',
+          amount: 1500.00,
+          currency: 'LKR',
+          status: 'success',
+          created_at: new Date('2025-06-26T14:50:00')
+        },
+        {
+          userId: users[6].id, // Shikamaru (Client)
+          sessionId: sessions[5].id, // Cancelled session with Naruto
+          paymentFor: 'session_fee',
+          amount: 3000.00,
+          currency: 'LKR',
+          status: 'failed', // Payment failed (perhaps why it was cancelled)
+          created_at: new Date('2025-06-27T12:30:00')
+        },
+        {
+          userId: users[4].id, // Sasuke (Client)
+          sessionId: null, // Platform fee not tied to a specific session
+          paymentFor: 'platform_fee',
+          amount: 500.00,
+          currency: 'LKR',
+          status: 'success',
+          created_at: new Date('2025-06-15T08:00:00')
+        },
+        {
+          userId: users[5].id, // Hinata (Client)
+          sessionId: null, // Platform fee not tied to a specific session
+          paymentFor: 'platform_fee',
+          amount: 500.00,
+          currency: 'LKR',
+          status: 'success',
+          created_at: new Date('2025-06-20T11:45:00')
+        }
+      ]);
+      
+      console.log('Sample payment transactions created');
 
       // Create sample posts
       console.log('Creating sample posts...');
