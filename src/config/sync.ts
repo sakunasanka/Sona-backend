@@ -19,6 +19,7 @@ import Comment from '../models/Comment';
 import LikeComment from '../models/LikeComment';
 import DislikeComment from '../models/DislikeComment';
 import Session from '../models/Session';
+import Complaint from '../models/Complaint';
 
 export const syncDatabase = async () => {
   try {
@@ -677,6 +678,45 @@ const createSampleData = async () => {
       ]);
       
       console.log('Sample sessions created');
+      
+      // Store session references for complaints
+      const sessions = await Session.findAll();
+      
+      // Create sample complaints
+      console.log('Creating sample complaints...');
+      
+      await Complaint.bulkCreate([
+        {
+          complaint: 'The counselor was late for our scheduled session and missed 15 minutes of our time.',
+          status: 'pending',
+          proof: '/uploads/screenshots/session_time_proof.jpg',
+          userId: users[4].id, // Sasuke (Client)
+          sessionId: sessions[3].id // Completed session with Naruto
+        },
+        {
+          complaint: 'Technical issues during the video session prevented effective communication.',
+          status: 'in review',
+          proof: null,
+          userId: users[5].id, // Hinata (Client)
+          sessionId: sessions[4].id // Completed session with Sakura
+        },
+        {
+          complaint: 'The counselor seemed distracted and unprepared for our session.',
+          status: 'resolved',
+          proof: '/uploads/recordings/session_recording.mp3',
+          userId: users[6].id, // Shikamaru (Client)
+          sessionId: sessions[5].id // Cancelled session with Naruto
+        },
+        {
+          complaint: 'The session was cut short and I was still charged the full amount.',
+          status: 'rejected',
+          proof: '/uploads/screenshots/payment_receipt.pdf',
+          userId: users[4].id, // Sasuke (Client)
+          sessionId: sessions[3].id // Completed session with Naruto
+        }
+      ]);
+      
+      console.log('Sample complaints created');
 
       // Create sample posts
       console.log('Creating sample posts...');
