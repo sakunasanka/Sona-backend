@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import Post from '../models/Post';
 import User from '../models/User';
-import Like from '../models/Like';
+import Like from '../models/LikePost';
 import { Op } from 'sequelize';
 
 // Get all posts with pagination and sorting

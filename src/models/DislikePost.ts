@@ -1,17 +1,17 @@
+// filepath: /Volumes/Third Year/3rd yr sem 1/Group Project/SonaBackend/src/models/DislikePost.ts
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/db';
 import User from './User';
 import Post from './Post';
 
-class Like extends Model {
+class DislikePost extends Model {
   public id!: number;
   public userId!: number;
   public postId!: string;
   public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
 }
 
-Like.init(
+DislikePost.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -25,6 +25,7 @@ Like.init(
         model: User,
         key: 'id',
       },
+      field: 'user_id',
     },
     postId: {
       type: DataTypes.UUID,
@@ -33,12 +34,15 @@ Like.init(
         model: Post,
         key: 'id',
       },
+      field: 'post_id',
     },
   },
   {
     sequelize,
-    modelName: 'like',
-    tableName: 'likes',
+    modelName: 'dislike_post',
+    tableName: 'dislike_posts',
+    timestamps: true,
+    updatedAt: false,
     indexes: [
       {
         unique: true,
@@ -49,9 +53,9 @@ Like.init(
 );
 
 // Define associations
-Like.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-Like.belongsTo(Post, { foreignKey: 'postId', as: 'post' });
-User.hasMany(Like, { foreignKey: 'userId', as: 'userLikes' });
-Post.hasMany(Like, { foreignKey: 'postId', as: 'postLikes' });
+DislikePost.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+DislikePost.belongsTo(Post, { foreignKey: 'postId', as: 'post' });
+User.hasMany(DislikePost, { foreignKey: 'userId', as: 'postDislikes' });
+Post.hasMany(DislikePost, { foreignKey: 'postId', as: 'dislikes' });
 
-export default Like;
+export default DislikePost;

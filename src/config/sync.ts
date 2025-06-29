@@ -1,7 +1,8 @@
 import { sequelize } from './db';
 import User from '../models/User';
 import Post from '../models/Post';
-import Like from '../models/Like';
+import LikePost from '../models/LikePost';
+import DislikePost from '../models/DislikePost';
 import Counselor from '../models/Counselor';
 import Admin from '../models/Admin';
 import Client from '../models/Client';
@@ -11,6 +12,12 @@ import Student from '../models/Student';
 import Experience from '../models/Experience';
 import EduQualification from '../models/EduQualification';
 import Notification from '../models/Notification';
+import Review from '../models/Review';
+import LikeReview from '../models/LikeReview';
+import DislikeReview from '../models/DislikeReview';
+import Comment from '../models/Comment';
+import LikeComment from '../models/LikeComment';
+import DislikeComment from '../models/DislikeComment';
 
 export const syncDatabase = async () => {
   try {
@@ -487,6 +494,87 @@ const createSampleData = async () => {
       
       console.log('Notification records created');
 
+      // Create review records
+      console.log('Creating review records...');
+      
+      // Helper function to get a random date within the last year
+      const getRandomDate = (): Date => {
+        const now = new Date();
+        const pastYear = new Date(now);
+        pastYear.setFullYear(now.getFullYear() - 1);
+        
+        const randomTimestamp = pastYear.getTime() + 
+            Math.random() * (now.getTime() - pastYear.getTime());
+        
+        return new Date(randomTimestamp);
+      };
+      
+      const reviews = await Review.bulkCreate([
+        {
+          rating: 5.0,
+          comment: "Naruto was incredibly supportive and understanding during our sessions. He provided practical strategies that have helped me manage my anxiety.",
+          userId: users[4].id, // Sasuke (Client)
+          counselorId: users[0].id, // Naruto (Counselor)
+          createdAt: getRandomDate()
+        },
+        {
+          rating: 4.8,
+          comment: "Sakura has a warm and empathetic approach that made me feel comfortable opening up. Her expertise in relationship counseling was evident.",
+          userId: users[5].id, // Hinata (Client)
+          counselorId: users[1].id, // Sakura (Counselor)
+          createdAt: getRandomDate()
+        },
+        {
+          rating: 4.5,
+          comment: "Kakashi's methods for dealing with trauma are highly effective. I appreciate his patient and thoughtful guidance.",
+          userId: users[6].id, // Shikamaru (Client)
+          counselorId: users[2].id, // Kakashi (Counselor)
+          createdAt: getRandomDate()
+        },
+        {
+          rating: 4.9,
+          comment: "I've made significant progress with Naruto's help. His positive energy and deep understanding of depression have been invaluable to my recovery.",
+          userId: users[5].id, // Hinata (Client)
+          counselorId: users[0].id, // Naruto (Counselor)
+          createdAt: getRandomDate()
+        },
+        {
+          rating: 4.7,
+          comment: "Sakura provides clear guidance and practical tools. Our sessions have helped me develop better stress management techniques.",
+          userId: users[6].id, // Shikamaru (Client)
+          counselorId: users[1].id, // Sakura (Counselor)
+          createdAt: getRandomDate()
+        }
+      ]);
+      
+      console.log('Review records created');
+      
+      // Create sample review likes
+      console.log('Creating sample review likes...');
+      await LikeReview.bulkCreate([
+        { userId: users[0].id, reviewId: reviews[0].reviewId }, // Naruto likes Sasuke's review
+        { userId: users[1].id, reviewId: reviews[0].reviewId }, // Sakura likes Sasuke's review
+        { userId: users[2].id, reviewId: reviews[0].reviewId }, // Kakashi likes Sasuke's review
+        { userId: users[0].id, reviewId: reviews[1].reviewId }, // Naruto likes Hinata's review of Sakura
+        { userId: users[4].id, reviewId: reviews[1].reviewId }, // Sasuke likes Hinata's review
+        { userId: users[1].id, reviewId: reviews[2].reviewId }, // Sakura likes Shikamaru's review of Kakashi
+        { userId: users[0].id, reviewId: reviews[3].reviewId }, // Naruto likes Hinata's review of him
+        { userId: users[2].id, reviewId: reviews[4].reviewId }, // Kakashi likes Shikamaru's review of Sakura
+        { userId: users[0].id, reviewId: reviews[4].reviewId }, // Naruto likes Shikamaru's review of Sakura
+      ]);
+      
+      console.log('Sample review likes created');
+      
+      // Create sample review dislikes
+      console.log('Creating sample review dislikes...');
+      await DislikeReview.bulkCreate([
+        { userId: users[7].id, reviewId: reviews[0].reviewId }, // Orochimaru dislikes Sasuke's review of Naruto
+        { userId: users[3].id, reviewId: reviews[2].reviewId }, // Tsunade dislikes Shikamaru's review of Kakashi
+        { userId: users[9].id, reviewId: reviews[4].reviewId }, // Shizune dislikes Shikamaru's review of Sakura
+      ]);
+      
+      console.log('Sample review dislikes created');
+
       // Create sample posts
       console.log('Creating sample posts...');
       
@@ -536,9 +624,9 @@ Though I might have to find a new place tomorrow... Naruto has a knack for findi
 
       console.log('Sample posts created');
 
-      // Create some sample likes
-      console.log('Creating sample likes...');
-      await Like.bulkCreate([
+      // Create sample post likes
+      console.log('Creating sample post likes...');
+      await LikePost.bulkCreate([
         { userId: users[1].id, postId: posts[0].id }, // Sakura likes Naruto's post
         { userId: users[2].id, postId: posts[0].id }, // Kakashi likes Naruto's post
         { userId: users[0].id, postId: posts[1].id }, // Naruto likes Sakura's post
@@ -547,7 +635,140 @@ Though I might have to find a new place tomorrow... Naruto has a knack for findi
         { userId: users[1].id, postId: posts[2].id }, // Sakura likes Kakashi's post
       ]);
 
-      console.log('Sample likes created');
+      console.log('Sample post likes created');
+      
+      // Create sample post dislikes
+      console.log('Creating sample post dislikes...');
+      await DislikePost.bulkCreate([
+        { userId: users[6].id, postId: posts[0].id }, // Shikamaru dislikes Naruto's post
+        { userId: users[4].id, postId: posts[1].id }, // Sasuke dislikes Sakura's post
+        { userId: users[4].id, postId: posts[2].id }, // Sasuke dislikes Kakashi's post
+        { userId: users[5].id, postId: posts[2].id }, // Hinata dislikes Kakashi's post (probably because he's reading questionable literature)
+      ]);
+      
+      console.log('Sample post dislikes created');
+      
+      // Create sample comments and replies
+      console.log('Creating sample comments...');
+      
+      // Comments on Naruto's post about ramen
+      const comment1 = await Comment.create({
+        userId: users[1].id, // Sakura
+        postId: posts[0].id, // Naruto's post
+        content: "Always thinking about ramen, aren't you? 🍜 But I agree, Ichiraku is the best! Maybe I'll join you next time.",
+        likes: 8
+      });
+      
+      const comment2 = await Comment.create({
+        userId: users[5].id, // Hinata
+        postId: posts[0].id, // Naruto's post
+        content: "I'm glad Ichiraku brings you such joy, Naruto-kun! Small comforts are important for mental well-being.",
+        likes: 12
+      });
+      
+      // Reply to Sakura's comment
+      await Comment.create({
+        userId: users[0].id, // Naruto
+        postId: posts[0].id, // Naruto's post
+        parentId: comment1.id, // Reply to Sakura's comment
+        content: "You're welcome to join anytime, Sakura-chan! The more the merrier! 😁",
+        likes: 5
+      });
+      
+      // Reply to Hinata's comment
+      await Comment.create({
+        userId: users[0].id, // Naruto
+        postId: posts[0].id, // Naruto's post
+        parentId: comment2.id, // Reply to Hinata's comment
+        content: "Thanks Hinata! Would you like to join me next time? They added a new vegetable ramen that you might like!",
+        likes: 7
+      });
+      
+      // Another reply to Hinata's comment (nested)
+      await Comment.create({
+        userId: users[5].id, // Hinata
+        postId: posts[0].id, // Naruto's post
+        parentId: comment2.id, // Reply to Hinata's own comment
+        content: "I would love to! Thank you for the invitation. 😊",
+        likes: 6
+      });
+      
+      // Comments on Sakura's post
+      const comment3 = await Comment.create({
+        userId: users[0].id, // Naruto
+        postId: posts[1].id, // Sakura's post
+        content: "Hey! It's not my fault I get injured during training! 😤 But those medical techniques sound awesome, Sakura-chan!",
+        likes: 9
+      });
+      
+      await Comment.create({
+        userId: users[3].id, // Tsunade
+        postId: posts[1].id, // Sakura's post
+        content: "You're making excellent progress, Sakura. Keep up the good work and continue practicing those techniques we discussed.",
+        likes: 15
+      });
+      
+      // Reply to Naruto's comment
+      await Comment.create({
+        userId: users[1].id, // Sakura
+        postId: posts[1].id, // Sakura's post
+        parentId: comment3.id, // Reply to Naruto's comment
+        content: "Maybe if you were more careful, you wouldn't need healing so often! 🙄 But thanks, I'm really enjoying the training.",
+        likes: 11
+      });
+      
+      // Comments on Kakashi's post
+      await Comment.create({
+        userId: users[0].id, // Naruto
+        postId: posts[2].id, // Kakashi's post
+        content: "Sensei! What are you reading? Can I join you? I promise I'll be quiet! 😁",
+        likes: 6
+      });
+      
+      const comment4 = await Comment.create({
+        userId: users[1].id, // Sakura
+        postId: posts[2].id, // Kakashi's post
+        content: "Kakashi-sensei, we all know what book you're reading... 😑",
+        likes: 14
+      });
+      
+      // Reply to Sakura's comment
+      await Comment.create({
+        userId: users[2].id, // Kakashi
+        postId: posts[2].id, // Kakashi's post
+        parentId: comment4.id, // Reply to Sakura's comment
+        content: "It's literature... sophisticated literature. You wouldn't understand. *continues reading*",
+        likes: 18
+      });
+      
+      console.log('Sample comments created');
+      
+      // Create sample comment likes
+      console.log('Creating sample comment likes...');
+      await LikeComment.bulkCreate([
+        { userId: users[0].id, commentId: comment1.id }, // Naruto likes Sakura's comment
+        { userId: users[2].id, commentId: comment1.id }, // Kakashi likes Sakura's comment
+        { userId: users[0].id, commentId: comment2.id }, // Naruto likes Hinata's comment
+        { userId: users[1].id, commentId: comment2.id }, // Sakura likes Hinata's comment
+        { userId: users[4].id, commentId: comment2.id }, // Sasuke likes Hinata's comment
+        { userId: users[1].id, commentId: comment3.id }, // Sakura likes Naruto's comment
+        { userId: users[5].id, commentId: comment3.id }, // Hinata likes Naruto's comment
+        { userId: users[0].id, commentId: comment4.id }, // Naruto likes Sakura's comment to Kakashi
+        { userId: users[5].id, commentId: comment4.id }, // Hinata likes Sakura's comment to Kakashi
+        { userId: users[6].id, commentId: comment4.id }, // Shikamaru likes Sakura's comment to Kakashi
+      ]);
+      
+      console.log('Sample comment likes created');
+      
+      // Create sample comment dislikes
+      console.log('Creating sample comment dislikes...');
+      await DislikeComment.bulkCreate([
+        { userId: users[4].id, commentId: comment1.id }, // Sasuke dislikes Sakura's comment
+        { userId: users[6].id, commentId: comment3.id }, // Shikamaru dislikes Naruto's comment
+        { userId: users[2].id, commentId: comment4.id }, // Kakashi dislikes Sakura's comment about his book
+      ]);
+      
+      console.log('Sample comment dislikes created');
     }
   } catch (error) {
     console.error('Error creating sample data:', error);
