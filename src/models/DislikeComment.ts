@@ -46,7 +46,7 @@ DislikeComment.init(
     indexes: [
       {
         unique: true,
-        fields: ['userId', 'commentId'],
+        fields: ['user_id', 'comment_id'],
       },
     ],
   }

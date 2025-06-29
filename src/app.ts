@@ -67,7 +67,7 @@ app.use('*', (req, res) => {
 const initializeApp = async () => {
   try {
     await connectDB();
-    //Sync Database (uncomment if needed)
+    //Sync Database
     // await syncDatabase();
     
     // Start Server

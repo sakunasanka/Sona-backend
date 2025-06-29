@@ -31,6 +31,7 @@ Session.init(
         model: User,
         key: 'id',
       },
+      field: 'user_id',
     },
     counselorId: {
       type: DataTypes.INTEGER,
@@ -40,6 +41,7 @@ Session.init(
         key: 'id',
       },
       comment: 'ID of the professional (Counselor, Psychiatrist, or MT-member) conducting the session',
+      field: 'counselor_id',
     },
     date: {
       type: DataTypes.DATEONLY,
@@ -48,6 +50,7 @@ Session.init(
     timeSlot: {
       type: DataTypes.STRING,
       allowNull: false,
+      field: 'time_slot',
     },
     duration: {
       type: DataTypes.INTEGER,
@@ -69,6 +72,7 @@ Session.init(
     paymentMethodId: {
       type: DataTypes.STRING,
       allowNull: true,
+      field: 'payment_method_id',
     },
   },
   {

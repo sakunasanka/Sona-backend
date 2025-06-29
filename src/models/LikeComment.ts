@@ -46,7 +46,7 @@ LikeComment.init(
     indexes: [
       {
         unique: true,
-        fields: ['userId', 'commentId'],
+        fields: ['user_id', 'comment_id'],
       },
     ],
   }
@@ -56,6 +56,6 @@ LikeComment.init(
 LikeComment.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 LikeComment.belongsTo(Comment, { foreignKey: 'commentId', as: 'comment' });
 User.hasMany(LikeComment, { foreignKey: 'userId', as: 'commentLikes' });
-Comment.hasMany(LikeComment, { foreignKey: 'commentId', as: 'userLikes' });
+Comment.hasMany(LikeComment, { foreignKey: 'commentId', as: 'commentUserLikes' });
 
 export default LikeComment;

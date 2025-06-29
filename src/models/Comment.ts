@@ -85,7 +85,7 @@ User.hasMany(Comment, { foreignKey: 'userId', as: 'comments' });
 Comment.belongsTo(Post, { foreignKey: 'postId', as: 'post' });
 Post.hasMany(Comment, { 
   foreignKey: 'postId', 
-  as: 'comments',
+  as: 'postComments',
   onDelete: 'CASCADE' // If post is deleted, delete all associated comments
 });
 

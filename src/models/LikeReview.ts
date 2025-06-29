@@ -32,7 +32,7 @@ LikeReview.init(
       allowNull: false,
       references: {
         model: Review,
-        key: 'reviewId',
+        key: 'review_id',
       },
       field: 'review_id',
     },
@@ -46,7 +46,7 @@ LikeReview.init(
     indexes: [
       {
         unique: true,
-        fields: ['userId', 'reviewId'],
+        fields: ['user_id', 'review_id'],
       },
     ],
   }
@@ -56,6 +56,6 @@ LikeReview.init(
 LikeReview.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 LikeReview.belongsTo(Review, { foreignKey: 'reviewId', as: 'review' });
 User.hasMany(LikeReview, { foreignKey: 'userId', as: 'reviewLikes' });
-Review.hasMany(LikeReview, { foreignKey: 'reviewId', as: 'userLikes' });
+Review.hasMany(LikeReview, { foreignKey: 'reviewId', as: 'reviewUserLikes' });
 
 export default LikeReview;

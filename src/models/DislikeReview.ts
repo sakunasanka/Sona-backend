@@ -32,7 +32,7 @@ DislikeReview.init(
       allowNull: false,
       references: {
         model: Review,
-        key: 'reviewId',
+        key: 'review_id',
       },
       field: 'review_id',
     },
@@ -46,7 +46,7 @@ DislikeReview.init(
     indexes: [
       {
         unique: true,
-        fields: ['userId', 'reviewId'],
+        fields: ['user_id', 'review_id'],
       },
     ],
   }

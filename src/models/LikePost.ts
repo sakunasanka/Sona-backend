@@ -24,6 +24,7 @@ LikePost.init(
         model: User,
         key: 'id',
       },
+      field: 'user_id',
     },
     postId: {
       type: DataTypes.UUID,
@@ -32,6 +33,7 @@ LikePost.init(
         model: Post,
         key: 'id',
       },
+      field: 'post_id',
     },
   },
   {
@@ -43,7 +45,7 @@ LikePost.init(
     indexes: [
       {
         unique: true,
-        fields: ['userId', 'postId'],
+        fields: ['user_id', 'post_id'],
       },
     ],
   }

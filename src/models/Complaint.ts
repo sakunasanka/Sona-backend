@@ -43,6 +43,7 @@ Complaint.init(
         model: User,
         key: 'id',
       },
+      field: 'user_id',
     },
     sessionId: {
       type: DataTypes.INTEGER,
@@ -51,6 +52,7 @@ Complaint.init(
         model: Session,
         key: 'id',
       },
+      field: 'session_id',
     },
   },
   {
@@ -59,10 +61,10 @@ Complaint.init(
     tableName: 'complaints',
     indexes: [
       {
-        fields: ['userId'],
+        fields: ['user_id'],
       },
       {
-        fields: ['sessionId'],
+        fields: ['session_id'],
       },
     ],
   }

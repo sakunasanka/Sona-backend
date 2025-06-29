@@ -46,7 +46,7 @@ DislikePost.init(
     indexes: [
       {
         unique: true,
-        fields: ['userId', 'postId'],
+        fields: ['user_id', 'post_id'],
       },
     ],
   }
