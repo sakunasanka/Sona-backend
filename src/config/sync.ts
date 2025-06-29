@@ -18,6 +18,7 @@ import DislikeReview from '../models/DislikeReview';
 import Comment from '../models/Comment';
 import LikeComment from '../models/LikeComment';
 import DislikeComment from '../models/DislikeComment';
+import Session from '../models/Session';
 
 export const syncDatabase = async () => {
   try {
@@ -574,6 +575,108 @@ const createSampleData = async () => {
       ]);
       
       console.log('Sample review dislikes created');
+
+      // Create sample counseling sessions
+      console.log('Creating sample sessions...');
+      
+      // Get today's date (June 29, 2025)
+      const today = new Date('2025-06-29');
+      
+      // Helper function to add days to a date
+      const addDays = (date: Date, days: number): Date => {
+        const result = new Date(date);
+        result.setDate(result.getDate() + days);
+        return result;
+      };
+      
+      await Session.bulkCreate([
+        {
+          userId: users[4].id, // Sasuke (Client)
+          counselorId: users[0].id, // Naruto (Counselor)
+          sessionType: 'video',
+          date: addDays(today, 2), // July 1, 2025
+          timeSlot: '10:00',
+          duration: 50,
+          price: 2500.00,
+          notes: 'Initial session to discuss anxiety management strategies.',
+          status: 'scheduled',
+          paymentMethodId: 'pm_card_visa'
+        },
+        {
+          userId: users[5].id, // Hinata (Client)
+          counselorId: users[1].id, // Sakura (Counselor)
+          sessionType: 'video',
+          date: addDays(today, 3), // July 2, 2025
+          timeSlot: '14:30',
+          duration: 60,
+          price: 3000.00,
+          notes: 'Follow-up session on relationship counseling and self-confidence building.',
+          status: 'scheduled',
+          paymentMethodId: 'pm_card_mastercard'
+        },
+        {
+          userId: users[6].id, // Shikamaru (Client)
+          counselorId: users[2].id, // Kakashi (Counselor)
+          sessionType: 'phone',
+          date: addDays(today, 1), // June 30, 2025
+          timeSlot: '16:00',
+          duration: 45,
+          price: 2000.00,
+          notes: 'Session to discuss stress management techniques.',
+          status: 'scheduled',
+          paymentMethodId: 'pm_card_amex'
+        },
+        {
+          userId: users[4].id, // Sasuke (Client)
+          counselorId: users[0].id, // Naruto (Counselor)
+          sessionType: 'video',
+          date: addDays(today, -7), // June 22, 2025
+          timeSlot: '11:00',
+          duration: 50,
+          price: 2500.00,
+          notes: 'Initial assessment completed. Client showed signs of mild anxiety.',
+          status: 'completed',
+          paymentMethodId: 'pm_card_visa'
+        },
+        {
+          userId: users[5].id, // Hinata (Client)
+          counselorId: users[1].id, // Sakura (Counselor)
+          sessionType: 'chat',
+          date: addDays(today, -3), // June 26, 2025
+          timeSlot: '15:00',
+          duration: 30,
+          price: 1500.00,
+          notes: 'Quick check-in on progress with self-esteem exercises.',
+          status: 'completed',
+          paymentMethodId: 'pm_card_mastercard'
+        },
+        {
+          userId: users[6].id, // Shikamaru (Client)
+          counselorId: users[0].id, // Naruto (Counselor)
+          sessionType: 'video',
+          date: addDays(today, -1), // June 28, 2025
+          timeSlot: '13:30',
+          duration: 60,
+          price: 3000.00,
+          notes: 'Client requested cancellation due to unexpected work commitment.',
+          status: 'cancelled',
+          paymentMethodId: 'pm_card_discover'
+        },
+        {
+          userId: users[4].id, // Sasuke (Client)
+          counselorId: users[2].id, // Kakashi (Counselor)
+          sessionType: 'phone',
+          date: addDays(today, 5), // July 4, 2025
+          timeSlot: '09:00',
+          duration: 45,
+          price: 2000.00,
+          notes: 'First session with this counselor to address trauma-related issues.',
+          status: 'scheduled',
+          paymentMethodId: 'pm_card_visa'
+        }
+      ]);
+      
+      console.log('Sample sessions created');
 
       // Create sample posts
       console.log('Creating sample posts...');

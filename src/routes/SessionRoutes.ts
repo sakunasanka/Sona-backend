@@ -1,6 +1,5 @@
 import express from 'express';
 import {
-  getSessionTypes,
   getCounselors,
   getCounselorById,
   getAvailableTimeSlots,
@@ -16,7 +15,6 @@ import { authenticateToken } from '../middlewares/auth';
 const router = express.Router();
 
 // Public routes
-router.get('/types', getSessionTypes);
 router.get('/counselors', getCounselors);
 router.get('/counselors/:id', getCounselorById);
 router.get('/timeslots/:counselorId/:date', getAvailableTimeSlots);

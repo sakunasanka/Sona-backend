@@ -1,18 +1,17 @@
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/db';
 import User from './User';
-import SessionType from './SessionType';
 
 class Session extends Model {
   public id!: number;
   public userId!: number;  // User who booked the session
-  public counselorId!: number;  // Counselor conducting the session
-  public sessionTypeId!: string;  // Type of session (video, phone, chat)
+  public counselorId!: number;  // Professional conducting the session (can be Counselor, Psychiatrist, or MT-member)
+  public sessionType!: 'video' | 'phone' | 'chat';
   public date!: Date;  // Date of the session
   public timeSlot!: string;  // Time slot (e.g. "10:00")
   public duration!: number;  // Duration in minutes
   public price!: number;  // Price of the session
-  public concerns?: string;  // Any concerns or notes from the user
+  public notes?: string;  // Any concerns or notes from the counselor
   public status!: 'scheduled' | 'completed' | 'cancelled';
   public paymentMethodId?: string;  // ID of the payment method used
   public readonly createdAt!: Date;
@@ -41,9 +40,10 @@ Session.init(
         model: User,
         key: 'id',
       },
+      comment: 'ID of the professional (Counselor, Psychiatrist, or MT-member) conducting the session',
     },
-    sessionTypeId: {
-      type: DataTypes.STRING,
+    sessionType: {
+      type: DataTypes.ENUM('video', 'phone', 'chat'),
       allowNull: false,
     },
     date: {
@@ -63,7 +63,7 @@ Session.init(
       type: DataTypes.FLOAT,
       allowNull: false,
     },
-    concerns: {
+    notes: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
@@ -86,7 +86,6 @@ Session.init(
 // Set up associations
 Session.belongsTo(User, { as: 'user', foreignKey: 'userId' });
 Session.belongsTo(User, { as: 'counselor', foreignKey: 'counselorId' });
-Session.belongsTo(SessionType, { foreignKey: 'sessionTypeId' });
 User.hasMany(Session, { as: 'userSessions', foreignKey: 'userId' });
 User.hasMany(Session, { as: 'counselorSessions', foreignKey: 'counselorId' });
 

@@ -458,32 +458,3 @@ export const cancelSession = asyncHandler(async (req: Request, res: Response) =>
     message: 'Session cancelled successfully'
   });
 });
-
-// Helper function to create default session types
-async function createDefaultSessionTypes() {
-  const sessionTypes = [
-    {
-      id: 'video',
-      name: 'Video Call',
-      description: 'Secure video session from anywhere',
-      duration: 50,
-      price: 80
-    },
-    {
-      id: 'phone',
-      name: 'Phone Call',
-      description: 'Traditional phone consultation',
-      duration: 50,
-      price: 75
-    },
-    {
-      id: 'chat',
-      name: 'Text Chat',
-      description: 'Secure messaging session',
-      duration: 50,
-      price: 65
-    }
-  ];
-  
-  await Promise.all(sessionTypes.map(type => SessionType.create(type)));
-}
