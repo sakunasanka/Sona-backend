@@ -3,7 +3,8 @@ import { asyncHandler } from '../utils/asyncHandler';
 import Session from '../models/Session';
 import User from '../models/User';
 import Counselor from '../models/Counselor';
-import SessionType from '../models/SessionType';
+import Psychiatrist from '../models/Psychiatrist'; 
+import MTMember from '../models/MT-member';
 import TimeSlot from '../models/TimeSlot';
 import PaymentMethod from '../models/PaymentMethod';
 import { Op } from 'sequelize';
@@ -14,17 +15,30 @@ import { Op } from 'sequelize';
  * @access  Public
  */
 export const getSessionTypes = asyncHandler(async (req: Request, res: Response) => {
-  const sessionTypes = await SessionType.findAll();
-  
-  if (!sessionTypes.length) {
-    // If no session types exist, create default ones
-    await createDefaultSessionTypes();
-    const newSessionTypes = await SessionType.findAll();
-    return res.status(200).json({
-      success: true,
-      data: newSessionTypes
-    });
-  }
+  // Return the predefined session types from the ENUM
+  const sessionTypes = [
+    {
+      id: 'video',
+      name: 'Video Call',
+      description: 'Secure video session from anywhere',
+      duration: 50,
+      price: 80
+    },
+    {
+      id: 'phone',
+      name: 'Phone Call',
+      description: 'Traditional phone consultation',
+      duration: 50,
+      price: 75
+    },
+    {
+      id: 'chat',
+      name: 'Text Chat',
+      description: 'Secure messaging session',
+      duration: 50,
+      price: 65
+    }
+  ];
   
   res.status(200).json({
     success: true,
@@ -91,16 +105,24 @@ export const getCounselorById = asyncHandler(async (req: Request, res: Response)
 export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Response) => {
   const { counselorId, date } = req.params;
   
-  // First check if the counselor exists
-  const counselor = await Counselor.findByPk(counselorId);
-  if (!counselor) {
+  // First check if the professional exists
+  const professional = await User.findByPk(counselorId);
+  if (!professional) {
     return res.status(404).json({
       success: false,
-      message: 'Counselor not found'
+      message: 'Professional not found'
     });
   }
   
-  // Get all time slots for this counselor on this date
+  // Check if the user is a counselor, psychiatrist, or MT-member
+  if (!['Counsellor', 'Psychiatrist', 'MT-member'].includes(professional.role)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Selected user is not authorized to conduct sessions'
+    });
+  }
+  
+  // Get all time slots for this professional on this date
   const timeSlots = await TimeSlot.findAll({
     where: {
       counselorId,
@@ -222,38 +244,45 @@ export const bookSession = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user!.id;
   const {
     counselorId,
-    sessionTypeId,
+    sessionType,
     date,
     timeSlot,
     duration,
     price,
-    concerns,
+    notes,
     paymentMethodId
   } = req.body;
   
   // Validate required fields
-  if (!counselorId || !sessionTypeId || !date || !timeSlot || !price) {
+  if (!counselorId || !sessionType || !date || !timeSlot || !price) {
     return res.status(400).json({
       success: false,
       message: 'Required session information is missing'
     });
   }
   
-  // Check if counselor exists
-  const counselor = await Counselor.findByPk(counselorId);
-  if (!counselor) {
+  // Check if professional exists (Counselor, Psychiatrist, MT-member)
+  const professional = await User.findByPk(counselorId);
+  if (!professional) {
     return res.status(404).json({
       success: false,
-      message: 'Counselor not found'
+      message: 'Professional not found'
     });
   }
   
-  // Check if session type exists
-  const sessionType = await SessionType.findByPk(sessionTypeId);
-  if (!sessionType) {
-    return res.status(404).json({
+  // Check if the user is a counselor, psychiatrist, or MT-member
+  if (!['Counsellor', 'Psychiatrist', 'MT-member'].includes(professional.role)) {
+    return res.status(400).json({
       success: false,
-      message: 'Session type not found'
+      message: 'Selected user is not authorized to conduct sessions'
+    });
+  }
+  
+  // Validate session type
+  if (!['video', 'phone', 'chat'].includes(sessionType)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid session type'
     });
   }
   
@@ -296,12 +325,12 @@ export const bookSession = asyncHandler(async (req: Request, res: Response) => {
   const session = await Session.create({
     userId,
     counselorId,
-    sessionTypeId,
+    sessionType,
     date,
     timeSlot,
-    duration: duration || sessionType.duration,
+    duration: duration || 50, // Default to 50 minutes if not specified
     price,
-    concerns,
+    notes,
     status: 'scheduled',
     paymentMethodId
   });
@@ -332,11 +361,7 @@ export const getUserSessions = asyncHandler(async (req: Request, res: Response) 
       {
         model: User,
         as: 'counselor',
-        attributes: ['id', 'name', 'avatar']
-      },
-      {
-        model: SessionType,
-        attributes: ['id', 'name', 'description', 'duration']
+        attributes: ['id', 'name', 'avatar', 'role']
       }
     ],
     order: [['date', 'ASC'], ['timeSlot', 'ASC']]
@@ -362,7 +387,7 @@ export const getSessionById = asyncHandler(async (req: Request, res: Response) =
       id,
       [Op.or]: [
         { userId },
-        { counselorId: userId } // Allow both user and counselor to view session
+        { counselorId: userId } // Allow both client and professional to view session
       ]
     },
     include: [
@@ -374,17 +399,7 @@ export const getSessionById = asyncHandler(async (req: Request, res: Response) =
       {
         model: User,
         as: 'counselor',
-        attributes: ['id', 'name', 'avatar'],
-        include: [
-          {
-            model: Counselor,
-            attributes: ['title', 'specialties', 'rating']
-          }
-        ]
-      },
-      {
-        model: SessionType,
-        attributes: ['id', 'name', 'description', 'duration']
+        attributes: ['id', 'name', 'avatar', 'role']
       }
     ]
   });
@@ -396,9 +411,52 @@ export const getSessionById = asyncHandler(async (req: Request, res: Response) =
     });
   }
   
+  // Get professional details based on role
+  const professionalUser = session.get('counselor') as any;
+  let professionalDetails = null;
+  
+  if (professionalUser && professionalUser.role) {
+    const professionalRole = professionalUser.role;
+    
+    try {
+      switch (professionalRole) {
+        case 'Counsellor':
+          const counselor = await Counselor.findOne({
+            where: { userId: session.counselorId },
+            attributes: ['title', 'specialties', 'rating']
+          });
+          if (counselor) professionalDetails = counselor.toJSON();
+          break;
+        case 'Psychiatrist':
+          const psychiatrist = await Psychiatrist.findOne({
+            where: { userId: session.counselorId },
+            attributes: ['specialization', 'licenseNo']
+          });
+          if (psychiatrist) professionalDetails = psychiatrist.toJSON();
+          break;
+        case 'MT-member':
+          const mtMember = await MTMember.findOne({
+            where: { userId: session.counselorId },
+            attributes: ['responsibility', 'memberId']
+          });
+          if (mtMember) professionalDetails = mtMember.toJSON();
+          break;
+      }
+    } catch (error) {
+      console.error('Error fetching professional details:', error);
+    }
+  }
+  
+  // Add professional details to the response
+  const sessionJson = session.toJSON();
+  const responseData = {
+    ...sessionJson,
+    professionalDetails
+  };
+  
   res.status(200).json({
     success: true,
-    data: session
+    data: responseData
   });
 });
 
