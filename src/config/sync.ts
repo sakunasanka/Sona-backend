@@ -20,6 +20,7 @@ import LikeComment from '../models/LikeComment';
 import DislikeComment from '../models/DislikeComment';
 import Session from '../models/Session';
 import Complaint from '../models/Complaint';
+import Reason from '../models/Reason';
 
 export const syncDatabase = async () => {
   try {
@@ -149,7 +150,10 @@ const createSampleData = async () => {
             isAvailable: user.id !== 3, // Kakashi is not available
             description: `Professional with extensive experience helping people overcome their mental health challenges. 
                  Specialized in providing support and guidance for various psychological issues.`,
-            rating: 4.8 + (Math.random() * 0.4 - 0.2) // Random rating between 4.6 and 5.0
+            rating: 4.8 + (Math.random() * 0.4 - 0.2), // Random rating between 4.6 and 5.0
+            sessionFee: user.id === 3 ? 0.00 : // Kakashi is a volunteer (free)
+                       user.id === 1 ? 3500.00 : // Naruto's fee
+                       2800.00 // Sakura's fee
           });
         }
       }
@@ -594,7 +598,6 @@ const createSampleData = async () => {
         {
           userId: users[4].id, // Sasuke (Client)
           counselorId: users[0].id, // Naruto (Counselor)
-          sessionType: 'video',
           date: addDays(today, 2), // July 1, 2025
           timeSlot: '10:00',
           duration: 50,
@@ -606,7 +609,6 @@ const createSampleData = async () => {
         {
           userId: users[5].id, // Hinata (Client)
           counselorId: users[1].id, // Sakura (Counselor)
-          sessionType: 'video',
           date: addDays(today, 3), // July 2, 2025
           timeSlot: '14:30',
           duration: 60,
@@ -618,7 +620,6 @@ const createSampleData = async () => {
         {
           userId: users[6].id, // Shikamaru (Client)
           counselorId: users[2].id, // Kakashi (Counselor)
-          sessionType: 'phone',
           date: addDays(today, 1), // June 30, 2025
           timeSlot: '16:00',
           duration: 45,
@@ -630,7 +631,6 @@ const createSampleData = async () => {
         {
           userId: users[4].id, // Sasuke (Client)
           counselorId: users[0].id, // Naruto (Counselor)
-          sessionType: 'video',
           date: addDays(today, -7), // June 22, 2025
           timeSlot: '11:00',
           duration: 50,
@@ -642,7 +642,6 @@ const createSampleData = async () => {
         {
           userId: users[5].id, // Hinata (Client)
           counselorId: users[1].id, // Sakura (Counselor)
-          sessionType: 'chat',
           date: addDays(today, -3), // June 26, 2025
           timeSlot: '15:00',
           duration: 30,
@@ -654,7 +653,6 @@ const createSampleData = async () => {
         {
           userId: users[6].id, // Shikamaru (Client)
           counselorId: users[0].id, // Naruto (Counselor)
-          sessionType: 'video',
           date: addDays(today, -1), // June 28, 2025
           timeSlot: '13:30',
           duration: 60,
@@ -666,7 +664,6 @@ const createSampleData = async () => {
         {
           userId: users[4].id, // Sasuke (Client)
           counselorId: users[2].id, // Kakashi (Counselor)
-          sessionType: 'phone',
           date: addDays(today, 5), // July 4, 2025
           timeSlot: '09:00',
           duration: 45,
@@ -717,6 +714,54 @@ const createSampleData = async () => {
       ]);
       
       console.log('Sample complaints created');
+      
+      // Create sample reasons
+      console.log('Creating sample reasons...');
+      
+      await Reason.bulkCreate([
+        {
+          reasonName: 'Inappropriate Content',
+          reason: 'This post contains content that violates our community guidelines regarding appropriate content. Posts must not contain offensive language, explicit material, or content that could be deemed harmful.',
+          reasonType: 'post_reject'
+        },
+        {
+          reasonName: 'Misleading Information',
+          reason: 'This post contains information that may be misleading or factually incorrect regarding mental health conditions or treatments.',
+          reasonType: 'post_reject'
+        },
+        {
+          reasonName: 'Account Misuse',
+          reason: 'Multiple violations of platform policies have been detected, including inappropriate behavior or harassment.',
+          reasonType: 'user_deactivate'
+        },
+        {
+          reasonName: 'Identity Verification Failed',
+          reason: 'Unable to verify the professional credentials or identity of the account holder after multiple attempts.',
+          reasonType: 'user_deactivate'
+        },
+        {
+          reasonName: 'Insufficient Evidence',
+          reason: 'The complaint was rejected due to insufficient evidence supporting the claims made.',
+          reasonType: 'complaint_rejected'
+        },
+        {
+          reasonName: 'Out of Scope',
+          reason: 'The complaint involves matters outside the scope of what our platform can address or regulate.',
+          reasonType: 'complaint_rejected'
+        },
+        {
+          reasonName: 'Professional Emergency',
+          reason: 'The professional had to cancel the session due to an emergency situation.',
+          reasonType: 'session_cancelled'
+        },
+        {
+          reasonName: 'Technical Difficulties',
+          reason: 'The session was cancelled due to persistent technical issues that could not be resolved.',
+          reasonType: 'session_cancelled'
+        }
+      ]);
+      
+      console.log('Sample reasons created');
 
       // Create sample posts
       console.log('Creating sample posts...');

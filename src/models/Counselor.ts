@@ -14,6 +14,7 @@ class Counselor extends Model {
   public isAvailable!: boolean;
   public description?: string;
   public rating?: number;
+  public sessionFee?: number;  // Fee charged per session in LKR
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -67,6 +68,12 @@ Counselor.init(
     rating: {
       type: DataTypes.FLOAT,
       allowNull: true,
+    },
+    sessionFee: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+      defaultValue: 0.0,
+      comment: 'Fee charged per session in LKR'
     },
   },
   {

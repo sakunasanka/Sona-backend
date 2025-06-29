@@ -6,7 +6,6 @@ class Session extends Model {
   public id!: number;
   public userId!: number;  // User who booked the session
   public counselorId!: number;  // Professional conducting the session (can be Counselor, Psychiatrist, or MT-member)
-  public sessionType!: 'video' | 'phone' | 'chat';
   public date!: Date;  // Date of the session
   public timeSlot!: string;  // Time slot (e.g. "10:00")
   public duration!: number;  // Duration in minutes
@@ -41,10 +40,6 @@ Session.init(
         key: 'id',
       },
       comment: 'ID of the professional (Counselor, Psychiatrist, or MT-member) conducting the session',
-    },
-    sessionType: {
-      type: DataTypes.ENUM('video', 'phone', 'chat'),
-      allowNull: false,
     },
     date: {
       type: DataTypes.DATEONLY,
