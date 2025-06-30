@@ -2,7 +2,6 @@ import { sequelize } from './db';
 import User from '../models/User';
 import Post from '../models/Post';
 import LikePost from '../models/LikePost';
-import DislikePost from '../models/DislikePost';
 import Counselor from '../models/Counselor';
 import Admin from '../models/Admin';
 import Client from '../models/Client';
@@ -14,10 +13,8 @@ import EduQualification from '../models/EduQualification';
 import Notification from '../models/Notification';
 import Review from '../models/Review';
 import LikeReview from '../models/LikeReview';
-import DislikeReview from '../models/DislikeReview';
 import Comment from '../models/Comment';
 import LikeComment from '../models/LikeComment';
-import DislikeComment from '../models/DislikeComment';
 import Session from '../models/Session';
 import Complaint from '../models/Complaint';
 import Reason from '../models/Reason';
@@ -578,16 +575,6 @@ const createSampleData = async () => {
       ]);
       
       console.log('Sample review likes created');
-      
-      // Create sample review dislikes
-      console.log('Creating sample review dislikes...');
-      await DislikeReview.bulkCreate([
-        { userId: users[7].id, reviewId: reviews[0].reviewId }, // Orochimaru dislikes Sasuke's review of Naruto
-        { userId: users[3].id, reviewId: reviews[2].reviewId }, // Tsunade dislikes Shikamaru's review of Kakashi
-        { userId: users[9].id, reviewId: reviews[4].reviewId }, // Shizune dislikes Shikamaru's review of Sakura
-      ]);
-      
-      console.log('Sample review dislikes created');
 
       // Create sample counseling sessions
       console.log('Creating sample sessions...');
@@ -913,17 +900,6 @@ Though I might have to find a new place tomorrow... Naruto has a knack for findi
 
       console.log('Sample post likes created');
       
-      // Create sample post dislikes
-      console.log('Creating sample post dislikes...');
-      await DislikePost.bulkCreate([
-        { userId: users[6].id, postId: posts[0].id }, // Shikamaru dislikes Naruto's post
-        { userId: users[4].id, postId: posts[1].id }, // Sasuke dislikes Sakura's post
-        { userId: users[4].id, postId: posts[2].id }, // Sasuke dislikes Kakashi's post
-        { userId: users[5].id, postId: posts[2].id }, // Hinata dislikes Kakashi's post (probably because he's reading questionable literature)
-      ]);
-      
-      console.log('Sample post dislikes created');
-      
       // Create sample comments and replies
       console.log('Creating sample comments...');
       
@@ -1035,16 +1011,6 @@ Though I might have to find a new place tomorrow... Naruto has a knack for findi
       ]);
       
       console.log('Sample comment likes created');
-      
-      // Create sample comment dislikes
-      console.log('Creating sample comment dislikes...');
-      await DislikeComment.bulkCreate([
-        { userId: users[4].id, commentId: comment1.id }, // Sasuke dislikes Sakura's comment
-        { userId: users[6].id, commentId: comment3.id }, // Shikamaru dislikes Naruto's comment
-        { userId: users[2].id, commentId: comment4.id }, // Kakashi dislikes Sakura's comment about his book
-      ]);
-      
-      console.log('Sample comment dislikes created');
 
       // Create sample UserVerificationLogs
       console.log('Creating sample user verification logs...');
