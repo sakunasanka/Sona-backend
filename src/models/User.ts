@@ -3,14 +3,31 @@ import { sequelize } from '../config/db';
 
 class User extends Model {
   public id!: number;
+  public firebaseId!: string;
   public name!: string;
   public email!: string;
-  public password!: string;
   public avatar?: string;
-  public badge!: 'User' | 'Premium';
+  public role!: 'Client' | 'Counselor';
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
+
+  public async updateProfile(data: {name?: string; avatar?: string}) {
+    return await this.update(data);
+  }
+
+  public async upgradeToPremium() {
+    return await this.update({ badge: 'Premium'});
+  }
+
+  public isClient(): boolean {
+    return this.role === 'Client';
+  }
+
+  public isCounselor(): boolean {
+    return this.role === 'Counselor';
+  }
 }
+
 
 User.init(
   {
@@ -18,6 +35,11 @@ User.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    firebaseId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
     },
     name: {
       type: DataTypes.STRING,
@@ -28,17 +50,13 @@ User.init(
       allowNull: false,
       unique: true,
     },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     avatar: {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    badge: {
-      type: DataTypes.ENUM('User', 'Premium'),
-      defaultValue: 'User',
+    role: {
+      type: DataTypes.ENUM('Client', 'Counselor'),
+      allowNull: false,
     },
   },
   {
