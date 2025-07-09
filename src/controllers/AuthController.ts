@@ -6,6 +6,7 @@ import { CreateClientData, CreateCounselorData, CreateUserData, SignInData, User
 import { ValidationError, ItemNotFoundError, ConflictError, AuthenticationError } from "../utils/errors";
 import { ApiResponseUtil } from "../utils/apiResponse";
 import { validateData, signInSchema } from "../schema/ValidationSchema";
+import { JwtServices } from "../services/JwtServices";
 
 
 const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY!;
@@ -131,7 +132,12 @@ export const signin = async (req: Request, res: Response, next: NextFunction) =>
   // }
 
   if(result) {
+    const jwtResult = await JwtServices.issueToken(result.tokens.idToken);
+
     ApiResponseUtil.success(res, {
+      token: jwtResult.token,
+      tokenType: 'Bearer',
+      expiresIn: jwtResult.expiresIn,
       uid: result.user.id,
       idToken: result.tokens.idToken,
       email: result.user.email,

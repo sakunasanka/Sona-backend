@@ -68,7 +68,7 @@ export const getPosts = async (req: Request, res: Response) => {
 // Get posts with user's like status (requires authentication)
 export const getPostsWithLikes = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id; // Assuming you have auth middleware that sets req.user
+    const userId = req.user?.dbUser.id; // Assuming you have auth middleware that sets req.user
     const { sort = 'recent', page = 1, limit = 10 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
@@ -144,7 +144,7 @@ export const createPost = async (req: Request, res: Response) => {
     const { content, hashtags, backgroundColor } = req.body;
 
     const post = await Post.create({
-      userId: req.user?.id || 1,
+      userId: req.user?.dbUser.id || 1,
       content: content.trim(),
       hashtags: hashtags || [],
       backgroundColor: backgroundColor || '#FFFFFF',
@@ -344,7 +344,7 @@ export const deletePost = async (req: Request, res: Response) => {
 export const toggleLikePost = async (req: Request, res: Response) => {
   try {
     const { postId } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?.dbUser.id;
 
     if (!userId) {
       return res.status(401).json({

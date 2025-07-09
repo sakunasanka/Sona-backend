@@ -26,6 +26,12 @@ class User extends Model {
   public isCounselor(): boolean {
     return this.role === 'Counselor';
   }
+
+  public async getUserDetails(userId: number): Promise<User | null >{
+    return await User.findByPk(userId, {
+      attributes: ['id', 'firebaseId', 'name', 'email', 'avatar', 'role'],
+    });
+  } 
 }
 
 
@@ -55,7 +61,7 @@ User.init(
       allowNull: true,
     },
     role: {
-      type: DataTypes.ENUM('Client', 'Counselor'),
+      type: DataTypes.ENUM('Client', 'Counsellor'),
       allowNull: false,
     },
   },

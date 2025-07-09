@@ -1,6 +1,7 @@
 import { DataTypes, Model, QueryTypes } from 'sequelize';
 import { sequelize } from '../config/db';
 import User from './User';
+import { DatabaseError } from '../utils/errors';
 
 class Counselor extends User {
   public title!: string;
@@ -39,30 +40,32 @@ class Counselor extends User {
         firebaseId: userData.firebaseId,
         name: userData.name,
         email: userData.email,
-        avatar: userData.avatar,
-        userType: 'Client',
-      }, {transaction});
+        avatar: userData.avatar || null,
+        role: 'Counsellor', 
+      }, { transaction });
+
+      console.log('User created with ID:', user.id); // ✅ Debug log
 
       await sequelize.query(`
         INSERT INTO counselors (
-                id, 
+                "userId", 
                 title,
                 specialities,
                 address,
                 contact_no,
-                license_no,
-                idCard,
-                isVolunteer,
-                isAvailable,
-                description,
-                rating,
-                sessionFee,
-                createdAt, 
-                updatedAt
+                "licenseNo",
+                "idCard",
+                "isVolunteer",
+                "isAvailable",
+                "description",
+                "rating",
+                "sessionFee",
+                "createdAt",
+                "updatedAt"
             )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
       `, {
-        replacements: [
+        bind: [
           user.id,
           userData.title,
           userData.specialities,
@@ -104,7 +107,7 @@ class Counselor extends User {
 
     }catch(error){
       await transaction.rollback();
-      throw error;
+      throw new DatabaseError(`Failed to create counselor,` + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
 
@@ -112,11 +115,11 @@ class Counselor extends User {
   static async findCounselorById(id: number): Promise<Counselor | null> {
     const result = await sequelize.query(`
       SELECT 
-        u.id, u.firebaseId, u.name, u.email, u.avatar, u.userType, u.createdAt, u.updatedAt,
+        u.id, u.firebaseId, u.name, u.email, u.avatar, u.role, u.createdAt, u.updatedAt,
         c.title, c.specialities, c.address, c.contact_no, c.license_no, c.idCard, c.isVolunteer, c.isAvailable, c.description, c.rating, c.sessionFee
       FROM users u
       JOIN counselors c ON u.id = c.id
-      WHERE u.id = ? AND u.userType = 'Counselor'
+      WHERE u.id = ? AND u.role = 'Counselor'
     `, {
       replacements: [id],
       type: QueryTypes.SELECT
