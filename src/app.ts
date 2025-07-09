@@ -48,10 +48,22 @@ app.use('/api/auth', authRoutes)
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Error:', err);
+  
+  // Check if it's our custom error class
+  if (err.statusCode && err.isOperational !== undefined) {
+    res.status(err.statusCode).json({
+      success: false,
+      error: err.name,
+      message: err.message,
+      statusCode: err.statusCode
+    });
+    return;
+  }
+  
+  // Default error response
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    message: err.message || 'Internal Server Error'
   });
 });
 

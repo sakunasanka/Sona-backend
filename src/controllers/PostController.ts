@@ -33,9 +33,7 @@ export const getPosts = async (req: Request, res: Response) => {
       id: post.id,
       author: {
         name: post.user?.name || 'Unknown User',
-        avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
-        badge: post.user?.badge || 'User',
-      },
+        avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',      },
       timeAgo: getTimeAgo(post.createdAt),
       content: post.content,
       hashtags: post.hashtags,
@@ -108,7 +106,6 @@ export const getPostsWithLikes = async (req: Request, res: Response) => {
       author: {
         name: post.user?.name || 'Unknown User',
         avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
-        badge: post.user?.badge || 'User',
       },
       timeAgo: getTimeAgo(post.createdAt),
       content: post.content,
@@ -179,7 +176,6 @@ export const createPost = async (req: Request, res: Response) => {
           avatar:
             postWithUser.user?.avatar ||
             'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
-          badge: postWithUser.user?.badge || 'User',
         },
         timeAgo: getTimeAgo(postWithUser.createdAt),
         content: postWithUser.content,
@@ -267,7 +263,6 @@ export const updatePost = async (req: Request, res: Response) => {
         author: {
           name: updatedPost.user?.name || 'Unknown User',
           avatar: updatedPost.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
-          badge: updatedPost.user?.badge || 'User',
         },
         timeAgo: getTimeAgo(updatedPost.createdAt),
         content: updatedPost.content,
