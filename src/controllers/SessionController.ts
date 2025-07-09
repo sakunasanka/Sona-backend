@@ -105,7 +105,8 @@ export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Resp
     where: {
       counselorId,
       date,
-      isBooked: false
+      isBooked: false,
+      isAvailable: true
     }
   });
   
@@ -136,7 +137,8 @@ export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Resp
         counselorId,
         date,
         time: `${hour.toString().padStart(2, '0')}:00`,
-        isBooked: false
+        isBooked: false,
+        isAvailable: false // Not available by default
       });
       
       defaultTimeSlots.push(timeSlot);
@@ -262,7 +264,8 @@ export const bookSession = asyncHandler(async (req: Request, res: Response) => {
       counselorId,
       date,
       time: timeSlot,
-      isBooked: false
+      isBooked: false,
+      isAvailable: true
     }
   });
   
@@ -439,7 +442,7 @@ export const cancelSession = asyncHandler(async (req: Request, res: Response) =>
   // Update session status
   await session.update({ status: 'cancelled' });
   
-  // Free up the time slot
+  // Free up the time slot (keep the availability status)
   await TimeSlot.update(
     { isBooked: false },
     {
@@ -454,6 +457,208 @@ export const cancelSession = asyncHandler(async (req: Request, res: Response) =>
   res.status(200).json({
     success: true,
     message: 'Session cancelled successfully'
+  });
+});
+
+/**
+ * @desc    Set counselor availability for a date range
+ * @route   POST /api/sessions/availability
+ * @access  Private (counselor only)
+ */
+export const setCounselorAvailability = asyncHandler(async (req: Request, res: Response) => {
+  const { Counselorid, startDate, endDate, startTime, endTime } = req.body;
+  
+  // Validate required fields
+  if (!Counselorid || !startDate || !endDate || !startTime || !endTime) {
+    return res.status(400).json({
+      success: false,
+      message: 'Counselorid, start date, end date, start time, and end time are required'
+    });
+  }
+  
+  // Convert to number for database query
+  const counselorId = Number(Counselorid);
+  
+  // Validate that the counselor exists
+  const counselor = await Counselor.findByPk(counselorId);
+  if (!counselor) {
+    return res.status(404).json({
+      success: false,
+      message: 'Counselor not found'
+    });
+  }
+  
+  // Parse dates and times
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // Validate date range
+  if (start > end) {
+    return res.status(400).json({
+      success: false,
+      message: 'Start date cannot be after end date'
+    });
+  }
+  
+  // Parse start and end times (format: "HH:00")
+  const [startHour] = startTime.split(':').map(Number);
+  const [endHour] = endTime.split(':').map(Number);
+  
+  if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour > endHour) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid time range'
+    });
+  }
+  
+  // Loop through each day in the range
+  const currentDate = new Date(start);
+  const createdOrUpdatedSlots = [];
+  
+  while (currentDate <= end) {
+    const dateString = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Loop through each hour in the range
+    for (let hour = startHour; hour <= endHour; hour++) {
+      const timeString = `${hour.toString().padStart(2, '0')}:00`;
+      
+      // Check if the time slot already exists
+      let timeSlot = await TimeSlot.findOne({
+        where: {
+          counselorId,
+          date: dateString,
+          time: timeString
+        }
+      });
+      
+      if (timeSlot) {
+        // Update existing time slot
+        if (!timeSlot.isBooked) { // Don't modify booked slots
+          await timeSlot.update({ isAvailable: true });
+          createdOrUpdatedSlots.push(timeSlot);
+        }
+      } else {
+        // Create new time slot
+        timeSlot = await TimeSlot.create({
+          counselorId,
+          date: dateString,
+          time: timeString,
+          isBooked: false,
+          isAvailable: true
+        });
+        createdOrUpdatedSlots.push(timeSlot);
+      }
+    }
+    
+    // Move to next day
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  res.status(200).json({
+    success: true,
+    message: `Successfully set availability for ${createdOrUpdatedSlots.length} time slots`,
+    data: createdOrUpdatedSlots
+  });
+});
+
+/**
+ * @desc    Set counselor unavailability for a date range
+ * @route   POST /api/sessions/unavailability
+ * @access  Public
+ */
+export const setCounselorUnavailability = asyncHandler(async (req: Request, res: Response) => {
+  const { Counselorid, startDate, endDate, startTime, endTime } = req.body;
+  
+  // Validate required fields
+  if (!Counselorid || !startDate || !endDate || !startTime || !endTime) {
+    return res.status(400).json({
+      success: false,
+      message: 'Counselorid, start date, end date, start time, and end time are required'
+    });
+  }
+  
+  // Convert to number for database query
+  const counselorId = Number(Counselorid);
+  
+  // Validate that the counselor exists
+  const counselor = await Counselor.findByPk(counselorId);
+  if (!counselor) {
+    return res.status(404).json({
+      success: false,
+      message: 'Counselor not found'
+    });
+  }
+  
+  // Parse dates and times
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // Validate date range
+  if (start > end) {
+    return res.status(400).json({
+      success: false,
+      message: 'Start date cannot be after end date'
+    });
+  }
+  
+  // Parse start and end times (format: "HH:00")
+  const [startHour] = startTime.split(':').map(Number);
+  const [endHour] = endTime.split(':').map(Number);
+  
+  if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour > endHour) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid time range'
+    });
+  }
+  
+  // Loop through each day in the range
+  const currentDate = new Date(start);
+  const updatedSlots = [];
+  
+  while (currentDate <= end) {
+    const dateString = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Loop through each hour in the range
+    for (let hour = startHour; hour <= endHour; hour++) {
+      const timeString = `${hour.toString().padStart(2, '0')}:00`;
+      
+      // Check if the time slot already exists
+      let timeSlot = await TimeSlot.findOne({
+        where: {
+          counselorId,
+          date: dateString,
+          time: timeString
+        }
+      });
+      
+      if (timeSlot) {
+        // Update existing time slot if it's not booked
+        if (!timeSlot.isBooked) {
+          await timeSlot.update({ isAvailable: false });
+          updatedSlots.push(timeSlot);
+        }
+      } else {
+        // Create new time slot marked as unavailable
+        timeSlot = await TimeSlot.create({
+          counselorId,
+          date: dateString,
+          time: timeString,
+          isBooked: false,
+          isAvailable: false
+        });
+        updatedSlots.push(timeSlot);
+      }
+    }
+    
+    // Move to next day
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  res.status(200).json({
+    success: true,
+    message: `Successfully marked ${updatedSlots.length} time slots as unavailable`,
+    data: updatedSlots
   });
 });
 

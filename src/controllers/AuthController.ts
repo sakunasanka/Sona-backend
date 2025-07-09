@@ -6,6 +6,7 @@ import { CreateClientData, CreateCounselorData, CreateUserData, SignInData, User
 import { ValidationError, ItemNotFoundError, ConflictError, AuthenticationError } from "../utils/errors";
 import { ApiResponseUtil } from "../utils/apiResponse";
 import { validateData, signInSchema } from "../schema/ValidationSchema";
+import * as path from "path";
 
 
 const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY!;
