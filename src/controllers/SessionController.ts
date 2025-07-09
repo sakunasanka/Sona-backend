@@ -160,7 +160,7 @@ export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Resp
  * @access  Private
  */
 export const getUserPaymentMethods = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.id;
+  const userId = req.user!.dbUser.id;
   
   const paymentMethods = await PaymentMethod.findAll({
     where: { userId }
@@ -178,7 +178,7 @@ export const getUserPaymentMethods = asyncHandler(async (req: Request, res: Resp
  * @access  Private
  */
 export const addPaymentMethod = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.id;
+  const userId = req.user!.dbUser.id;
   const { type, last4, brand, isDefault } = req.body;
   
   // Validate required fields
@@ -218,7 +218,7 @@ export const addPaymentMethod = asyncHandler(async (req: Request, res: Response)
  * @access  Private
  */
 export const bookSession = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.id;
+  const userId = req.user!.dbUser.id;
   const {
     counselorId,
     sessionTypeId,
@@ -320,7 +320,7 @@ export const bookSession = asyncHandler(async (req: Request, res: Response) => {
  * @access  Private
  */
 export const getUserSessions = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+    const userId = req.user!.dbUser.id;
   // Hardcoding userId for testing purposes
 //   const userId = 1;
   
@@ -352,7 +352,7 @@ export const getUserSessions = asyncHandler(async (req: Request, res: Response) 
  * @access  Private
  */
 export const getSessionById = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.id;
+  const userId = req.user!.dbUser.id;
   const { id } = req.params;
   
   const session = await Session.findOne({
@@ -406,7 +406,7 @@ export const getSessionById = asyncHandler(async (req: Request, res: Response) =
  * @access  Private
  */
 export const cancelSession = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.id;
+  const userId = req.user!.dbUser.id;
   const { id } = req.params;
   
   const session = await Session.findOne({

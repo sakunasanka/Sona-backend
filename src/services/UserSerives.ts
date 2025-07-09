@@ -109,6 +109,8 @@ export class UserService {
 
             else if(validatedData.userType === 'Counselor') {
                 const counselorData = userData as CreateCounselorData;
+
+                console.log('Creating counselor with data:', counselorData);
                 dbUser = await Counselor.createCounselor({
                     firebaseId: firebaseUser.uid,
                     name: counselorData.name,
@@ -284,5 +286,21 @@ export class UserService {
             }
             throw new ExternalServiceError('Failed to delete user');
         }
+    }
+
+    static async getUserDetails(userId: number): Promise<UserResponse | null> {
+        if (!userId || typeof userId !== 'number' || userId <= 0) {
+            throw new ValidationError('User ID is required and must be a positive number');
+        }
+
+        const user = await User.findByPk(userId, {
+            attributes: ['id', 'firebaseId', 'name', 'email', 'avatar', 'role'],
+        });
+
+        if (!user) {
+            throw new ItemNotFoundError('User not found with the provided ID');
+        }
+
+        return user.toJSON() as UserResponse;
     }
 }
