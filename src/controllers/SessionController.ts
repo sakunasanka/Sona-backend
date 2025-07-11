@@ -190,25 +190,25 @@ export const addPaymentMethod = asyncHandler(async (req: Request, res: Response)
   }
   
   // If this is the default payment method, update all others to non-default
-  if (isDefault) {
-    await PaymentMethod.update(
-      { isDefault: false },
-      { where: { userId } }
-    );
-  }
+  // if (isDefault) {
+  //   await PaymentMethod.update(
+  //     { isDefault: false },
+  //     { where: { userId } }
+  //   );
+  // }
   
-  // Create new payment method
-  const paymentMethod = await PaymentMethod.create({
-    userId,
-    type,
-    last4,
-    brand,
-    isDefault: isDefault || false
-  });
+  // // Create new payment method
+  // const paymentMethod = await PaymentMethod.create({
+  //   userId,
+  //   type,
+  //   last4,
+  //   brand,
+  //   isDefault: isDefault || false
+  // });
   
   res.status(201).json({
     success: true,
-    data: paymentMethod
+    //data: paymentMethod
   });
 });
 
@@ -277,7 +277,7 @@ export const bookSession = asyncHandler(async (req: Request, res: Response) => {
   if (paymentMethodId) {
     const paymentMethod = await PaymentMethod.findOne({
       where: {
-        id: paymentMethodId,
+        paymentId: paymentMethodId,
         userId
       }
     });
