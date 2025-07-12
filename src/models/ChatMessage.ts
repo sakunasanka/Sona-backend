@@ -60,19 +60,15 @@ class ChatMessage extends Model<ChatMessageAttributes> implements ChatMessageAtt
                 cm."senderId",
                 cm.message,
                 cm."messageType",
-                cm."createdAt",
-                u.name as "senderName",
-                u.avatar as "senderAvatar",
-                u."userType" as "senderType"
+                cm."createdAt"
             FROM chat_messages cm
-            JOIN users u ON cm."senderId" = u.id
             WHERE cm."roomId" = ?
             ORDER BY cm."createdAt" DESC
             LIMIT ? OFFSET ?
-            `, {
-                replacements: [ roomId, limit + 1, offset ],
-                type: QueryTypes.SELECT
-            })
+        `, {
+            replacements: [roomId, limit + 1, offset],
+            type: QueryTypes.SELECT
+        });
 
             const hasMore = messages.length > limit;
             if (hasMore) messages.pop();
@@ -213,3 +209,27 @@ ChatMessage.init({
 });
 
 export default ChatMessage;
+
+ChatMessage.belongsTo(User, {
+    foreignKey: 'senderId',
+    targetKey: 'id',
+    as: 'sender'
+});
+
+ChatMessage.belongsTo(ChatRoom, {
+    foreignKey: 'roomId',
+    targetKey: 'id',
+    as: 'room'
+});
+
+User.hasMany(ChatMessage, {
+    foreignKey: 'senderId',
+    sourceKey: 'id',
+    as: 'messages'
+});
+
+ChatRoom.hasMany(ChatMessage, {
+    foreignKey: 'roomId',
+    sourceKey: 'id',
+    as: 'messages'
+});

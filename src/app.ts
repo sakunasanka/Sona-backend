@@ -15,6 +15,7 @@ import postRoutes from './routes/PostRoutes';
 import sessionRoutes from './routes/SessionRoutes';
 import authRoutes from './routes/AuthRoutes';
 import chatRoutes from './routes/ChatRoutes';
+import paymentRoutes from './routes/PaymentRoutes';
 import { auth } from 'firebase-admin';
 
 dotenv.config();
@@ -41,7 +42,9 @@ app.get('/', (req, res) => {
       sessions: '/api/sessions',
       auth: '/api/auth',
       chat: '/api/chat',
+      payments: '/api/payments',
       websocket: 'ws://localhost:5001',
+      paymentPage: '/payment-loader',
     },
   });
 });
@@ -52,10 +55,13 @@ app.use('/api/posts', postRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/payments', paymentRoutes);
+
+app.use(express.static(path.join(__dirname, '../public')));
+
 
 //web socket 
-app.use('/public', express.static('public'));
-app.use('/websocket-test/', express.static('public'));
+//app.use('/websocket-test/', express.static('public'));
 
 app.get('/websocket-test', (req, res) => {
   res.setHeader('Content-Security-Policy', 
@@ -68,6 +74,21 @@ app.get('/websocket-test', (req, res) => {
     "font-src 'self' https: data:"
   );
   res.sendFile(path.join(__dirname, '../public/websocket-test.html'));
+});
+
+app.get('/payment-loader', (req, res) => {
+    // It's good practice to set CSP for any page served, especially for payment flows.
+    // Adjust as needed, 'unsafe-inline' should be avoided if possible, but often
+    // needed for inline scripts used for auto-submission.
+    res.setHeader('Content-Security-Policy',
+        "default-src 'self' https://sandbox.payhere.lk; " + // Allow PayHere domain
+        "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://sandbox.payhere.lk; " + // For CryptoJS and any PayHere scripts
+        "style-src 'self' 'unsafe-inline'; " +
+        "connect-src 'self' http://localhost:5001 https://sandbox.payhere.lk; " + // Allow connections to your backend and PayHere
+        "img-src 'self' data: https:; " +
+        "font-src 'self' https: data:"
+    );
+    res.sendFile(path.join(__dirname, '../public/paymentgateway.html'));
 });
 
 // Error handling middleware
