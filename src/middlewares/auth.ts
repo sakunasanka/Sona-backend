@@ -1,16 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { JWTPayload, JwtServices } from '../services/JwtServices';
+import { ValidationError } from '../utils/errors';
 import User from '../models/User';
-
-interface JwtPayload {
-  id: number;
-  email: string;
-}
 
 declare global {
   namespace Express {
     interface Request {
-      user?: User;
+      user?: {
+        token: JWTPayload;
+        dbUser: {
+          id: number;
+          firebaseId: string;
+          name: string;
+          email: string;
+          userType: 'Client' | 'Counselor' | 'Admin';
+          avatar?: string;
+        }
+      }
     }
   }
 }
@@ -19,87 +25,75 @@ export const authenticateToken = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'Access token required',
-      });
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new ValidationError('Authentication token is required');
     }
 
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      return res.status(500).json({
-        success: false,
-        message: 'JWT secret not configured',
-      });
+    const token = authHeader.split(' ')[1]; // Bearer TOKEN
+
+    const decoded = await JwtServices.verifyToken(token);
+    console.log('✅ Token verified, user ID:', decoded.id);
+
+    const user = await User.findByPk(decoded.id);
+
+    if (!decoded.id || !user) {
+      throw new ValidationError('Invalid authentication token');
     }
 
-    const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
-    
-    const user = await User.findByPk(decoded.id, {
-      attributes: { exclude: ['password'] },
-    });
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid token - user not found',
-      });
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid token',
-      });
-    }
-
-    console.error('Auth middleware error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Authentication error',
-    });
-  }
-};
-
-export const optionalAuth = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-      return next(); // Continue without authentication
-    }
-
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      return next(); // Continue without authentication
-    }
-
-    const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
-    const user = await User.findByPk(decoded.id, {
-      attributes: { exclude: ['password'] },
-    });
-
-    if (user) {
-      req.user = user;
-    }
+    req.user = {
+      token: decoded,
+      dbUser: {
+        id: decoded.id,
+        firebaseId: decoded.firebaseId,
+        name: decoded.name,
+        email: decoded.email,
+        userType: decoded.userType || 'Client',
+        avatar: decoded.avatar || ''
+      }
+    };
 
     next();
   } catch (error) {
-    // Continue without authentication if token is invalid
+    console.error('Authentication error:', error);
+    if (error instanceof ValidationError) {
+      res.status(401).json({
+        success: false,
+        message: error.message,
+        error: 'Unauthorized'
+      });
+    } else {
+      res.status(500).json({ 
+        error: 'Internal server error',
+        success: false,
+        message: 'An unexpected error occurred during authentication'
+      });
+    }
+  }
+}
+
+export const requireRole = (roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        error: 'Unauthorized'
+      });
+      return;
+    }
+
+    if (!roles.includes(req.user.dbUser.userType)) {
+      res.status(403).json({
+        success: false,
+        message: 'Insufficient permissions',
+        error: 'Forbidden'
+      });
+      return;
+    }
+
     next();
   }
-};
+}

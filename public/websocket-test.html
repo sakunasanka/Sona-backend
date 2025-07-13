@@ -1,0 +1,316 @@
+<!-- public/websocket-test.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>🔌 WebSocket Test Page</h1>
+    
+    <div style="margin: 20px 0;">
+        <label><strong>JWT Token:</strong></label><br>
+        <input type="text" id="tokenInput" placeholder="Paste your JWT token here" style="width: 500px; padding: 5px;">
+        <button id="connectBtn">🔗 Connect</button>
+        <button id="disconnectBtn">🔌 Disconnect</button>
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <button id="joinRoomBtn">🏠 Join Room 1</button>
+        <button id="leaveRoomBtn">🚪 Leave Room 1</button>
+        <button id="markReadBtn">📖 Mark Message as Read</button>
+        <button id="clearBtn">🗑️ Clear Logs</button>
+    </div>
+
+    <div style="margin: 20px 0;">
+        <button id="sendMessageBtn">💬 Send Test Message</button>
+        <button id="startTypingBtn">✏️ Start Typing</button>
+        <button id="stopTypingBtn">✋ Stop Typing</button>
+        <button id="testBroadcastBtn">📡 Test Broadcast</button>
+    </div>
+    
+    <div>
+        <h3>📋 Connection Logs:</h3>
+        <div id="logs" style="border: 1px solid #ccc; height: 400px; overflow-y: scroll; padding: 10px; background: #f9f9f9; font-family: monospace;"></div>
+    </div>
+
+    <!-- public/websocket-test.html -->
+<script>
+let socket = null;
+
+function log(message, type = 'info') {
+    const logs = document.getElementById('logs');
+    const timestamp = new Date().toLocaleTimeString();
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545', 
+        info: '#007bff',
+        warning: '#ffc107'
+    };
+    
+    logs.innerHTML += `<div style="color: ${colors[type] || colors.info}; margin: 2px 0;">
+        [${timestamp}] ${message}
+    </div>`;
+    logs.scrollTop = logs.scrollHeight;
+}
+
+function connect() {
+    const token = document.getElementById('tokenInput').value.trim();
+    if (!token) {
+        alert('❌ Please enter a JWT token');
+        return;
+    }
+    
+    if (socket && socket.connected) {
+        log('⚠️ Already connected!', 'warning');
+        return;
+    }
+    
+    log('🔄 Connecting with authentication token...', 'info');
+    
+    // ✅ BEST PRACTICE: Pass token during connection establishment
+    socket = io('http://localhost:5001', {
+        auth: {
+            token: token  // ✅ This is the standard way
+        },
+        query: {
+            token: token  // ✅ Alternative method (for your current middleware)
+        },
+        transports: ['websocket', 'polling'],
+        timeout: 10000,
+        forceNew: true
+    });
+    
+    socket.on('connect', () => {
+        log('✅ Connected and authenticated! Socket ID: ' + socket.id, 'success');
+        log('🎉 Authentication successful via middleware', 'success');
+        
+        // ✅ No need to emit authenticate event - already authenticated by middleware
+    });
+    
+    socket.on('connect_error', (error) => {
+        log('❌ Connection/Authentication failed: ' + error.message, 'error');
+        
+        // Handle specific authentication errors
+        if (error.message.includes('token')) {
+            log('🔑 Check your JWT token format and validity', 'warning');
+        }
+        if (error.message.includes('expired')) {
+            log('⏰ Your token has expired - please get a new one', 'warning');
+        }
+    });
+    
+    socket.on('disconnect', (reason) => {
+        log('🔌 Disconnected: ' + reason, 'warning');
+    });
+    
+    // ✅ Test authenticated functionality
+    socket.on('user_joined_room', (data) => {
+        log('👥 User joined room: ' + data.userName, 'info');
+    });
+    
+    socket.on('user_left_room', (data) => {
+        log('👋 User left room: ' + data.userName, 'info');
+    });
+    
+    socket.on('message_read', (data) => {
+        log('📖 Message read by user ' + data.userId, 'info');
+    });
+    
+    socket.on('error', (error) => {
+        log('❌ Error: ' + error.message, 'error');
+    });
+
+    // Listen for new messages in rooms
+    socket.on('new_message', (data) => {
+        log('💬 New message in room ' + data.message.id + ': ' + data.message.message, 'info');
+        log('👤 From: ' + (data.message.senderId || 'User ' + data.message.senderId), 'info');
+        log('🕒 Time: ' + new Date(data.message.createdAt).toLocaleTimeString(), 'info');
+    });
+
+    socket.on('message_updated', (data) => {
+        log('📝 Message updated in room ' + data.message.id + ': ' + data.content, 'warning');
+        log('👤 By: ' + (data.userName || 'User ' + data.userId), 'warning');
+    });
+    
+    // Listen for message deletions
+    socket.on('message_deleted', (data) => {
+        log('🗑️ Message deleted in room ' + data.roomId + ' (ID: ' + data.messageId + ')', 'warning');
+        log('👤 By: ' + (data.userName || 'User ' + data.userId), 'warning');
+    });
+    
+    // Listen for typing indicators
+    socket.on('user_typing', (data) => {
+        log('✏️ ' + (data.userName || 'User ' + data.userId) + ' is typing in room ' + data.roomId, 'info');
+    });
+    
+    socket.on('user_stopped_typing', (data) => {
+        log('✋ User ' + data.userId + ' stopped typing', 'info');
+    });
+
+    socket.on('test_message', (data) => {
+        log('🧪 Test broadcast: ' + data.message, 'success');
+        log('🕒 Sent at: ' + new Date(data.timestamp).toLocaleTimeString(), 'success');
+    });
+
+    socket.on('notification', (data) => {
+        log('🔔 Notification: ' + data.message, 'info');
+        if (data.type) {
+            log('📋 Type: ' + data.type, 'info');
+        }
+    });
+}
+
+function disconnect() {
+    if (socket) {
+        socket.disconnect();
+        socket = null;
+        log('👋 Disconnected manually', 'warning');
+    } else {
+        log('⚠️ Not connected', 'warning');
+    }
+}
+
+function joinRoom() {
+    if (socket && socket.connected) {
+        const roomId = 2; // Test room
+        log('🏠 Joining room ' + roomId + '...', 'info');
+        socket.emit('join_room', { roomId: roomId });
+        
+        // Listen for join confirmation
+        socket.once('joined_room', (data) => {
+            log('✅ Successfully joined room ' + data.roomId, 'success');
+        });
+        
+        // Listen for errors
+        socket.once('error', (error) => {
+            log('❌ Failed to join room: ' + error.message, 'error');
+        });
+        
+    } else {
+        alert('❌ Not connected');
+    }
+}
+
+function leaveRoom() {
+    if (socket && socket.connected) {
+        const roomId = 1;
+        log('🚪 Leaving room ' + roomId + '...', 'info');
+        socket.emit('leave_room', { roomId: roomId });
+
+        socket.once('left_room', (data) => {
+            log('✅ Successfully left room ' + data.roomId, 'success');
+        });
+    } else {
+        alert('❌ Not connected');
+    }
+}
+
+function markAsRead() {
+    if (socket && socket.connected) {
+        const roomId = 1;
+        const messageId = 1;
+        log('📖 Marking message as read...', 'info');
+        socket.emit('mark_as_read', { roomId: roomId, messageId: messageId });
+        
+        // ✅ Listen for YOUR confirmation event
+        socket.once('message_marked_read', (data) => {
+            log('✅ Message ' + data.messageId + ' marked as read', 'success');
+        });
+        
+        socket.once('error', (error) => {
+            log('❌ Failed to mark as read: ' + error.message, 'error');
+        });
+    } else {
+        alert('❌ Not connected');
+    }
+}
+
+function clearLogs() {
+    document.getElementById('logs').innerHTML = '';
+}
+
+function sendTestMessage() {
+    if (socket && socket.connected) {
+        const roomId = 1;
+        const message = 'Hello from WebSocket test! ' + new Date().toLocaleTimeString();
+        
+        log('💬 Sending test message to room ' + roomId + '...', 'info');
+        
+        // This would typically be handled by your chat API, not directly via WebSocket
+        // But for testing, you might emit this event if your server handles it
+        socket.emit('send_message', {
+            roomId: roomId,
+            content: message,
+            type: 'text'
+        });
+    } else {
+        alert('❌ Not connected');
+    }
+}
+
+function startTyping() {
+    if (socket && socket.connected) {
+        const roomId = 1;
+        log('✏️ Starting typing in room ' + roomId + '...', 'info');
+        socket.emit('typing_start', { roomId: roomId });
+    } else {
+        alert('❌ Not connected');
+    }
+}
+
+function stopTyping() {
+    if (socket && socket.connected) {
+        const roomId = 1;
+        log('✋ Stopping typing in room ' + roomId + '...', 'info');
+        socket.emit('typing_stop', { roomId: roomId });
+    } else {
+        alert('❌ Not connected');
+    }
+}
+
+function testBroadcast() {
+    if (socket && socket.connected) {
+        log('📡 Requesting test broadcast...', 'info');
+        
+        // This would be called from your server-side code, but for testing
+        // you could add an endpoint or emit an event to trigger it
+        socket.emit('request_test_broadcast', {
+            message: 'Test broadcast from ' + socket.id
+        });
+    } else {
+        alert('❌ Not connected');
+    }
+}
+
+
+// Set up event listeners when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('connectBtn').addEventListener('click', connect);
+    document.getElementById('disconnectBtn').addEventListener('click', disconnect);
+    document.getElementById('joinRoomBtn').addEventListener('click', joinRoom);
+    document.getElementById('leaveRoomBtn').addEventListener('click', leaveRoom);
+    document.getElementById('markReadBtn').addEventListener('click', markAsRead);
+    document.getElementById('clearBtn').addEventListener('click', clearLogs);
+
+    document.getElementById('sendMessageBtn').addEventListener('click', sendTestMessage);
+        document.getElementById('startTypingBtn').addEventListener('click', startTyping);
+        document.getElementById('stopTypingBtn').addEventListener('click', stopTyping);
+        document.getElementById('testBroadcastBtn').addEventListener('click', testBroadcast);
+        document.getElementById('clearBtn').addEventListener('click', clearLogs);
+    
+    document.getElementById('tokenInput').focus();
+    
+    // Allow Enter key to connect
+    document.getElementById('tokenInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            connect();
+        }
+    });
+    
+    log('🚀 WebSocket test page loaded', 'success');
+    log('💡 Enter your JWT token and click Connect', 'info');
+});
+</script>
+</body>
+</html>

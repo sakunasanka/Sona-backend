@@ -1,10 +1,4 @@
 import express from 'express';
-import {
-  register,
-  login,
-  getProfile,
-  updateProfile,
-} from '../controllers/UserController';
 import { authenticateToken } from '../middlewares/auth';
 
 const router = express.Router();

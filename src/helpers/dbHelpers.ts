@@ -18,34 +18,45 @@ export class DbHelpers {
   static async insert(options: InsertOptions): Promise<any[]> {
     const { tableName, columns, values, transaction, returning = ['*'] } = options;
 
-    // Validate input
-    if (!tableName || !columns.length || !values.length) {
-      throw new Error('tableName, columns, and values are required');
+    try {
+      // Validate input
+      if (!tableName || !columns.length || !values.length) {
+        throw new Error('tableName, columns, and values are required');
+      }
+
+      if (columns.length !== values.length) {
+        throw new Error('columns and values arrays must have the same length');
+      }
+
+      // Build query
+      const quotedColumns = columns.map(col => `"${col}"`).join(', ');
+      const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
+      const returningClause = returning.length > 0 ? `RETURNING ${returning.map(col => `"${col}"`).join(', ')}` : '';
+
+      const query = `
+        INSERT INTO "${tableName}" (${quotedColumns})
+        VALUES (${placeholders})
+        ${returningClause}
+      `.trim();
+
+      console.log('Executing query:', query);
+      console.log('With values:', values);
+
+      // Fix: Use proper sequelize.query structure for INSERT with RETURNING
+      const results = await sequelize.query(query, {
+        bind: values,
+        type: QueryTypes.SELECT, // Use SELECT for RETURNING queries in PostgreSQL
+        transaction,
+        raw: true // Ensure raw results
+      });
+
+      console.log('Query results:', results);
+      return results as any[];
+    } catch (error: any) {
+      console.error('Database insert error:', error);
+      console.error('Query details:', { tableName, columns, values });
+      throw new Error(`Failed to insert into ${tableName}: ${error.message}`);
     }
-
-    if (columns.length !== values.length) {
-      throw new Error('columns and values arrays must have the same length');
-    }
-
-    // Build query
-    const quotedColumns = columns.map(col => `"${col}"`).join(', ');
-    const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
-    const returningClause = returning.length > 0 ? `RETURNING ${returning.map(col => `"${col}"`).join(', ')}` : '';
-
-    const query = `
-      INSERT INTO "${tableName}" (${quotedColumns})
-      VALUES (${placeholders})
-      ${returningClause}
-    `.trim();
-
-    // Execute query
-    const result = await sequelize.query(query, {
-      replacements: values,
-      type: QueryTypes.SELECT,
-      transaction
-    });
-
-    return result[0] as unknown as any[];
   }
 
   /**

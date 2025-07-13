@@ -66,7 +66,13 @@ export class RateLimitError extends BaseError {
 //Server errors (5xx)
 export class DatabaseError extends BaseError {
     constructor(message: string = "Database error") {
-        super("DatabaseError", message, 500, false);
+        super("DatabaseError", message, 501, false);
+    }
+}
+
+export class InternalServerError extends BaseError {
+    constructor(message: string = "Internal server error") {
+        super("InternalServerError", message, 500);
     }
 }
 

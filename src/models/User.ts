@@ -7,7 +7,7 @@ class User extends Model {
   public name!: string;
   public email!: string;
   public avatar?: string;
-  public role!: 'Client' | 'Counselor';
+  public role!: 'Client' | 'Counselor' | 'Admin' | 'Psychiatrist' | 'MT-Team';
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -26,6 +26,12 @@ class User extends Model {
   public isCounselor(): boolean {
     return this.role === 'Counselor';
   }
+
+  public async getUserDetails(userId: number): Promise<User | null >{
+    return await User.findByPk(userId, {
+      attributes: ['id', 'firebaseId', 'name', 'email', 'avatar', 'role'],
+    });
+  } 
 }
 
 
@@ -55,7 +61,7 @@ User.init(
       allowNull: true,
     },
     role: {
-      type: DataTypes.ENUM('Client', 'Counselor'),
+      type: DataTypes.ENUM('Client', 'Counsellor' , 'Admin', 'Psychiatrist', 'MT-Team'),
       allowNull: false,
     },
   },
