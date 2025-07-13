@@ -2,7 +2,6 @@ import { Op } from 'sequelize';
 import Session from '../models/Session';
 import User from '../models/User';
 import Counselor from '../models/Counselor';
-import SessionType from '../models/SessionType';
 import TimeSlot from '../models/TimeSlot';
 import PaymentMethod from '../models/PaymentMethod';
 
@@ -24,20 +23,6 @@ export interface TimeSlotData {
 }
 
 class SessionService {
-  /**
-   * Get all session types
-   */
-  async getSessionTypes(): Promise<SessionType[]> {
-    const sessionTypes = await SessionType.findAll();
-    
-    if (!sessionTypes.length) {
-      // If no session types exist, create default ones
-      await this.createDefaultSessionTypes();
-      return SessionType.findAll();
-    }
-    
-    return sessionTypes;
-  }
 
   /**
    * Get all counselors
@@ -182,12 +167,6 @@ class SessionService {
       throw new Error('Counselor not found');
     }
     
-    // Check if session type exists
-    const sessionType = await SessionType.findByPk(sessionTypeId);
-    if (!sessionType) {
-      throw new Error('Session type not found');
-    }
-    
     // Check if time slot is available
     const slot = await TimeSlot.findOne({
       where: {
@@ -224,7 +203,7 @@ class SessionService {
       sessionTypeId,
       date,
       timeSlot,
-      duration: duration || sessionType.duration,
+      duration: duration || 50, // Default to 50 minutes if not provided
       price,
       concerns,
       status: 'scheduled',
@@ -248,10 +227,6 @@ class SessionService {
           model: User,
           as: 'counselor',
           attributes: ['id', 'name', 'avatar']
-        },
-        {
-          model: SessionType,
-          attributes: ['id', 'name', 'description', 'duration']
         }
       ],
       order: [['date', 'ASC'], ['timeSlot', 'ASC']]
@@ -286,10 +261,6 @@ class SessionService {
               attributes: ['title', 'specialties', 'rating']
             }
           ]
-        },
-        {
-          model: SessionType,
-          attributes: ['id', 'name', 'description', 'duration']
         }
       ]
     });
@@ -399,35 +370,6 @@ class SessionService {
     }
     
     return updatedSlots;
-  }
-
-  /**
-   * Create default session types
-   * @private
-   */
-  private async createDefaultSessionTypes(): Promise<void> {
-    const defaultTypes = [
-      {
-        id: 'video',
-        name: 'Video Session',
-        description: 'One-on-one video counseling session',
-        duration: 50,
-      },
-      {
-        id: 'chat',
-        name: 'Chat Session',
-        description: 'Text-based counseling session',
-        duration: 30,
-      },
-      {
-        id: 'phone',
-        name: 'Phone Session',
-        description: 'Voice call counseling session',
-        duration: 40,
-      },
-    ];
-
-    await Promise.all(defaultTypes.map(type => SessionType.create(type)));
   }
 }
 
