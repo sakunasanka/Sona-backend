@@ -9,7 +9,9 @@ import {
   bookSession,
   getUserSessions,
   getSessionById,
-  cancelSession
+  cancelSession,
+  setCounselorAvailability,
+  setCounselorUnavailability
 } from '../controllers/SessionController';
 import { authenticateToken } from '../middlewares/auth';
 
@@ -20,6 +22,8 @@ router.get('/types', getSessionTypes);
 router.get('/counselors', getCounselors);
 router.get('/counselors/:id', getCounselorById);
 router.get('/timeslots/:counselorId/:date', getAvailableTimeSlots);
+router.post('/availability', setCounselorAvailability);
+router.post('/unavailability', setCounselorUnavailability);
 
 // Protected routes (require authentication)
 router.get('/payment-methods', getUserPaymentMethods);

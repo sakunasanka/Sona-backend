@@ -8,6 +8,7 @@ class TimeSlot extends Model {
   public date!: Date;  // Date of the time slot
   public time!: string;  // Time of the slot (e.g. "10:00")
   public isBooked!: boolean;  // Whether the slot is booked
+  public isAvailable!: boolean;  // Whether the counselor is available for this slot
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -36,6 +37,10 @@ TimeSlot.init(
       allowNull: false,
     },
     isBooked: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    isAvailable: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
