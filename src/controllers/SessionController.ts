@@ -1,56 +1,25 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
-import Session from '../models/Session';
-import User from '../models/User';
-import Counselor from '../models/Counselor';
-import SessionType from '../models/SessionType';
-import TimeSlot from '../models/TimeSlot';
-import PaymentMethod from '../models/PaymentMethod';
-import { Op } from 'sequelize';
-
-/**
- * @desc    Get all session types
- * @route   GET /api/sessions/types
- * @access  Public
- */
-export const getSessionTypes = asyncHandler(async (req: Request, res: Response) => {
-  const sessionTypes = await SessionType.findAll();
-  
-  if (!sessionTypes.length) {
-    // If no session types exist, create default ones
-    await createDefaultSessionTypes();
-    const newSessionTypes = await SessionType.findAll();
-    return res.status(200).json({
-      success: true,
-      data: newSessionTypes
-    });
-  }
-  
-  res.status(200).json({
-    success: true,
-    data: sessionTypes
-  });
-});
-
+import sessionService from '../services/SessionService';
 /**
  * @desc    Get all counselors
  * @route   GET /api/sessions/counselors
  * @access  Public
  */
 export const getCounselors = asyncHandler(async (req: Request, res: Response) => {
-  const counselors = await Counselor.findAll({
-    include: [
-      {
-        model: User,
-        attributes: ['id', 'name', 'avatar']
-      }
-    ]
-  });
-  
-  res.status(200).json({
-    success: true,
-    data: counselors
-  });
+  try {
+    const counselors = await sessionService.getCounselors();
+    
+    res.status(200).json({
+      success: true,
+      data: counselors
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error fetching counselors'
+    });
+  }
 });
 
 /**
@@ -59,28 +28,28 @@ export const getCounselors = asyncHandler(async (req: Request, res: Response) =>
  * @access  Public
  */
 export const getCounselorById = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  const counselor = await Counselor.findByPk(id, {
-    include: [
-      {
-        model: User,
-        attributes: ['id', 'name', 'avatar']
-      }
-    ]
-  });
-  
-  if (!counselor) {
-    return res.status(404).json({
+  try {
+    const { id } = req.params;
+    
+    const counselor = await sessionService.getCounselorById(Number(id));
+    
+    if (!counselor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Counselor not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: counselor
+    });
+  } catch (error) {
+    res.status(500).json({
       success: false,
-      message: 'Counselor not found'
+      message: error instanceof Error ? error.message : 'Error fetching counselor'
     });
   }
-  
-  res.status(200).json({
-    success: true,
-    data: counselor
-  });
 });
 
 /**
@@ -89,232 +58,74 @@ export const getCounselorById = asyncHandler(async (req: Request, res: Response)
  * @access  Public
  */
 export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Response) => {
-  const { counselorId, date } = req.params;
-  
-  // First check if the counselor exists
-  const counselor = await Counselor.findByPk(counselorId);
-  if (!counselor) {
-    return res.status(404).json({
-      success: false,
-      message: 'Counselor not found'
-    });
-  }
-  
-  // Get all time slots for this counselor on this date
-  const timeSlots = await TimeSlot.findAll({
-    where: {
-      counselorId,
-      date,
-      isBooked: false,
-      isAvailable: true
-    }
-  });
-  
-  // If no time slots exist, generate default ones
-  if (!timeSlots.length) {
-    const parsedDate = new Date(date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  try {
+    const { counselorId, date } = req.params;
     
-    if (parsedDate.getTime() < today.getTime()) {
-      // Don't generate slots for past days
-      return res.status(200).json({
-        success: true,
-        data: []
-      });
-    }
+    const timeSlots = await sessionService.getAvailableTimeSlots(Number(counselorId), date);
     
-    const isToday = parsedDate.toDateString() === today.toDateString();
-    const currentHour = new Date().getHours();
-    
-    // Generate default time slots (9 AM to 5 PM)
-    const defaultTimeSlots = [];
-    for (let hour = 9; hour <= 17; hour++) {
-      // If it's today, only show future time slots
-      if (isToday && hour <= currentHour + 1) continue;
-      
-      const timeSlot = await TimeSlot.create({
-        counselorId,
-        date,
-        time: `${hour.toString().padStart(2, '0')}:00`,
-        isBooked: false,
-        isAvailable: false // Not available by default
-      });
-      
-      defaultTimeSlots.push(timeSlot);
-    }
-    
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      data: defaultTimeSlots
+      data: timeSlots
     });
-  }
-  
-  res.status(200).json({
-    success: true,
-    data: timeSlots
-  });
-});
-
-/**
- * @desc    Get user payment methods
- * @route   GET /api/sessions/payment-methods
- * @access  Private
- */
-export const getUserPaymentMethods = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.dbUser.id;
-  
-  const paymentMethods = await PaymentMethod.findAll({
-    where: { userId }
-  });
-  
-  res.status(200).json({
-    success: true,
-    data: paymentMethods
-  });
-});
-
-/**
- * @desc    Add new payment method
- * @route   POST /api/sessions/payment-methods
- * @access  Private
- */
-export const addPaymentMethod = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.dbUser.id;
-  const { type, last4, brand, isDefault } = req.body;
-  
-  // Validate required fields
-  if (!type) {
-    return res.status(400).json({
+  } catch (error) {
+    res.status(error instanceof Error && error.message.includes('not found') ? 404 : 500).json({
       success: false,
-      message: 'Payment type is required'
+      message: error instanceof Error ? error.message : 'Error fetching time slots'
     });
   }
-  
-  // If this is the default payment method, update all others to non-default
-  // if (isDefault) {
-  //   await PaymentMethod.update(
-  //     { isDefault: false },
-  //     { where: { userId } }
-  //   );
-  // }
-  
-  // // Create new payment method
-  // const paymentMethod = await PaymentMethod.create({
-  //   userId,
-  //   type,
-  //   last4,
-  //   brand,
-  //   isDefault: isDefault || false
-  // });
-  
-  res.status(201).json({
-    success: true,
-    //data: paymentMethod
-  });
 });
+
 
 /**
  * @desc    Book a new session
- * @route   POST /api/sessions
+ * @route   POST /api/sessions/book
  * @access  Private
  */
 export const bookSession = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.dbUser.id;
-  const {
-    counselorId,
-    sessionTypeId,
-    date,
-    timeSlot,
-    duration,
-    price,
-    concerns,
-    paymentMethodId
-  } = req.body;
-  
-  // Validate required fields
-  if (!counselorId || !sessionTypeId || !date || !timeSlot || !price) {
-    return res.status(400).json({
-      success: false,
-      message: 'Required session information is missing'
-    });
-  }
-  
-  // Check if counselor exists
-  const counselor = await Counselor.findByPk(counselorId);
-  if (!counselor) {
-    return res.status(404).json({
-      success: false,
-      message: 'Counselor not found'
-    });
-  }
-  
-  // Check if session type exists
-  const sessionType = await SessionType.findByPk(sessionTypeId);
-  if (!sessionType) {
-    return res.status(404).json({
-      success: false,
-      message: 'Session type not found'
-    });
-  }
-  
-  // Check if time slot is available
-  const slot = await TimeSlot.findOne({
-    where: {
+  try {
+    const userId = req.user!.dbUser.id;
+    const {
       counselorId,
+      sessionTypeId,
       date,
-      time: timeSlot,
-      isBooked: false,
-      isAvailable: true
-    }
-  });
-  
-  if (!slot) {
-    return res.status(400).json({
-      success: false,
-      message: 'Time slot is not available'
-    });
-  }
-  
-  // Check if payment method exists if provided
-  if (paymentMethodId) {
-    const paymentMethod = await PaymentMethod.findOne({
-      where: {
-        paymentId: paymentMethodId,
-        userId
-      }
-    });
+      timeSlot,
+      duration,
+      price,
+      concerns,
+      paymentMethodId
+    } = req.body;
     
-    if (!paymentMethod) {
-      return res.status(404).json({
+    // Validate required fields
+    if (!counselorId || !sessionTypeId || !date || !timeSlot || !price) {
+      return res.status(400).json({
         success: false,
-        message: 'Payment method not found'
+        message: 'Required session information is missing'
       });
     }
+    
+    const session = await sessionService.bookSession({
+      userId,
+      counselorId,
+      sessionTypeId,
+      date,
+      timeSlot,
+      duration,
+      price,
+      concerns,
+      paymentMethodId
+    });
+    
+    res.status(201).json({
+      success: true,
+      message: 'Session booked successfully',
+      data: session
+    });
+  } catch (error) {
+    res.status(error instanceof Error && error.message.includes('not found') ? 404 : 400).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error booking session'
+    });
   }
-  
-  // Create the session booking
-  const session = await Session.create({
-    userId,
-    counselorId,
-    sessionTypeId,
-    date,
-    timeSlot,
-    duration: duration || sessionType.duration,
-    price,
-    concerns,
-    status: 'scheduled',
-    paymentMethodId
-  });
-  
-  // Mark the time slot as booked
-  await slot.update({ isBooked: true });
-  
-  res.status(201).json({
-    success: true,
-    message: 'Session booked successfully',
-    data: session
-  });
 });
 
 /**
@@ -323,30 +134,21 @@ export const bookSession = asyncHandler(async (req: Request, res: Response) => {
  * @access  Private
  */
 export const getUserSessions = asyncHandler(async (req: Request, res: Response) => {
+  try {
     const userId = req.user!.dbUser.id;
-  // Hardcoding userId for testing purposes
-//   const userId = 1;
-  
-  const sessions = await Session.findAll({
-    where: { userId },
-    include: [
-      {
-        model: User,
-        as: 'counselor',
-        attributes: ['id', 'name', 'avatar']
-      },
-      {
-        model: SessionType,
-        attributes: ['id', 'name', 'description', 'duration']
-      }
-    ],
-    order: [['date', 'ASC'], ['timeSlot', 'ASC']]
-  });
-  
-  res.status(200).json({
-    success: true,
-    data: sessions
-  });
+    
+    const sessions = await sessionService.getUserSessions(userId);
+    
+    res.status(200).json({
+      success: true,
+      data: sessions
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error fetching sessions'
+    });
+  }
 });
 
 /**
@@ -355,109 +157,29 @@ export const getUserSessions = asyncHandler(async (req: Request, res: Response) 
  * @access  Private
  */
 export const getSessionById = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.dbUser.id;
-  const { id } = req.params;
-  
-  const session = await Session.findOne({
-    where: {
-      id,
-      [Op.or]: [
-        { userId },
-        { counselorId: userId } // Allow both user and counselor to view session
-      ]
-    },
-    include: [
-      {
-        model: User,
-        as: 'user',
-        attributes: ['id', 'name', 'avatar']
-      },
-      {
-        model: User,
-        as: 'counselor',
-        attributes: ['id', 'name', 'avatar'],
-        include: [
-          {
-            model: Counselor,
-            attributes: ['title', 'specialties', 'rating']
-          }
-        ]
-      },
-      {
-        model: SessionType,
-        attributes: ['id', 'name', 'description', 'duration']
-      }
-    ]
-  });
-  
-  if (!session) {
-    return res.status(404).json({
-      success: false,
-      message: 'Session not found'
-    });
-  }
-  
-  res.status(200).json({
-    success: true,
-    data: session
-  });
-});
-
-/**
- * @desc    Cancel a session
- * @route   PUT /api/sessions/:id/cancel
- * @access  Private
- */
-export const cancelSession = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.dbUser.id;
-  const { id } = req.params;
-  
-  const session = await Session.findOne({
-    where: {
-      id,
-      userId,
-      status: 'scheduled'
+  try {
+    const userId = req.user!.dbUser.id;
+    const { id } = req.params;
+    
+    const session = await sessionService.getSessionById(Number(id), userId);
+    
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: 'Session not found'
+      });
     }
-  });
-  
-  if (!session) {
-    return res.status(404).json({
+    
+    res.status(200).json({
+      success: true,
+      data: session
+    });
+  } catch (error) {
+    res.status(500).json({
       success: false,
-      message: 'Session not found or cannot be cancelled'
+      message: error instanceof Error ? error.message : 'Error fetching session'
     });
   }
-  
-  // Check if session is within cancellation period (e.g., 24 hours before)
-  const sessionDate = new Date(`${session.date}T${session.timeSlot}`);
-  const now = new Date();
-  const hoursDifference = Math.round((sessionDate.getTime() - now.getTime()) / (60 * 60 * 1000));
-  
-  if (hoursDifference < 24) {
-    return res.status(400).json({
-      success: false,
-      message: 'Sessions can only be cancelled at least 24 hours in advance'
-    });
-  }
-  
-  // Update session status
-  await session.update({ status: 'cancelled' });
-  
-  // Free up the time slot (keep the availability status)
-  await TimeSlot.update(
-    { isBooked: false },
-    {
-      where: {
-        counselorId: session.counselorId,
-        date: session.date,
-        time: session.timeSlot
-      }
-    }
-  );
-  
-  res.status(200).json({
-    success: true,
-    message: 'Session cancelled successfully'
-  });
 });
 
 /**
@@ -466,99 +188,72 @@ export const cancelSession = asyncHandler(async (req: Request, res: Response) =>
  * @access  Private (counselor only)
  */
 export const setCounselorAvailability = asyncHandler(async (req: Request, res: Response) => {
-  const { Counselorid, startDate, endDate, startTime, endTime } = req.body;
-  
-  // Validate required fields
-  if (!Counselorid || !startDate || !endDate || !startTime || !endTime) {
-    return res.status(400).json({
-      success: false,
-      message: 'Counselorid, start date, end date, start time, and end time are required'
-    });
-  }
-  
-  // Convert to number for database query
-  const counselorId = Number(Counselorid);
-  
-  // Validate that the counselor exists
-  const counselor = await Counselor.findByPk(counselorId);
-  if (!counselor) {
-    return res.status(404).json({
-      success: false,
-      message: 'Counselor not found'
-    });
-  }
-  
-  // Parse dates and times
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  
-  // Validate date range
-  if (start > end) {
-    return res.status(400).json({
-      success: false,
-      message: 'Start date cannot be after end date'
-    });
-  }
-  
-  // Parse start and end times (format: "HH:00")
-  const [startHour] = startTime.split(':').map(Number);
-  const [endHour] = endTime.split(':').map(Number);
-  
-  if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour > endHour) {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid time range'
-    });
-  }
-  
-  // Loop through each day in the range
-  const currentDate = new Date(start);
-  const createdOrUpdatedSlots = [];
-  
-  while (currentDate <= end) {
-    const dateString = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
+  try {
+    const { Counselorid, startDate, endDate, startTime, endTime } = req.body;
     
-    // Loop through each hour in the range
-    for (let hour = startHour; hour <= endHour; hour++) {
-      const timeString = `${hour.toString().padStart(2, '0')}:00`;
-      
-      // Check if the time slot already exists
-      let timeSlot = await TimeSlot.findOne({
-        where: {
-          counselorId,
-          date: dateString,
-          time: timeString
-        }
+    // Validate required fields
+    if (!Counselorid || !startDate || !endDate || !startTime || !endTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'Counselorid, start date, end date, start time, and end time are required'
       });
-      
-      if (timeSlot) {
-        // Update existing time slot
-        if (!timeSlot.isBooked) { // Don't modify booked slots
-          await timeSlot.update({ isAvailable: true });
-          createdOrUpdatedSlots.push(timeSlot);
-        }
-      } else {
-        // Create new time slot
-        timeSlot = await TimeSlot.create({
-          counselorId,
-          date: dateString,
-          time: timeString,
-          isBooked: false,
-          isAvailable: true
-        });
-        createdOrUpdatedSlots.push(timeSlot);
-      }
     }
     
-    // Move to next day
-    currentDate.setDate(currentDate.getDate() + 1);
+    // Convert to number for database query
+    const counselorId = Number(Counselorid);
+    
+    // Parse dates and times
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Validate date range
+    if (start > end) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date cannot be after end date'
+      });
+    }
+    
+    // Parse start and end times (format: "HH:00")
+    const [startHour] = startTime.split(':').map(Number);
+    const [endHour] = endTime.split(':').map(Number);
+    
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour > endHour) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid time range'
+      });
+    }
+    
+    // Create slots to update
+    const slots = [];
+    const currentDate = new Date(start);
+    
+    while (currentDate <= end) {
+      const dateString = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      for (let hour = startHour; hour <= endHour; hour++) {
+        const timeString = `${hour.toString().padStart(2, '0')}:00`;
+        slots.push({ date: dateString, time: timeString });
+      }
+      
+      // Move to next day
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    const updatedSlots = await sessionService.setCounselorAvailability(counselorId, slots);
+    
+    res.status(200).json({
+      success: true,
+      message: `Successfully set availability for ${updatedSlots.length} time slots`,
+      data: updatedSlots
+    });
+  } catch (error) {
+    res.status(error instanceof Error && error.message.includes('not found') ? 404 : 400).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error setting availability'
+    });
   }
-  
-  res.status(200).json({
-    success: true,
-    message: `Successfully set availability for ${createdOrUpdatedSlots.length} time slots`,
-    data: createdOrUpdatedSlots
-  });
 });
 
 /**
@@ -567,126 +262,96 @@ export const setCounselorAvailability = asyncHandler(async (req: Request, res: R
  * @access  Public
  */
 export const setCounselorUnavailability = asyncHandler(async (req: Request, res: Response) => {
-  const { Counselorid, startDate, endDate, startTime, endTime } = req.body;
-  
-  // Validate required fields
-  if (!Counselorid || !startDate || !endDate || !startTime || !endTime) {
-    return res.status(400).json({
-      success: false,
-      message: 'Counselorid, start date, end date, start time, and end time are required'
-    });
-  }
-  
-  // Convert to number for database query
-  const counselorId = Number(Counselorid);
-  
-  // Validate that the counselor exists
-  const counselor = await Counselor.findByPk(counselorId);
-  if (!counselor) {
-    return res.status(404).json({
-      success: false,
-      message: 'Counselor not found'
-    });
-  }
-  
-  // Parse dates and times
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  
-  // Validate date range
-  if (start > end) {
-    return res.status(400).json({
-      success: false,
-      message: 'Start date cannot be after end date'
-    });
-  }
-  
-  // Parse start and end times (format: "HH:00")
-  const [startHour] = startTime.split(':').map(Number);
-  const [endHour] = endTime.split(':').map(Number);
-  
-  if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour > endHour) {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid time range'
-    });
-  }
-  
-  // Loop through each day in the range
-  const currentDate = new Date(start);
-  const updatedSlots = [];
-  
-  while (currentDate <= end) {
-    const dateString = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
+  try {
+    const { Counselorid, startDate, endDate, startTime, endTime } = req.body;
     
-    // Loop through each hour in the range
-    for (let hour = startHour; hour <= endHour; hour++) {
-      const timeString = `${hour.toString().padStart(2, '0')}:00`;
-      
-      // Check if the time slot already exists
-      let timeSlot = await TimeSlot.findOne({
-        where: {
-          counselorId,
-          date: dateString,
-          time: timeString
-        }
+    // Validate required fields
+    if (!Counselorid || !startDate || !endDate || !startTime || !endTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'Counselorid, start date, end date, start time, and end time are required'
       });
-      
-      if (timeSlot) {
-        // Update existing time slot if it's not booked
-        if (!timeSlot.isBooked) {
-          await timeSlot.update({ isAvailable: false });
-          updatedSlots.push(timeSlot);
-        }
-      } else {
-        // Create new time slot marked as unavailable
-        timeSlot = await TimeSlot.create({
-          counselorId,
-          date: dateString,
-          time: timeString,
-          isBooked: false,
-          isAvailable: false
-        });
-        updatedSlots.push(timeSlot);
-      }
     }
     
-    // Move to next day
-    currentDate.setDate(currentDate.getDate() + 1);
+    // Convert to number for database query
+    const counselorId = Number(Counselorid);
+    
+    // Parse dates and times
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Validate date range
+    if (start > end) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date cannot be after end date'
+      });
+    }
+    
+    // Parse start and end times (format: "HH:00")
+    const [startHour] = startTime.split(':').map(Number);
+    const [endHour] = endTime.split(':').map(Number);
+    
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour > endHour) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid time range'
+      });
+    }
+    
+    // Create slots to update
+    const slots = [];
+    const currentDate = new Date(start);
+    
+    while (currentDate <= end) {
+      const dateString = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      for (let hour = startHour; hour <= endHour; hour++) {
+        const timeString = `${hour.toString().padStart(2, '0')}:00`;
+        slots.push({ date: dateString, time: timeString });
+      }
+      
+      // Move to next day
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    const updatedSlots = await sessionService.setCounselorUnavailability(counselorId, slots);
+    
+    res.status(200).json({
+      success: true,
+      message: `Successfully marked ${updatedSlots.length} time slots as unavailable`,
+      data: updatedSlots
+    });
+  } catch (error) {
+    res.status(error instanceof Error && error.message.includes('not found') ? 404 : 400).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error setting unavailability'
+    });
   }
-  
-  res.status(200).json({
-    success: true,
-    message: `Successfully marked ${updatedSlots.length} time slots as unavailable`,
-    data: updatedSlots
-  });
 });
 
-// Helper function to create default session types
-async function createDefaultSessionTypes() {
-  const sessionTypes = [
-    {
-      id: 'video',
-      name: 'Video Call',
-      description: 'Secure video session from anywhere',
-      duration: 50,
-      price: 80
-    },
-    {
-      id: 'phone',
-      name: 'Phone Call',
-      description: 'Traditional phone consultation',
-      duration: 50,
-      price: 75
-    },
-    {
-      id: 'chat',
-      name: 'Text Chat',
-      description: 'Secure messaging session',
-      duration: 50,
-      price: 65
-    }
-  ];
-  
-  await Promise.all(sessionTypes.map(type => SessionType.create(type)));
-}
+/**
+ * @desc    Cancel a session
+ * @route   PUT /api/sessions/:id/cancel
+ * @access  Private
+ */
+export const cancelSession = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.dbUser.id;
+    const { id } = req.params;
+    
+    const session = await sessionService.cancelSession(Number(id), userId);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Session cancelled successfully',
+      data: session
+    });
+  } catch (error) {
+    res.status(error instanceof Error && 
+      (error.message.includes('not found') || error.message.includes('cannot be cancelled')) ? 404 : 400).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error cancelling session'
+    });
+  }
+});
