@@ -1,7 +1,6 @@
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/db';
 import User from './User';
-import SessionType from './SessionType';
 
 class Session extends Model {
   public id!: number;
@@ -86,7 +85,6 @@ Session.init(
 // Set up associations
 Session.belongsTo(User, { as: 'user', foreignKey: 'userId' });
 Session.belongsTo(User, { as: 'counselor', foreignKey: 'counselorId' });
-Session.belongsTo(SessionType, { foreignKey: 'sessionTypeId' });
 User.hasMany(Session, { as: 'userSessions', foreignKey: 'userId' });
 User.hasMany(Session, { as: 'counselorSessions', foreignKey: 'counselorId' });
 

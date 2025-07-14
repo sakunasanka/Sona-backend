@@ -182,20 +182,6 @@ class SessionService {
       throw new Error('Time slot is not available');
     }
     
-    // Check if payment method exists if provided
-    if (paymentMethodId) {
-      const paymentMethod = await PaymentMethod.findOne({
-        where: {
-          paymentId: Number(paymentMethodId),
-          userId
-        }
-      });
-      
-      if (!paymentMethod) {
-        throw new Error('Payment method not found');
-      }
-    }
-    
     // Create the session booking
     const session = await Session.create({
       userId,
