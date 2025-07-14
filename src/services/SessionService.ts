@@ -8,13 +8,10 @@ import PaymentMethod from '../models/PaymentMethod';
 export interface BookSessionParams {
   userId: number;
   counselorId: number;
-  sessionTypeId: string;
   date: string;
   timeSlot: string;
   duration?: number;
   price: number;
-  concerns?: string;
-  paymentMethodId?: number | string;
 }
 
 export interface TimeSlotData {
@@ -152,13 +149,10 @@ class SessionService {
     const {
       userId,
       counselorId,
-      sessionTypeId,
       date,
       timeSlot,
       duration,
-      price,
-      concerns,
-      paymentMethodId
+      price
     } = params;
 
     // Check if counselor exists
@@ -186,14 +180,11 @@ class SessionService {
     const session = await Session.create({
       userId,
       counselorId,
-      sessionTypeId,
       date,
       timeSlot,
       duration: duration || 50, // Default to 50 minutes if not provided
       price,
-      concerns,
-      status: 'scheduled',
-      paymentMethodId
+      status: 'scheduled'
     });
     
     // Mark the time slot as booked

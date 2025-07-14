@@ -86,33 +86,19 @@ export const bookSession = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.dbUser.id;
     const {
       counselorId,
-      sessionTypeId,
       date,
       timeSlot,
       duration,
-      price,
-      concerns,
-      paymentMethodId
+      price
     } = req.body;
-    
-    // Validate required fields
-    if (!counselorId || !sessionTypeId || !date || !timeSlot || !price) {
-      return res.status(400).json({
-        success: false,
-        message: 'Required session information is missing'
-      });
-    }
     
     const session = await sessionService.bookSession({
       userId,
       counselorId,
-      sessionTypeId,
       date,
       timeSlot,
       duration,
-      price,
-      concerns,
-      paymentMethodId
+      price
     });
     
     res.status(201).json({
