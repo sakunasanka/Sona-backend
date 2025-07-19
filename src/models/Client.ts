@@ -84,12 +84,12 @@ class Client extends User {
     const result = await sequelize.query(`
       SELECT 
         u.id, 
-        u.firebaseId, 
-        u.name, u.email, u.avatar, u.role, u.createdAt, u.updatedAt,
-        c.nickName, c.isStudent
+        u."firebaseId", 
+        u."name", u."email", u."avatar", u."role", u."createdAt", u."updatedAt",
+        c."nickName", c."isStudent"
       FROM users u
-      JOIN clients c ON u.id = c.userId
-      WHERE u.id = ? AND u.role = 'Client'
+      JOIN clients c ON u.id = c."userId"
+      WHERE u.id = ? AND u."role" = 'Client'
     `, {
       replacements: [id],
       type: QueryTypes.SELECT
