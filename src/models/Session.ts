@@ -1,20 +1,17 @@
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/db';
 import User from './User';
-import SessionType from './SessionType';
 
 class Session extends Model {
   public id!: number;
   public userId!: number;  // User who booked the session
   public counselorId!: number;  // Counselor conducting the session
-  public sessionTypeId!: string;  // Type of session (video, phone, chat)
   public date!: Date;  // Date of the session
   public timeSlot!: string;  // Time slot (e.g. "10:00")
   public duration!: number;  // Duration in minutes
   public price!: number;  // Price of the session
-  public concerns?: string;  // Any concerns or notes from the user
+  public notes?: string;  // Any notes from the user
   public status!: 'scheduled' | 'completed' | 'cancelled';
-  public paymentMethodId?: string;  // ID of the payment method used
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -42,10 +39,6 @@ Session.init(
         key: 'id',
       },
     },
-    sessionTypeId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     date: {
       type: DataTypes.DATEONLY,
       allowNull: false,
@@ -63,18 +56,14 @@ Session.init(
       type: DataTypes.FLOAT,
       allowNull: false,
     },
-    concerns: {
+    notes: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
     status: {
       type: DataTypes.ENUM('scheduled', 'completed', 'cancelled'),
       defaultValue: 'scheduled',
-    },
-    paymentMethodId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
+    }
   },
   {
     sequelize,
@@ -86,7 +75,6 @@ Session.init(
 // Set up associations
 Session.belongsTo(User, { as: 'user', foreignKey: 'userId' });
 Session.belongsTo(User, { as: 'counselor', foreignKey: 'counselorId' });
-Session.belongsTo(SessionType, { foreignKey: 'sessionTypeId' });
 User.hasMany(Session, { as: 'userSessions', foreignKey: 'userId' });
 User.hasMany(Session, { as: 'counselorSessions', foreignKey: 'counselorId' });
 

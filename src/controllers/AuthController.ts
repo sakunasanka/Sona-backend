@@ -8,6 +8,9 @@ import { ApiResponseUtil } from "../utils/apiResponse";
 import { validateData, signInSchema } from "../schema/ValidationSchema";
 import { JwtServices } from "../services/JwtServices";
 import * as path from "path";
+import Client from "../models/Client";
+import { QueryTypes } from "sequelize";
+import { sequelize } from "../config/db";
 
 
 const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY!;
@@ -322,5 +325,149 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
   } catch (error: any) {
     console.error("Reset Password Error:", error);
     res.status(400).json({ error: error.message });
+  }
+};
+
+export const checkIsStudent = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get the client ID from the authenticated user
+    if (!req.user || !req.user.dbUser || !req.user.dbUser.id) {
+      throw new ValidationError("Authentication required");
+    }
+
+    const userId = req.user.dbUser.id;
+
+    // Find the client by user ID
+    const client = await Client.findClientById(userId);
+
+    if (!client) {
+      throw new ItemNotFoundError("Client not found");
+    }
+
+    // Return the isStudent status
+    ApiResponseUtil.success(res, {
+      isStudent: client.isStudent
+    }, "Student status retrieved successfully");
+    
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const checkClientIsStudentById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const clientId = parseInt(req.params.clientId);
+    
+    if (isNaN(clientId)) {
+      throw new ValidationError("Valid client ID is required");
+    }
+    
+    // Check if the requester is an admin or authorized user
+    if (!req.user || !req.user.dbUser || req.user.dbUser.userType !== 'Admin') {
+      throw new ValidationError("Admin authorization required");
+    }
+
+    // Find the client by ID
+    const client = await Client.findClientById(clientId);
+
+    if (!client) {
+      throw new ItemNotFoundError("Client not found");
+    }
+
+    // Return the isStudent status
+    ApiResponseUtil.success(res, {
+      clientId: client.id,
+      isStudent: client.isStudent
+    }, "Student status retrieved successfully");
+    
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateClientStudentStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get the client ID from the authenticated user
+    if (!req.user || !req.user.dbUser || !req.user.dbUser.id) {
+      throw new ValidationError("Authentication required");
+    }
+
+    const userId = req.user.dbUser.id;
+    const { isStudent } = req.body;
+
+    if (typeof isStudent !== 'boolean') {
+      throw new ValidationError("isStudent field must be a boolean value");
+    }
+
+    // Find the client by user ID
+    const client = await Client.findClientById(userId);
+
+    if (!client) {
+      throw new ItemNotFoundError("Client not found");
+    }
+
+    // Update the isStudent status in the database
+    await sequelize.query(`
+      UPDATE clients 
+      SET "isStudent" = ?, "updatedAt" = NOW()
+      WHERE "userId" = ?
+    `, {
+      replacements: [isStudent, userId],
+      type: QueryTypes.UPDATE
+    });
+
+    // Return the updated status
+    ApiResponseUtil.success(res, {
+      isStudent
+    }, "Student status updated successfully");
+    
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateClientStudentStatusById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const clientId = parseInt(req.params.clientId);
+    const { isStudent } = req.body;
+    
+    if (isNaN(clientId)) {
+      throw new ValidationError("Valid client ID is required");
+    }
+    
+    if (typeof isStudent !== 'boolean') {
+      throw new ValidationError("isStudent field must be a boolean value");
+    }
+    
+    // Check if the requester is an admin or authorized user
+    if (!req.user || !req.user.dbUser || req.user.dbUser.userType !== 'Admin') {
+      throw new ValidationError("Admin authorization required");
+    }
+
+    // Find the client by ID
+    const client = await Client.findClientById(clientId);
+
+    if (!client) {
+      throw new ItemNotFoundError("Client not found");
+    }
+
+    // Update the isStudent status in the database
+    await sequelize.query(`
+      UPDATE clients 
+      SET "isStudent" = ?, "updatedAt" = NOW()
+      WHERE "userId" = ?
+    `, {
+      replacements: [isStudent, clientId],
+      type: QueryTypes.UPDATE
+    });
+
+    // Return the updated status
+    ApiResponseUtil.success(res, {
+      clientId,
+      isStudent
+    }, "Student status updated successfully");
+    
+  } catch (error) {
+    next(error);
   }
 };
