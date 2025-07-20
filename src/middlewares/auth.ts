@@ -97,3 +97,75 @@ export const requireRole = (roles: string[]) => {
     next();
   }
 }
+
+// Alias for authenticateToken for more readable code
+export const isAuthenticated = authenticateToken;
+
+// Check if user is a counselor
+export const isCounselor = (req: Request, res: Response, next: NextFunction): void => {
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+      error: 'Unauthorized'
+    });
+    return;
+  }
+
+  if (req.user.dbUser.userType !== 'Counselor') {
+    res.status(403).json({
+      success: false,
+      message: 'Counselor access required',
+      error: 'Forbidden'
+    });
+    return;
+  }
+
+  next();
+};
+
+// Check if user is an admin
+export const isAdmin = (req: Request, res: Response, next: NextFunction): void => {
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+      error: 'Unauthorized'
+    });
+    return;
+  }
+
+  if (req.user.dbUser.userType !== 'Admin') {
+    res.status(403).json({
+      success: false,
+      message: 'Admin access required',
+      error: 'Forbidden'
+    });
+    return;
+  }
+
+  next();
+};
+
+// Check if user is a client
+export const isClient = (req: Request, res: Response, next: NextFunction): void => {
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+      error: 'Unauthorized'
+    });
+    return;
+  }
+
+  if (req.user.dbUser.userType !== 'Client') {
+    res.status(403).json({
+      success: false,
+      message: 'Client access required',
+      error: 'Forbidden'
+    });
+    return;
+  }
+
+  next();
+};

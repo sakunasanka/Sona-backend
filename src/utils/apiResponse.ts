@@ -22,4 +22,14 @@ export class ApiResponseUtil {
   static created<T>(res: Response, data?: T, message?: string): Response {
     return this.success(res, data, message, 201);
   }
+  
+  static notFound(res: Response, message: string = 'Resource not found'): Response {
+    const response: ApiResponse = {
+      success: false,
+      message,
+      statusCode: 404,
+    };
+    
+    return res.status(404).json(response);
+  }
 }
