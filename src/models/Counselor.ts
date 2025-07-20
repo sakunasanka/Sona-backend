@@ -15,6 +15,7 @@ class Counselor extends User {
   public description?: string;
   public rating?: number;
   public sessionFee?: number;
+  public status?: string;
 
   static async createCounselor( userData : {
     firebaseId: string;
@@ -32,6 +33,7 @@ class Counselor extends User {
     description?: string;
     rating?: number;
     sessionFee?: number;
+    status?: string;
   }) {
     const transaction = await sequelize.transaction();
 
@@ -60,10 +62,11 @@ class Counselor extends User {
                 "description",
                 "rating",
                 "sessionFee",
+                "status",
                 "createdAt",
                 "updatedAt"
             )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
       `, {
         bind: [
           user.id,
@@ -78,6 +81,7 @@ class Counselor extends User {
           userData.description,
           userData.rating,
           userData.sessionFee,
+          userData.status || 'pending', // Default status is pending
         ],
         transaction
       });
@@ -102,6 +106,7 @@ class Counselor extends User {
       counselor.description = userData.description;
       counselor.rating = userData.rating;
       counselor.sessionFee = userData.sessionFee;
+      counselor.status = userData.status || 'pending';
 
       return counselor;
 
@@ -115,11 +120,12 @@ class Counselor extends User {
   static async findCounselorById(id: number): Promise<Counselor | null> {
     const result = await sequelize.query(`
       SELECT 
-        u.id, u.firebaseId, u.name, u.email, u.avatar, u.role, u.createdAt, u.updatedAt,
-        c.title, c.specialities, c.address, c.contact_no, c.license_no, c.idCard, c.isVolunteer, c.isAvailable, c.description, c.rating, c.sessionFee
+        u.id, u."firebaseId", u.name, u.email, u.avatar, u.role, u."createdAt", u."updatedAt",
+        c.title, c.specialities, c.address, c.contact_no, c."licenseNo", c."idCard", 
+        c."isVolunteer", c."isAvailable", c.description, c.rating, c."sessionFee", c.status
       FROM users u
-      JOIN counselors c ON u.id = c.id
-      WHERE u.id = ? AND u.role = 'Counselor'
+      JOIN counselors c ON u.id = c."userId"
+      WHERE u.id = ? AND u.role = 'Counsellor'
     `, {
       replacements: [id],
       type: QueryTypes.SELECT
@@ -140,18 +146,145 @@ class Counselor extends User {
     counselor.specialities = data.specialities;
     counselor.address = data.address;
     counselor.contact_no = data.contact_no;
-    counselor.license_no = data.license_no;
+    counselor.license_no = data.licenseNo;
     counselor.idCard = data.idCard;
     counselor.isVolunteer = data.isVolunteer;
     counselor.isAvailable = data.isAvailable;
     counselor.description = data.description;
     counselor.rating = data.rating;
     counselor.sessionFee = data.sessionFee;
+    counselor.status = data.status;
 
     return counselor;
   }
+
+  // Find all available and approved counselors
+  static async findAllAvailableCounselors(): Promise<Counselor[]> {
+    const results = await sequelize.query(`
+      SELECT 
+        u.id, 
+        u."firebaseId", 
+        u."name", 
+        u."email", 
+        u."avatar", 
+        u."role", 
+        u."createdAt", 
+        u."updatedAt",
+        c."title", 
+        c."specialities", 
+        c."address", 
+        c."contact_no", 
+        c."licenseNo", 
+        c."idCard",
+        c."isVolunteer", 
+        c."isAvailable", 
+        c."description", 
+        c."rating", 
+        c."sessionFee",
+        c."status"
+      FROM users u
+      JOIN counselors c ON u.id = c."userId"
+      WHERE u."role" = 'Counsellor' AND c."isAvailable" = true AND c."status" = 'approved'
+    `, {
+      type: QueryTypes.SELECT
+    });
+
+    return results.map((data: any) => {
+      const counselor = new Counselor();
+      counselor.id = data.id;
+      counselor.firebaseId = data.firebaseId;
+      counselor.name = data.name;
+      counselor.email = data.email;
+      counselor.avatar = data.avatar;
+      counselor.role = data.role;
+      counselor.title = data.title;
+      counselor.specialities = data.specialities;
+      counselor.address = data.address;
+      counselor.contact_no = data.contact_no;
+      counselor.license_no = data.licenseNo;
+      counselor.idCard = data.idCard;
+      counselor.isVolunteer = data.isVolunteer;
+      counselor.isAvailable = data.isAvailable;
+      counselor.description = data.description;
+      counselor.rating = data.rating;
+      counselor.sessionFee = data.sessionFee;
+      counselor.status = data.status;
+      return counselor;
+    });
+  }
+
+  // Find all counselors (for admin)
+  static async findAllCounselors(): Promise<Counselor[]> {
+    const results = await sequelize.query(`
+      SELECT 
+        u.id, 
+        u."firebaseId", 
+        u."name", 
+        u."email", 
+        u."avatar", 
+        u."role", 
+        u."createdAt", 
+        u."updatedAt",
+        c."title", 
+        c."specialities", 
+        c."address", 
+        c."contact_no", 
+        c."licenseNo", 
+        c."idCard",
+        c."isVolunteer", 
+        c."isAvailable", 
+        c."description", 
+        c."rating", 
+        c."sessionFee",
+        c."status"
+      FROM users u
+      JOIN counselors c ON u.id = c."userId"
+      WHERE u."role" = 'Counsellor'
+    `, {
+      type: QueryTypes.SELECT
+    });
+
+    return results.map((data: any) => {
+      const counselor = new Counselor();
+      counselor.id = data.id;
+      counselor.firebaseId = data.firebaseId;
+      counselor.name = data.name;
+      counselor.email = data.email;
+      counselor.avatar = data.avatar;
+      counselor.role = data.role;
+      counselor.title = data.title;
+      counselor.specialities = data.specialities;
+      counselor.address = data.address;
+      counselor.contact_no = data.contact_no;
+      counselor.license_no = data.licenseNo;
+      counselor.idCard = data.idCard;
+      counselor.isVolunteer = data.isVolunteer;
+      counselor.isAvailable = data.isAvailable;
+      counselor.description = data.description;
+      counselor.rating = data.rating;
+      counselor.sessionFee = data.sessionFee;
+      counselor.status = data.status;
+      return counselor;
+    });
+  }
+
+  // Update counselor status
+  static async updateCounselorStatus(id: number, status: string): Promise<Counselor | null> {
+    try {
+      await sequelize.query(`
+        UPDATE counselors
+        SET status = $1, "updatedAt" = NOW()
+        WHERE "userId" = $2
+      `, {
+        bind: [status, id],
+        type: QueryTypes.UPDATE
+      });
+
+      return this.findCounselorById(id);
+    } catch (error) {
+      throw new DatabaseError(`Failed to update counselor status: ` + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  }
 }
-
-
 
 export default Counselor;
