@@ -372,3 +372,31 @@ export const getCounselorSessions = asyncHandler(async (req: Request, res: Respo
     });
   }
 });
+
+/**
+ * @desc    Get remaining sessions for a student
+ * @route   GET /api/sessions/remaining
+ * @access  Private
+ */
+export const getRemainingStudentSessions = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.dbUser.id;
+    
+    const sessionInfo = await sessionService.getRemainingStudentSessions(userId);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        ...sessionInfo,
+        message: sessionInfo.isStudent 
+          ? `You have ${sessionInfo.remainingSessions} free sessions remaining this month. Your plan resets on ${sessionInfo.nextResetDate}.`
+          : "You are not registered as a student. Student benefits are not available."
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error fetching remaining sessions'
+    });
+  }
+});

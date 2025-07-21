@@ -9,7 +9,8 @@ import {
   setCounselorAvailability,
   setCounselorUnavailability,
   cancelSession,
-  getCounselorSessions
+  getCounselorSessions,
+  getRemainingStudentSessions
 } from '../controllers/SessionController';
 import { authenticateToken } from '../middlewares/auth';
 
@@ -24,6 +25,7 @@ router.get('/timeslots/:counselorId/:date', getAvailableTimeSlots);
 router.use(authenticateToken);
 router.post('/book', bookSession);
 router.get('/my-sessions', getUserSessions);
+router.get('/remaining', getRemainingStudentSessions);
 router.get('/:id', getSessionById);
 router.put('/:id/cancel', cancelSession);
 router.post('/availability', setCounselorAvailability);
