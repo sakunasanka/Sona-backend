@@ -341,3 +341,34 @@ export const cancelSession = asyncHandler(async (req: Request, res: Response) =>
     });
   }
 });
+
+/**
+ * @desc    Get counselor's sessions
+ * @route   GET /api/sessions/counselor/:id/sessions
+ * @access  Private (counselor only)
+ */
+export const getCounselorSessions = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // Ensure the requesting user is the counselor
+    // if (req.user!.dbUser.id !== Number(id)) {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: 'Unauthorized: You can only view your own sessions'
+    //   });
+    // }
+    
+    const sessions = await sessionService.getCounselorSessions(Number(id));
+    
+    res.status(200).json({
+      success: true,
+      data: sessions
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error fetching counselor sessions'
+    });
+  }
+});

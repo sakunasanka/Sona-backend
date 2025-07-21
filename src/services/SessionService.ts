@@ -348,6 +348,23 @@ class SessionService {
     
     return updatedSlots;
   }
+
+  /**
+   * Get counselor's sessions
+   */
+  async getCounselorSessions(counselorId: number): Promise<Session[]> {
+    return Session.findAll({
+      where: { counselorId },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'avatar']
+        }
+      ],
+      order: [['date', 'ASC'], ['timeSlot', 'ASC']]
+    });
+  }
 }
 
 export default new SessionService();

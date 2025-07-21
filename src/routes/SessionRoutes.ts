@@ -8,7 +8,8 @@ import {
   getSessionById,
   setCounselorAvailability,
   setCounselorUnavailability,
-  cancelSession
+  cancelSession,
+  getCounselorSessions
 } from '../controllers/SessionController';
 import { authenticateToken } from '../middlewares/auth';
 
@@ -27,5 +28,6 @@ router.get('/:id', getSessionById);
 router.put('/:id/cancel', cancelSession);
 router.post('/availability', setCounselorAvailability);
 router.post('/unavailability', setCounselorUnavailability);
+router.get('/counselor/:id', getCounselorSessions);
 
 export default router;
