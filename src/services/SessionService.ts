@@ -1,9 +1,10 @@
-import { Op } from 'sequelize';
+import { Op, QueryTypes } from 'sequelize';
 import Session from '../models/Session';
 import User from '../models/User';
 import Counselor from '../models/Counselor';
 import TimeSlot from '../models/TimeSlot';
 import PaymentMethod from '../models/PaymentMethod';
+import { sequelize } from '../config/db'; // Fixed import for sequelize
 
 export interface BookSessionParams {
   userId: number;
@@ -175,6 +176,34 @@ class SessionService {
     if (!slot) {
       throw new Error('Time slot is not available');
     }
+
+    // If price is 0, check if the user is a student and has free sessions available
+    let finalPrice = price;
+    if (price === 0) {
+      // Check if user is a student
+      const client = await sequelize.query(
+        `SELECT "isStudent", "userId" FROM clients WHERE "userId" = ?`,
+        {
+          replacements: [userId],
+          type: QueryTypes.SELECT
+        }
+      );
+      
+      const isStudent = client.length > 0 && (client[0] as any).isStudent === true;
+      
+      if (isStudent) {
+        // Get remaining free sessions
+        const { remainingSessions } = await this.getRemainingStudentSessions(userId);
+        
+        if (remainingSessions <= 0) {
+          throw new Error('No free sessions remaining this month. Please book a paid session.');
+        }
+        
+        // Free session is available, keep price as 0
+      } else {
+        throw new Error('Free sessions are only available for students.');
+      }
+    }
     
     // Create the session booking
     const session = await Session.create({
@@ -183,7 +212,7 @@ class SessionService {
       date,
       timeSlot,
       duration: duration || 50, // Default to 50 minutes if not provided
-      price,
+      price: finalPrice,
       status: 'scheduled'
     });
     
@@ -347,6 +376,115 @@ class SessionService {
     }
     
     return updatedSlots;
+  }
+
+  /**
+   * Get counselor's sessions
+   */
+  async getCounselorSessions(counselorId: number): Promise<Session[]> {
+    return Session.findAll({
+      where: { counselorId },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'avatar']
+        }
+      ],
+      order: [['date', 'ASC'], ['timeSlot', 'ASC']]
+    });
+  }
+
+  /**
+   * Get remaining sessions for a student
+   * Students get 4 free sessions per month, calculated from their registration date
+   */
+  async getRemainingStudentSessions(userId: number): Promise<{ 
+    remainingSessions: number;
+    nextResetDate: string;
+    totalSessionsThisPeriod: number;
+    isStudent: boolean;
+  }> {
+    // First check if the user is a student
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Check if user is a student by querying the clients table
+    const client = await sequelize.query(
+      `SELECT "isStudent", "userId" FROM clients WHERE "userId" = ?`,
+      {
+        replacements: [userId],
+        type: QueryTypes.SELECT
+      }
+    );
+
+    const isStudent = client.length > 0 && (client[0] as any).isStudent === true;
+    
+    if (!isStudent) {
+      return {
+        remainingSessions: 0,
+        nextResetDate: '',
+        totalSessionsThisPeriod: 0,
+        isStudent: false
+      };
+    }
+
+    // Get user's registration date
+    const registrationDate = user.createdAt;
+    const currentDate = new Date();
+    
+    // Calculate the current period's start and end dates
+    let periodStartDate = new Date(registrationDate);
+    periodStartDate.setFullYear(currentDate.getFullYear());
+    periodStartDate.setMonth(currentDate.getMonth());
+
+    // If we've passed the day of month from registration, move to next month
+    if (currentDate.getDate() > registrationDate.getDate()) {
+      periodStartDate.setMonth(periodStartDate.getMonth() + 1);
+    }
+    
+    // Set the day to match registration date
+    periodStartDate.setDate(registrationDate.getDate());
+    
+    // If periodStartDate is in the future, go back one month
+    if (periodStartDate > currentDate) {
+      periodStartDate.setMonth(periodStartDate.getMonth() - 1);
+    }
+    
+    // Calculate period end date (next reset date)
+    const periodEndDate = new Date(periodStartDate);
+    periodEndDate.setMonth(periodEndDate.getMonth() + 1);
+    
+    // Format dates for SQL query
+    const formattedStartDate = periodStartDate.toISOString().split('T')[0];
+    const formattedEndDate = periodEndDate.toISOString().split('T')[0];
+    
+    // Count sessions in the current period - ONLY count free sessions (price = 0)
+    const sessions = await Session.findAll({
+      where: {
+        userId,
+        date: {
+          [Op.between]: [formattedStartDate, formattedEndDate]
+        },
+        status: {
+          [Op.not]: 'cancelled' // Don't count cancelled sessions
+        },
+        price: 0 // Only count free sessions
+      }
+    });
+    
+    const totalSessionsThisPeriod = sessions.length;
+    const maxSessionsPerMonth = 4;
+    const remainingSessions = Math.max(0, maxSessionsPerMonth - totalSessionsThisPeriod);
+    
+    return {
+      remainingSessions,
+      nextResetDate: formattedEndDate,
+      totalSessionsThisPeriod,
+      isStudent: true
+    };
   }
 }
 
