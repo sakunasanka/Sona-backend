@@ -7,7 +7,7 @@ import { updatePsychiatristStatus } from '../services/AdminPsychiatristServices'
 // Get all psychiatrists
 export const getAllPsychiatrists = asyncHandler(async (req: Request, res: Response) => {
   const psychiatrists = await Psychiatrist.findAll({
-    attributes: ['userId', 'status', 'specialization'],
+    attributes: ['userId', 'status', 'specialization', 'createdAt', 'contact_no', 'description', 'address'],
     include: [
       {
         model: User,

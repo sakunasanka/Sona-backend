@@ -5,17 +5,17 @@ import { DatabaseError } from '../utils/errors'; // Make sure you have this util
 
 class Psychiatrist extends Model {
   public userId!: number;
-  public title!: string;
-  public specialities!: string[];
+  //public title!: string;
+  public specialization!: string[];
   public address!: string;
   public contact_no!: string;
   public licenseNo!: string;
   public idCard!: string;
-  public isVolunteer?: boolean;
+  //public isVolunteer?: boolean;
   public isAvailable?: boolean;
   public description?: string;
-  public rating?: number;
-  public sessionFee?: number;
+  //public rating?: number;
+  //public sessionFee?: number;
   public status!: 'Pending' | 'Approved' | 'Rejected' | 'Unset';
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -32,11 +32,11 @@ Psychiatrist.init(
         key: 'id',
       },
     },
-    title: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    specialities: {
+    // title: {
+    //   type: DataTypes.STRING,
+    //   allowNull: false,
+    // },
+    specialization: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: false,
     },
@@ -56,10 +56,10 @@ Psychiatrist.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    isVolunteer: {
-      type: DataTypes.BOOLEAN,
-      allowNull: true,
-    },
+    // isVolunteer: {
+    //   type: DataTypes.BOOLEAN,
+    //   allowNull: true,
+    // },
     isAvailable: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
@@ -68,14 +68,14 @@ Psychiatrist.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    rating: {
-      type: DataTypes.FLOAT,
-      allowNull: true,
-    },
-    sessionFee: {
-      type: DataTypes.FLOAT,
-      allowNull: true,
-    },
+    // rating: {
+    //   type: DataTypes.FLOAT,
+    //   allowNull: true,
+    // },
+    // sessionFee: {
+    //   type: DataTypes.FLOAT,
+    //   allowNull: true,
+    // },
     status: {
       type: DataTypes.ENUM('Pending', 'Approved', 'Rejected', 'Unset'),
       allowNull: false,
