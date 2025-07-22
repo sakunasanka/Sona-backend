@@ -7,7 +7,7 @@ import { updateCounselorStatus } from '../services/AdminCounselorServices';
 // Get all counselors
 export const getAllCounselors = asyncHandler(async (req: Request, res: Response) => {
   const counselors = await Counselor.findAll({
-    attributes: ['userId', 'status', 'specialities', 'title'],
+    attributes: ['userId', 'status', 'specialities', 'title', 'createdAt'],
     include: [
       {
         model: User,

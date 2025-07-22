@@ -17,6 +17,8 @@ import authRoutes from './routes/AuthRoutes';
 import chatRoutes from './routes/ChatRoutes';
 import paymentRoutes from './routes/PaymentRoutes';
 import admincounsellorRoutes from './routes/AdminCounselorRoutes';
+import adminblogsRoutes from './routes/AdminBlogsRoutes';
+import adminpsychiatristRoutes from './routes/AdminPsychiatristRoutes';
 import { auth } from 'firebase-admin';
 
 dotenv.config();
@@ -58,6 +60,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admincounsellors', admincounsellorRoutes);
+app.use('/api/adminblogs', adminblogsRoutes);
+app.use('/api/adminpsychiatrist', adminpsychiatristRoutes);
 
 app.use(express.static(path.join(__dirname, '../public')));
 

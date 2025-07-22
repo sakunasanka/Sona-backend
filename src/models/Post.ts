@@ -11,6 +11,7 @@ class Post extends Model {
   public likes!: number;
   public comments!: number;
   public backgroundColor!: string;
+  public status!: String;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -60,6 +61,10 @@ Post.init(
       type: DataTypes.STRING,
       defaultValue: '#FFFFFF',
     },
+    status: {
+    type: DataTypes.ENUM('pending', 'approved', 'rejected', 'Unset'),
+    defaultValue: 'pending'
+  },
   },
   {
     sequelize,
