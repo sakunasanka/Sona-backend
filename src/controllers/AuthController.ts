@@ -85,6 +85,28 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
         }
       }, "Counselor created successfully");
     }
+  } else if (userType === "Admin") {
+    console.log("Creating admin with data:", { email, displayName, userType });
+    const adminData: CreateUserData = {
+      email: email,
+      password: password,
+      name: displayName,
+      userType: 'Admin' as const,
+      avatar: additionalData.avatar || "",
+    };
+
+    const result = await UserService.createUser(adminData);
+
+    if (result) {
+      ApiResponseUtil.created(res, {
+        user: result.dbUser,
+        firebaseUser: {
+          uid: result.firebaseUser.uid,
+          email: result.firebaseUser.email,
+          displayName: result.firebaseUser.displayName,
+        }
+      }, "Admin created successfully");
+    }
   } else {
     throw new ValidationError("Invalid userType. Must be 'Client' or 'Counselor'");
   }

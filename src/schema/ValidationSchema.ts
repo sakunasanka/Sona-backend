@@ -24,7 +24,7 @@ export const createUserSchema = yup.object({
 
     userType: yup
         .string()
-        .oneOf(['Client', 'Counselor'], 'User type must be either Client or Counselor')
+        .oneOf(['Client', 'Counselor', 'Admin'], 'User type must be either Client or Counselor')
         .required('User type is required'),
     
     avatar: yup
