@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auto-Redirecting to PayHere (Debug)</title>
+<style>
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    text-align: center;
+    padding-top: 50px;
+    background-color: #f9fafb;
+    color: #374151;
+}
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+/* Hide inputs and button for auto-submission */
+input { display: none !important; }
+</style>
+<!-- Include CryptoJS for MD5 hashing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+</head>
+<body>
+  <div class="spinner"></div>
+  <p>Redirecting to secure payment gateway...</p>
+
+  <form id="payform" method="POST" action="https://sandbox.payhere.lk/pay/authorize">
+    <!-- These inputs will be populated by JavaScript -->
+    <input type="hidden" name="merchant_id" id="merchant_id_field">
+    <input type="hidden" name="return_url" id="return_url_field">
+    <input type="hidden" name="cancel_url" id="cancel_url_field">
+    <input type="hidden" name="notify_url" id="notify_url_field"> <!-- Include if you use notify_url -->
+    <input type="hidden" name="first_name" id="first_name_field">
+    <input type="hidden" name="last_name" id="last_name_field">
+    <input type="hidden" name="email" id="email_field">
+    <input type="hidden" name="phone" id="phone_field">
+    <input type="hidden" name="address" id="address_field">
+    <input type="hidden" name="city" id="city_field">
+    <input type="hidden" name="country" id="country_field">
+    <input type="hidden" name="order_id" id="order_id_field">
+    <input type="hidden" name="items" id="items_field">
+    <input type="hidden" name="currency" id="currency_field">
+    <input type="hidden" name="amount" id="amount_field">
+    <input type="hidden" name="hash" id="hash_field">
+
+    <input type="submit" value="Authorize">
+  </form>
+
+  <script>
+   
+
+    // Function to escape HTML characters (for security, though not strictly needed for hidden inputs here)
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function getUrlParameter(name) {
+        name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+        var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+        var results = regex.exec(location.search);
+        return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+    }
+
+
+
+    function generateAndSubmitForm() {
+        const orderId = getUrlParameter('orderId');
+        const userId = getUrlParameter('userId');
+        const hash = getUrlParameter('hash');
+        const PAYHERE_MERCHANT_ID = "1231159"; 
+        // const userId = "304"; // Example user ID
+        // const orderId = `order_${userId}`;
+        const amount = getUrlParameter('amount');
+        const currency = "LKR";
+        const sessionType = "video"; // Example session type
+
+        // IMPORTANT: These URLs must be publicly accessible and whitelisted in PayHere
+        const returnUrl = `http://localhost:3000/payment-success?order_id=${orderId}`; // Replace with your actual public return URL
+        const cancelUrl = `http://localhost:3000/payment-cancel?order_id=${orderId}`; // Replace with your actual public cancel URL
+        const notifyUrl = `http://localhost:5001/api/payments/notify`; // Replace if you have a public notify URL
+
+        const customerDetails = {
+            first_name: "John",
+            last_name: "Doe",
+            email: "john.doe@example.com",
+            phone: "0771234567",
+            address: "123 Test Street",
+            city: "Colombo",
+            country: "Sri Lanka"
+        };
+
+        const amountFormatted = parseFloat(amount).toFixed(2); // Ensure amount is "XX.YY" string
+        console.log("Formatted Amount:", amountFormatted); // Debugging output
+
+        console.log("Generated Order ID:", orderId);
+        console.log("Generated Amount:", amountFormatted);
+        console.log("Currency:", currency);
+        console.log("Generated Hash:", hash);
+        console.log("Return URL:", returnUrl);
+        console.log("Cancel URL:", cancelUrl);
+        
+
+        // Populate form fields
+        document.getElementById('merchant_id_field').value = PAYHERE_MERCHANT_ID;
+        document.getElementById('return_url_field').value = returnUrl;
+        document.getElementById('cancel_url_field').value = cancelUrl;
+        document.getElementById('notify_url_field').value = notifyUrl; // Uncomment if using notify_url
+        document.getElementById('first_name_field').value = customerDetails.first_name;
+        document.getElementById('last_name_field').value = customerDetails.last_name;
+        document.getElementById('email_field').value = customerDetails.email;
+        document.getElementById('phone_field').value = customerDetails.phone;
+        document.getElementById('address_field').value = customerDetails.address;
+        document.getElementById('city_field').value = customerDetails.city;
+        document.getElementById('country_field').value = customerDetails.country;
+        document.getElementById('order_id_field').value = orderId;
+        document.getElementById('items_field').value = `Counseling Session`;
+        document.getElementById('currency_field').value = currency;
+        document.getElementById('amount_field').value = amountFormatted;
+        document.getElementById('hash_field').value = hash;
+
+        // Submit the form
+        var form = document.getElementById('payform');
+        if (form) {
+            form.submit();
+        } else {
+            console.error('Payment form not found.');
+        }
+    }
+
+    // Run the function when the page loads
+    document.addEventListener('DOMContentLoaded', generateAndSubmitForm);
+  </script>
+</body>
+</html>

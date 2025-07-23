@@ -1,0 +1,189 @@
+import { Request, Response } from 'express';
+import postService from '../services/PostService';
+
+// Get all posts with pagination and sorting
+export const getPosts = async (req: Request, res: Response) => {
+  try {
+    const { sort = 'recent', page = 1, limit = 10 } = req.query;
+    
+    const result = await postService.getPosts({
+      sort: sort as 'recent' | 'popular',
+      page: Number(page),
+      limit: Number(limit)
+    });
+
+    res.json({
+      success: true,
+      data: {
+        posts: result.posts,
+        totalPosts: result.totalPosts,
+        currentPage: result.currentPage,
+        totalPages: result.totalPages,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching posts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching posts',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+// Get posts with user's like status (requires authentication)
+export const getPostsWithLikes = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.dbUser.id; // Assuming you have auth middleware that sets req.user
+    const { sort = 'recent', page = 1, limit = 10 } = req.query;
+    
+    const result = await postService.getPostsWithLikes(userId, {
+      sort: sort as 'recent' | 'popular',
+      page: Number(page),
+      limit: Number(limit)
+    });
+
+    res.json({
+      success: true,
+      data: {
+        posts: result.posts,
+        totalPosts: result.totalPosts,
+        currentPage: result.currentPage,
+        totalPages: result.totalPages,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching posts with likes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching posts',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+// Create a new post
+export const createPost = async (req: Request, res: Response) => {
+  try {
+    const { content, hashtags, backgroundColor } = req.body;
+    const userId = req.user?.dbUser.id || 1;
+
+    const post = await postService.createPost({
+      userId,
+      content,
+      hashtags,
+      backgroundColor
+    });
+
+    res.status(201).json({
+      success: true,
+      data: post
+    });
+  } catch (error) {
+    console.error('Error creating post:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating post',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+// Update a post
+export const updatePost = async (req: Request, res: Response) => {
+  try {
+    const { postId } = req.params;
+    const { content, hashtags, backgroundColor } = req.body;
+
+    const updatedPost = await postService.updatePost(postId, {
+      content,
+      hashtags,
+      backgroundColor
+    });
+
+    res.json({
+      success: true,
+      data: updatedPost
+    });
+  } catch (error) {
+    console.error('Error updating post:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating post',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+// Delete a post
+export const deletePost = async (req: Request, res: Response) => {
+  try {
+    const { postId } = req.params;
+
+    await postService.deletePost(postId);
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Post deleted successfully',
+      },
+    });
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting post',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+// Like/Unlike a post
+export const toggleLikePost = async (req: Request, res: Response) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user?.dbUser.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+      });
+    }
+
+    const result = await postService.toggleLikePost(postId, userId);
+    
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error toggling like:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error toggling like',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+// Increment post views
+export const incrementViews = async (req: Request, res: Response) => {
+  try {
+    const { postId } = req.params;
+
+    const result = await postService.incrementViews(postId);
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error incrementing views:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating views',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
