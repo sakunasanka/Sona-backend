@@ -2,6 +2,7 @@ import { Op, QueryTypes } from 'sequelize';
 import Session from '../models/Session';
 import User from '../models/User';
 import Counselor from '../models/Counselor';
+import Client from '../models/Client';
 import TimeSlot from '../models/TimeSlot';
 import PaymentMethod from '../models/PaymentMethod';
 import { sequelize } from '../config/db'; // Fixed import for sequelize
@@ -381,8 +382,8 @@ class SessionService {
   /**
    * Get counselor's sessions
    */
-  async getCounselorSessions(counselorId: number): Promise<Session[]> {
-    return Session.findAll({
+  async getCounselorSessions(counselorId: number): Promise<(Session & { isStudent?: boolean })[]> {
+    const sessions = await Session.findAll({
       where: { counselorId },
       include: [
         {
@@ -393,6 +394,30 @@ class SessionService {
       ],
       order: [['date', 'ASC'], ['timeSlot', 'ASC']]
     });
+
+    // Get userIds from sessions
+    const userIds = sessions.map(s => s.userId);
+
+    // Query isStudent status for all users in clients table
+    const clientRows = await sequelize.query(
+      `SELECT "userId", "isStudent" FROM clients WHERE "userId" IN (:userIds)`,
+      {
+        replacements: { userIds },
+        type: QueryTypes.SELECT
+      }
+    );
+
+    // Map userId to isStudent
+    const isStudentMap = new Map<number, boolean>();
+    for (const row of clientRows as any[]) {
+      isStudentMap.set(row.userId, row.isStudent === true);
+    }
+
+    // Attach isStudent to each session
+    return sessions.map(session => ({
+      ...session.toJSON(),
+      isStudent: isStudentMap.get(session.userId) || false
+    })) as (Session & { isStudent?: boolean })[];
   }
 
   /**
