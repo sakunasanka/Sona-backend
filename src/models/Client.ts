@@ -149,3 +149,146 @@ class Client extends User {
 }
 
 export default Client;
+
+
+// import { DataTypes, Model, Association } from 'sequelize';
+// import { sequelize } from '../config/db';
+// import User from './User';
+
+// export type ClientStatus = 'active' | 'inactive' | 'suspended';
+// export type StudentPackageStatus = 'pending' | 'approved' | 'rejected';
+// export type ClientType = 'regular' | 'student';
+
+// interface StudentPackageAttributes {
+//   applied: boolean;
+//   status: StudentPackageStatus;
+//   appliedDate?: Date;
+//   school?: string;
+//   studentId?: string;
+//   graduationYear?: string;
+//   verificationDocument?: string;
+//   rejectionReason?: string;
+// }
+
+// class Client extends Model {
+//   public id!: string;
+//   public userId!: number;
+//   public name!: string;
+//   public email!: string;
+//   public phone!: string;
+//   public registeredDate!: Date;
+//   public status!: ClientStatus;
+//   public age!: number;
+//   public location!: string;
+//   public bio!: string;
+//   public avatar?: string;
+//   public studentPackage?: StudentPackageAttributes;
+//   public clientType!: ClientType;
+//   public sessionsCompleted!: number;
+//   public totalSpent!: number;
+//   public subscriptionType?: string;
+//   public readonly createdAt!: Date;
+//   public readonly updatedAt!: Date;
+
+//   // Association
+//   public readonly user?: User;
+//   public static associations: {
+//     user: Association<Client, User>;
+//   };
+// }
+
+// Client.init(
+//   {
+//     id: {
+//       type: DataTypes.UUID,
+//       defaultValue: DataTypes.UUIDV4,
+//       primaryKey: true,
+//     },
+//     userId: {
+//       type: DataTypes.INTEGER,
+//       allowNull: false,
+//       references: {
+//         model: User,
+//         key: 'id',
+//       },
+//     },
+//     name: {
+//       type: DataTypes.STRING,
+//       allowNull: false,
+//     },
+//     email: {
+//       type: DataTypes.STRING,
+//       allowNull: false,
+//       unique: true,
+//       validate: {
+//         isEmail: true,
+//       },
+//     },
+//     phone: {
+//       type: DataTypes.STRING,
+//       allowNull: false,
+//     },
+//     registeredDate: {
+//       type: DataTypes.DATE,
+//       allowNull: false,
+//       defaultValue: DataTypes.NOW,
+//     },
+//     status: {
+//       type: DataTypes.ENUM('active', 'inactive', 'suspended'),
+//       allowNull: false,
+//       defaultValue: 'active',
+//     },
+//     age: {
+//       type: DataTypes.INTEGER,
+//       allowNull: false,
+//     },
+//     location: {
+//       type: DataTypes.STRING,
+//       allowNull: false,
+//     },
+//     bio: {
+//       type: DataTypes.TEXT,
+//       allowNull: false,
+//     },
+//     avatar: {
+//       type: DataTypes.STRING,
+//     },
+//     studentPackage: {
+//       type: DataTypes.JSONB,
+//       defaultValue: {
+//         applied: false,
+//         status: 'pending',
+//       },
+//     },
+//     clientType: {
+//       type: DataTypes.ENUM('regular', 'student'),
+//       allowNull: false,
+//       defaultValue: 'regular',
+//     },
+//     sessionsCompleted: {
+//       type: DataTypes.INTEGER,
+//       allowNull: false,
+//       defaultValue: 0,
+//     },
+//     totalSpent: {
+//       type: DataTypes.DECIMAL(10, 2),
+//       allowNull: false,
+//       defaultValue: 0,
+//     },
+//     subscriptionType: {
+//       type: DataTypes.STRING,
+//     },
+//   },
+//   {
+//     sequelize,
+//     modelName: 'client',
+//     tableName: 'clients',
+//     timestamps: true,
+//   }
+// );
+
+// // Define associations
+// Client.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+// User.hasMany(Client, { foreignKey: 'userId', as: 'clients' });
+
+// export default Client;

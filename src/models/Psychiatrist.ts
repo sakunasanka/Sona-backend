@@ -16,7 +16,7 @@ class Psychiatrist extends Model {
   public description?: string;
   //public rating?: number;
   //public sessionFee?: number;
-  public status!: 'Pending' | 'Approved' | 'Rejected' | 'Unset';
+  public status!: 'pending' | 'approved' | 'rejected' | 'unset';
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -77,7 +77,7 @@ Psychiatrist.init(
     //   allowNull: true,
     // },
     status: {
-      type: DataTypes.ENUM('Pending', 'Approved', 'Rejected', 'Unset'),
+      type: DataTypes.ENUM('pending', 'approved', 'rejected', 'unset'),
       allowNull: false,
       defaultValue: 'Pending',
     },
