@@ -1,40 +1,104 @@
 import { Request, Response } from 'express';
-import Counselor from '../models/Counselor';
-import User from '../models/User';
-import { asyncHandler } from '../utils/asyncHandler';
-import { updateCounselorStatus } from '../services/AdminCounselorServices';
+import { 
+  getAllCounselors,
+  getCounselorById,
+  updateCounselorStatus,
+  getCounselorCounts
+} from '../services/AdminCounselorServices';
+import { validationResult } from 'express-validator';
 
-// Get all counselors
-export const getAllCounselors = asyncHandler(async (req: Request, res: Response) => {
-  const counselors = await Counselor.findAll({
-    attributes: ['userId', 'status', 'specialities', 'title', 'createdAt', 'contact_no', 'description', 'address'],
-    include: [
-      {
-        model: User,
-        as: 'user', 
-        attributes: ['name', 'email'],
-      },
-    ],
-  });
+class AdminCounselorController {
+  // Get all counselors
+  async getAllCounselors(req: Request, res: Response) {
+    try {
+      const { status, search } = req.query;
+      
+      const counselors = await getAllCounselors(
+        status as 'pending' | 'approved' | 'rejected' | 'unset' | undefined,
+        search as string | undefined
+      );
 
-  res.status(200).json({ data: counselors });
-});
-
-
-// Update status handler
-export const updateCounselorStatusHandler = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { status/*, comment*/ } = req.body;
-
-  if (!['pending', 'approved', 'rejected'].includes(status)) {
-    return res.status(400).json({ message: 'Invalid status value' });
+      res.status(200).json(counselors);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'An unknown error occurred' });
+      }
+    }
   }
 
-  const updatedCounselor = await updateCounselorStatus(Number(id), status/*, comment*/);
+  // Get counselor by ID
+  async getCounselorById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const counselor = await getCounselorById(parseInt(id));
 
-  if (!updatedCounselor) {
-    return res.status(404).json({ message: 'Counselor not found' });
+      if (!counselor) {
+        return res.status(404).json({ message: 'Counselor not found' });
+      }
+
+      res.status(200).json(counselor);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'An unknown error occurred' });
+      }
+    }
   }
 
-  res.status(200).json({ message: 'Status updated successfully', data: updatedCounselor });
-});
+  // Update counselor status
+  async updateCounselorStatus(req: Request, res: Response) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { id } = req.params;
+      const { status, rejectionReason } = req.body;
+
+      // Validate that rejection reason is provided when status is 'rejected'
+      if (status === 'rejected' && !rejectionReason) {
+        return res.status(400).json({ 
+          message: 'Rejection reason is required when status is rejected' 
+        });
+      }
+
+      const updatedCounselor = await updateCounselorStatus(
+        parseInt(id),
+        status,
+        rejectionReason
+      );
+
+      if (!updatedCounselor) {
+        return res.status(404).json({ message: 'Counselor not found' });
+      }
+
+      res.status(200).json(updatedCounselor);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'An unknown error occurred' });
+      }
+    }
+  }
+
+  // Get counselor counts
+  async getCounselorCounts(req: Request, res: Response) {
+    try {
+      const counts = await getCounselorCounts();
+      res.status(200).json(counts);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'An unknown error occurred' });
+      }
+    }
+  }
+}
+
+export default new AdminCounselorController();
