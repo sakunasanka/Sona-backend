@@ -20,6 +20,7 @@ import admincounsellorRoutes from './routes/AdminCounselorRoutes';
 import adminblogsRoutes from './routes/AdminBlogsRoutes';
 import adminpsychiatristRoutes from './routes/AdminPsychiatristRoutes';
 //import adminclientRoutes from './routes/AdminClientRoutes';
+import adminmtmemberRoutes from './routes/AdminMTMemberRoutes';
 import { auth } from 'firebase-admin';
 
 dotenv.config();
@@ -64,6 +65,8 @@ app.use('/api/admincounsellors', admincounsellorRoutes);
 app.use('/api/adminblogs', adminblogsRoutes);
 app.use('/api/adminpsychiatrists', adminpsychiatristRoutes);
 //app.use('/api/adminclients', adminclientRoutes);
+//app.use('/api/adminmtmembers', adminmtmemberRoutes);
+
 
 app.use(express.static(path.join(__dirname, '../public')));
 
