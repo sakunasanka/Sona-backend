@@ -1,16 +1,15 @@
 import MtMember from '../models/MTMember';
+import User from '../models/User';
 import { Op } from 'sequelize';
 import nodemailer from 'nodemailer';
 
-interface TeamMemberData {
-  name: string;
+interface MTMemberData {
+  userId: number;
   position: string;
-  email: string;
   phone?: string;
   location?: string;
   joinDate: string;
   department: string;
-  avatar?: string;
   experience?: string;
   skills?: string[];
   bio?: string;
@@ -23,13 +22,13 @@ interface TeamMemberData {
   }>;
   achievements?: string[];
   salary?: string;
-  reportingTo?: string;
+  //reportingTo?: string;
 }
 
-interface RejectionData {
-  memberId: string;
-  reason: string;
-}
+// interface RejectionData {
+//   memberId: string;
+//   reason: string;
+// }
 
 interface SearchFilterOptions {
   searchTerm?: string;
@@ -38,9 +37,9 @@ interface SearchFilterOptions {
   sortOrder?: 'asc' | 'desc';
 }
 
-class MtMemberService {
+class AdminMTMemberServices{
   // Create a new team member
-  async createMember(memberData: TeamMemberData) {
+  async createMember(memberData: MTMemberData) {
     try {
       const member = await MtMember.create({
         ...memberData,
@@ -49,7 +48,6 @@ class MtMemberService {
         certifications: memberData.certifications || [],
         previousRoles: memberData.previousRoles || [],
         achievements: memberData.achievements || [],
-        status: 'active',
       });
       return member;
     } catch (error) {
@@ -67,12 +65,16 @@ class MtMemberService {
     } = options;
 
     const where: any = {};
+    const userWhere: any = {};
     
     if (searchTerm) {
-      where[Op.or] = [
+      userWhere[Op.or] = [
         { name: { [Op.iLike]: `%${searchTerm}%` } },
-        { position: { [Op.iLike]: `%${searchTerm}%` } },
         { email: { [Op.iLike]: `%${searchTerm}%` } },
+      ];
+      
+      where[Op.or] = [
+        { position: { [Op.iLike]: `%${searchTerm}%` } },
         { department: { [Op.iLike]: `%${searchTerm}%` } },
       ];
     }
@@ -84,96 +86,122 @@ class MtMemberService {
     const order: any = [];
     if (sortBy === 'joinDate') {
       order.push(['joinDate', sortOrder]);
+    } else if (sortBy === 'name') {
+      order.push([{ model: User, as: 'user' }, 'name', sortOrder]);
     } else {
       order.push([sortBy, sortOrder]);
     }
 
     return await MtMember.findAll({
       where,
+      include: [{
+        model: User,
+        as: 'user',
+        where: userWhere,
+        attributes: ['id', 'name', 'email', 'avatar'],
+      }],
       order,
     });
   }
 
   // Get a single member by ID
   async getMemberById(id: string) {
-    return await MtMember.findByPk(id);
-  }
-
-  // Update a team member
-  async updateMember(id: string, updateData: Partial<TeamMemberData>) {
-    const member = await MtMember.findByPk(id);
-    if (!member) {
-      throw new Error('Team member not found');
-    }
-
-    return await member.update(updateData);
-  }
-
-  // Reject a team member
-  async rejectMember({ memberId, reason }: RejectionData) {
-    const member = await MtMember.findByPk(memberId);
-    if (!member) {
-      throw new Error('Team member not found');
-    }
-
-    // Send rejection email (simplified example)
-    const emailSent = await this.sendRejectionEmail(member.email, member.name, member.position, reason);
-
-    return await member.update({
-      status: 'rejected',
-      rejectionReason: reason,
-      rejectionEmailSent: emailSent,
+    return await MtMember.findByPk(id, {
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['id', 'name', 'email', 'avatar'],
+      }]
     });
   }
 
-  // Delete a team member
-  async deleteMember(id: string) {
-    const member = await MtMember.findByPk(id);
-    if (!member) {
-      throw new Error('Team member not found');
-    }
+  // // Update a team member
+  // async updateMember(id: string, updateData: Partial<MTMemberData>) {
+  //   const member = await MtMember.findByPk(id);
+  //   if (!member) {
+  //     throw new Error('Team member not found');
+  //   }
 
-    await member.destroy();
-    return { message: 'Team member deleted successfully' };
-  }
+  //   return await member.update(updateData);
+  // }
 
-  // Get unique departments
-  async getDepartments() {
-    const members = await MtMember.findAll({
-      attributes: ['department'],
-      group: ['department'],
-    });
+//   // Reject a team member
+//   async rejectMember({ memberId, reason }: RejectionData) {
+//     const member = await MtMember.findByPk(memberId, {
+//       include: [{
+//         model: User,
+//         as: 'user',
+//         attributes: ['email', 'name'],
+//       }]
+//     });
     
-    return members.map(m => m.department);
-  }
+//     if (!member || !member.user) {
+//       throw new Error('Team member not found');
+//     }
 
-  // Helper method to send rejection email
-  private async sendRejectionEmail(email: string, name: string, position: string, reason: string) {
-    try {
-      // In a real app, configure nodemailer with your SMTP settings
-      const transporter = nodemailer.createTransport({
-        // Your email configuration here
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
+//     // Send rejection email (simplified example)
+//     const emailSent = await this.sendRejectionEmail(
+//       member.user.email, 
+//       member.user.name, 
+//       member.position, 
+//       reason
+//     );
 
-      const mailOptions = {
-        from: process.env.EMAIL_FROM,
-        to: email,
-        subject: 'Management Team Application Update',
-        text: `Dear ${name},\n\nThank you for your interest in joining our management team as ${position}.\n\nAfter careful consideration, we have decided not to move forward with your application at this time.\n\nReason for rejection:\n${reason}\n\nWe appreciate the time and effort you put into your application. We encourage you to apply for future opportunities that match your qualifications.\n\nBest regards,\nHR Management Team`,
-      };
+//     return await member.update({
+//       status: 'rejected',
+//       rejectionReason: reason,
+//       rejectionEmailSent: emailSent,
+//     });
+//   }
 
-      await transporter.sendMail(mailOptions);
-      return true;
-    } catch (error) {
-      console.error('Failed to send rejection email:', error);
-      return false;
-    }
-  }
-}
+//   // Delete a team member
+//   async deleteMember(id: string) {
+//     const member = await MtMember.findByPk(id);
+//     if (!member) {
+//       throw new Error('Team member not found');
+//     }
 
-export default new MtMemberService();
+//     await member.destroy();
+//     return { message: 'Team member deleted successfully' };
+//   }
+
+//   // Get unique departments
+//   async getDepartments() {
+//     const members = await MtMember.findAll({
+//       attributes: ['department'],
+//       group: ['department'],
+//     });
+    
+//     return members.map(m => m.department);
+//   }
+
+//   // Helper method to send rejection email
+//   private async sendRejectionEmail(email: string, name: string, position: string, reason: string) {
+//     try {
+//       // In a real app, configure nodemailer with your SMTP settings
+//       const transporter = nodemailer.createTransport({
+//         // Your email configuration here
+//         service: 'gmail',
+//         auth: {
+//           user: process.env.EMAIL_USER,
+//           pass: process.env.EMAIL_PASS,
+//         },
+//       });
+
+//       const mailOptions = {
+//         from: process.env.EMAIL_FROM,
+//         to: email,
+//         subject: 'Management Team Application Update',
+//         text: `Dear ${name},\n\nThank you for your interest in joining our management team as ${position}.\n\nAfter careful consideration, we have decided not to move forward with your application at this time.\n\nReason for rejection:\n${reason}\n\nWe appreciate the time and effort you put into your application. We encourage you to apply for future opportunities that match your qualifications.\n\nBest regards,\nHR Management Team`,
+//       };
+
+//       await transporter.sendMail(mailOptions);
+//       return true;
+//     } catch (error) {
+//       console.error('Failed to send rejection email:', error);
+//       return false;
+//     }
+//   }
+ }
+
+export default new AdminMTMemberServices();

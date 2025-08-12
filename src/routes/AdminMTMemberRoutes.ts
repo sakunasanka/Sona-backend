@@ -23,15 +23,15 @@ router.get('/', mtMemberController.getAllMembers);
 router.get('/:id', mtMemberController.getMemberById);
 
 // Update a team member
-router.put('/:id', mtMemberController.updateMember);
+//router.put('/:id', mtMemberController.updateMember);
 
 // Reject a team member
-router.post('/:id/reject', mtMemberController.rejectMember);
+//router.post('/:id/reject', mtMemberController.rejectMember);
 
 // Delete a team member
-router.delete('/:id', mtMemberController.deleteMember);
+//router.delete('/:id', mtMemberController.deleteMember);
 
 // Get unique departments
-router.get('/departments/list', mtMemberController.getDepartments);
+//router.get('/departments/list', mtMemberController.getDepartments);
 
 export default router;
