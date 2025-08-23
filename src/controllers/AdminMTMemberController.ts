@@ -1,100 +1,118 @@
-import { Request, Response } from 'express';
-import mtMemberService from '../services/AdminMTMemberServices';
-import { validationResult } from 'express-validator';
+import { Request, Response, NextFunction } from 'express';
+import { ApiResponseUtil } from '../utils/apiResponse';
+import { ValidationError } from '../utils/errors';
+import MTMemberService from '../services/AdminMTMemberServices';
+import { CreateMTMemberData } from '../types/UserTypes';
 
+export const createMTMember = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    console.log("Create MT Member request received:", req.body);
+    const { email, password, displayName, additionalData } = req.body;
 
-class AdminMTMemberController {
-  async createMember(req: Request, res: Response) {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
-
-      const memberData = req.body;
-      const newMember = await mtMemberService.createMember(memberData);
-      res.status(201).json(newMember);
-    } catch (error) {
-      res.status(500).json({ message: error instanceof Error ? error.message : 'Failed to create team member' });
+    if (!email || !password || !displayName) {
+      throw new ValidationError("Email, password, and displayName are required");
     }
-  }
 
-  async getAllMembers(req: Request, res: Response) {
-    try {
-      const { searchTerm, department, sortBy, sortOrder } = req.query;
-      const members = await mtMemberService.getAllMembers({
-        searchTerm: searchTerm as string,
-        department: department as string,
-        sortBy: sortBy as 'name' | 'position' | 'department' | 'joinDate',
-        sortOrder: sortOrder as 'asc' | 'desc',
-      });
-      res.json(members);
-    } catch (error) {
-      res.status(500).json({ message: error instanceof Error ? error.message : 'Failed to fetch team members' });
+    const mtMemberData: CreateMTMemberData = {
+      email: email,
+      password: password,
+      name: displayName,
+      role: 'MT-member' as const,
+      // MT Member specific data
+      position: additionalData.position,
+      phone: additionalData.phone,
+      location: additionalData.location,
+      joinDate: additionalData.joinDate,
+      department: additionalData.department,
+      experience: additionalData.experience,
+      skills: additionalData.skills || [],
+      bio: additionalData.bio,
+      education: additionalData.education || [],
+      certifications: additionalData.certifications || [],
+      previousRoles: additionalData.previousRoles || [],
+      achievements: additionalData.achievements || [],
+      salary: additionalData.salary,
+      // reportingTo: additionalData.reportingTo,
+      avatar: additionalData.avatar || ""
+    };
+
+    console.log("About to call MTMemberService.createMTMember with:", mtMemberData);
+    const result = await MTMemberService.createMTMember(mtMemberData);
+
+    if (result) {
+      ApiResponseUtil.created(res, {
+        user: result.dbUser,
+        mtMember: result.mtMember,
+        firebaseUser: {
+          uid: result.firebaseUser.uid,
+          email: result.firebaseUser.email,
+          displayName: result.firebaseUser.displayName,
+        }
+      }, "Management Team Member created successfully");
     }
+  } catch (error) {
+    next(error);
   }
+};
 
-  async getMemberById(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      const member = await mtMemberService.getMemberById(id);
-      if (!member) {
-        return res.status(404).json({ message: 'Team member not found' });
-      }
-      res.json(member);
-    } catch (error) {
-      res.status(500).json({ message: error instanceof Error ? error.message : 'Failed to fetch team member' });
+export const getMTMembers = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { department, search } = req.query;
+    const filters = {
+      department: department as string,
+      search: search as string
+    };
+    
+    const members = await MTMemberService.getMTMembers(filters);
+    ApiResponseUtil.success(res, members, "Management Team Members retrieved successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMTMemberById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const member = await MTMemberService.getMTMemberById(parseInt(id));
+    
+    if (!member) {
+      return ApiResponseUtil.notFound(res, "Management Team Member not found");
     }
+    
+    ApiResponseUtil.success(res, member, "Management Team Member retrieved successfully");
+  } catch (error) {
+    next(error);
   }
+};
 
-  async updateMember(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      const updateData = req.body;
-      const updatedMember = await mtMemberService.updateMember(id, updateData);
-      res.json(updatedMember);
-    } catch (error) {
-      res.status(500).json({ message: error instanceof Error ? error.message : 'Failed to update team member' });
+export const updateMTMember = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    const updatedMember = await MTMemberService.updateMTMember(parseInt(id), updateData);
+    
+    if (!updatedMember) {
+      return ApiResponseUtil.notFound(res, "Management Team Member not found");
     }
+    
+    ApiResponseUtil.success(res, updatedMember, "Management Team Member updated successfully");
+  } catch (error) {
+    next(error);
   }
+};
 
-  async rejectMember(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      const { reason } = req.body;
-      
-      if (!reason) {
-        return res.status(400).json({ message: 'Rejection reason is required' });
-      }
-
-      const rejectedMember = await mtMemberService.rejectMember({
-        memberId: id,
-        reason,
-      });
-      res.json(rejectedMember);
-    } catch (error) {
-      res.status(500).json({ message: error instanceof Error ? error.message : 'Failed to reject team member' });
+export const deleteMTMember = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const result = await MTMemberService.deleteMTMember(parseInt(id));
+    
+    if (!result) {
+      return ApiResponseUtil.notFound(res, "Management Team Member not found");
     }
+    
+    ApiResponseUtil.success(res, null, "Management Team Member deleted successfully");
+  } catch (error) {
+    next(error);
   }
-
-  async deleteMember(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      await mtMemberService.deleteMember(id);
-      res.json({ message: 'Team member deleted successfully' });
-    } catch (error) {
-      res.status(500).json({ message: error instanceof Error ? error.message : 'Failed to delete team member' });
-    }
-  }
-
-  async getDepartments(req: Request, res: Response) {
-    try {
-      const departments = await mtMemberService.getDepartments();
-      res.json(['all', ...departments]);
-    } catch (error) {
-      res.status(500).json({ message: error instanceof Error ? error.message : 'Failed to fetch departments' });
-    }
-  }
-}
-
-export default new AdminMTMemberController();
+};

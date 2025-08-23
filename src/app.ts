@@ -65,7 +65,7 @@ app.use('/api/admincounsellors', admincounsellorRoutes);
 app.use('/api/adminblogs', adminblogsRoutes);
 app.use('/api/adminpsychiatrists', adminpsychiatristRoutes);
 //app.use('/api/adminclients', adminclientRoutes);
-//app.use('/api/adminmtmembers', adminmtmemberRoutes);
+app.use('/api/adminmtmembers', adminmtmemberRoutes);
 
 
 app.use(express.static(path.join(__dirname, '../public')));

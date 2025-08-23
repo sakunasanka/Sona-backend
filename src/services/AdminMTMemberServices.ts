@@ -1,207 +1,187 @@
-import MtMember from '../models/MTMember';
+import { adminAuth } from '../config/firebase';
 import User from '../models/User';
-import { Op } from 'sequelize';
-import nodemailer from 'nodemailer';
+import MTMember from '../models/MTMember';
+import { CreateMTMemberData, UpdateMTMemberData } from '../types/UserTypes';
+import { Op } from 'sequelize'; 
 
-interface MTMemberData {
-  userId: number;
-  position: string;
-  phone?: string;
-  location?: string;
-  joinDate: string;
-  department: string;
-  experience?: string;
-  skills?: string[];
-  bio?: string;
-  education?: string[];
-  certifications?: string[];
-  previousRoles?: Array<{
-    company: string;
-    position: string;
-    duration: string;
-  }>;
-  achievements?: string[];
-  salary?: string;
-  //reportingTo?: string;
-}
-
-// interface RejectionData {
-//   memberId: string;
-//   reason: string;
-// }
-
-interface SearchFilterOptions {
-  searchTerm?: string;
-  department?: string;
-  sortBy?: 'name' | 'position' | 'department' | 'joinDate';
-  sortOrder?: 'asc' | 'desc';
-}
-
-class AdminMTMemberServices{
-  // Create a new team member
-  async createMember(memberData: MTMemberData) {
+class AdminMTMemberServices {
+  static async createMTMember(mtMemberData: CreateMTMemberData) {
     try {
-      const member = await MtMember.create({
-        ...memberData,
-        skills: memberData.skills || [],
-        education: memberData.education || [],
-        certifications: memberData.certifications || [],
-        previousRoles: memberData.previousRoles || [],
-        achievements: memberData.achievements || [],
+      // 1. Create Firebase user
+      const firebaseUser = await adminAuth.createUser({
+        email: mtMemberData.email,
+        password: mtMemberData.password,
+        displayName: mtMemberData.name,
+        //emailVerified: false,
+        //disabled: false,
       });
+
+      // 2. Create base User record in PostgreSQL
+      const dbUser = await User.create({
+        firebaseId: firebaseUser.uid,
+        email: mtMemberData.email,
+        name: mtMemberData.name,
+        role: 'MT-member',
+        avatar: mtMemberData.avatar
+      });
+
+      // 3. Create the extended mt_members record
+      const mtMember = await MTMember.create({
+        userId: dbUser.id,
+        position: mtMemberData.position,
+        phone: mtMemberData.phone,
+        location: mtMemberData.location,
+        joinDate: mtMemberData.joinDate,
+        department: mtMemberData.department,
+        experience: mtMemberData.experience,
+        skills: mtMemberData.skills,
+        bio: mtMemberData.bio,
+        education: mtMemberData.education,
+        certifications: mtMemberData.certifications,
+        previousRoles: mtMemberData.previousRoles,
+        achievements: mtMemberData.achievements,
+        salary: mtMemberData.salary,
+        // reportingTo: mtMemberData.reportingTo
+      });
+
+      // Include user data in the response
+      const mtMemberWithUser = await MTMember.findByPk(mtMember.userId, {
+        include: [{ model: User, as: 'user' }]
+      });
+
+      return {
+        firebaseUser,
+        dbUser,
+        mtMember: mtMemberWithUser
+      };
+    } catch (error) {
+      console.error("Error creating MT Member:", error);
+      throw error;
+    }
+  }
+
+  static async getMTMembers(filters: { department?: string; search?: string } = {}) {
+    try {
+      const whereClause: any = {};
+      const userWhereClause: any = {};
+      
+      if (filters.department && filters.department !== 'all') {
+        whereClause.department = filters.department;
+      }
+      
+      if (filters.search) {
+        userWhereClause.name = { [Op.iLike]: `%${filters.search}%` };
+        whereClause[Op.or] = [
+          { position: { [Op.iLike]: `%${filters.search}%` } },
+          { department: { [Op.iLike]: `%${filters.search}%` } }
+        ];
+      }
+      
+      const members = await MTMember.findAll({
+        where: whereClause,
+        include: [{
+          model: User,
+          as: 'user',
+          where: userWhereClause,
+          attributes: ['id', 'name', 'email', 'avatar', 'firebaseId']
+        }]
+      });
+      
+      return members;
+    } catch (error) {
+      console.error("Error fetching MT Members:", error);
+      throw error;
+    }
+  }
+
+  static async getMTMemberById(userId: number) {
+    try {
+      const member = await MTMember.findByPk(userId, {
+        include: [{
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email', 'avatar', 'firebaseId']
+        }]
+      });
+      
       return member;
     } catch (error) {
-      throw new Error(`Error creating team member: ${error instanceof Error ? error.message : String(error)}`);
+      console.error("Error fetching MT Member:", error);
+      throw error;
     }
   }
 
-  // Get all team members with optional filtering and sorting
-  async getAllMembers(options: SearchFilterOptions = {}) {
-    const {
-      searchTerm = '',
-      department = 'all',
-      sortBy = 'name',
-      sortOrder = 'asc',
-    } = options;
-
-    const where: any = {};
-    const userWhere: any = {};
-    
-    if (searchTerm) {
-      userWhere[Op.or] = [
-        { name: { [Op.iLike]: `%${searchTerm}%` } },
-        { email: { [Op.iLike]: `%${searchTerm}%` } },
-      ];
+  static async updateMTMember(userId: number, updateData: UpdateMTMemberData) {
+    try {
+      const member = await MTMember.findByPk(userId);
       
-      where[Op.or] = [
-        { position: { [Op.iLike]: `%${searchTerm}%` } },
-        { department: { [Op.iLike]: `%${searchTerm}%` } },
-      ];
+      if (!member) {
+        return null;
+      }
+      
+      // Update the mt_members record
+      await member.update(updateData);
+      
+      // If there are user updates (like name or avatar), update the User record too
+      if (updateData.name || updateData.avatar) {
+        const user = await User.findByPk(userId);
+        if (user) {
+          await user.update({
+            name: updateData.name || user.name,
+            avatar: updateData.avatar || user.avatar
+          });
+        }
+      }
+      
+      // Return the updated member with user data
+      const updatedMember = await MTMember.findByPk(userId, {
+        include: [{
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email', 'avatar', 'firebaseId']
+        }]
+      });
+      
+      return updatedMember;
+    } catch (error) {
+      console.error("Error updating MT Member:", error);
+      throw error;
     }
-
-    if (department && department !== 'all') {
-      where.department = department;
-    }
-
-    const order: any = [];
-    if (sortBy === 'joinDate') {
-      order.push(['joinDate', sortOrder]);
-    } else if (sortBy === 'name') {
-      order.push([{ model: User, as: 'user' }, 'name', sortOrder]);
-    } else {
-      order.push([sortBy, sortOrder]);
-    }
-
-    return await MtMember.findAll({
-      where,
-      include: [{
-        model: User,
-        as: 'user',
-        where: userWhere,
-        attributes: ['id', 'name', 'email', 'avatar'],
-      }],
-      order,
-    });
   }
 
-  // Get a single member by ID
-  async getMemberById(id: string) {
-    return await MtMember.findByPk(id, {
-      include: [{
-        model: User,
-        as: 'user',
-        attributes: ['id', 'name', 'email', 'avatar'],
-      }]
-    });
+  static async deleteMTMember(userId: number) {
+    try {
+      const member = await MTMember.findByPk(userId);
+      
+      if (!member) {
+        return null;
+      }
+      
+      // Get the user record to get the Firebase UID
+      const user = await User.findByPk(userId);
+      
+      // Delete the mt_members record
+      await member.destroy();
+      
+      // Delete the base user record
+      if (user) {
+        await user.destroy();
+        
+        // Delete the Firebase user
+        try {
+          await adminAuth.deleteUser(user.firebaseId);
+        } catch (firebaseError) {
+          console.error("Error deleting Firebase user:", firebaseError);
+          // We'll continue even if Firebase deletion fails
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error deleting MT Member:", error);
+      throw error;
+    }
   }
+}
 
-  // // Update a team member
-  // async updateMember(id: string, updateData: Partial<MTMemberData>) {
-  //   const member = await MtMember.findByPk(id);
-  //   if (!member) {
-  //     throw new Error('Team member not found');
-  //   }
-
-  //   return await member.update(updateData);
-  // }
-
-//   // Reject a team member
-//   async rejectMember({ memberId, reason }: RejectionData) {
-//     const member = await MtMember.findByPk(memberId, {
-//       include: [{
-//         model: User,
-//         as: 'user',
-//         attributes: ['email', 'name'],
-//       }]
-//     });
-    
-//     if (!member || !member.user) {
-//       throw new Error('Team member not found');
-//     }
-
-//     // Send rejection email (simplified example)
-//     const emailSent = await this.sendRejectionEmail(
-//       member.user.email, 
-//       member.user.name, 
-//       member.position, 
-//       reason
-//     );
-
-//     return await member.update({
-//       status: 'rejected',
-//       rejectionReason: reason,
-//       rejectionEmailSent: emailSent,
-//     });
-//   }
-
-//   // Delete a team member
-//   async deleteMember(id: string) {
-//     const member = await MtMember.findByPk(id);
-//     if (!member) {
-//       throw new Error('Team member not found');
-//     }
-
-//     await member.destroy();
-//     return { message: 'Team member deleted successfully' };
-//   }
-
-//   // Get unique departments
-//   async getDepartments() {
-//     const members = await MtMember.findAll({
-//       attributes: ['department'],
-//       group: ['department'],
-//     });
-    
-//     return members.map(m => m.department);
-//   }
-
-//   // Helper method to send rejection email
-//   private async sendRejectionEmail(email: string, name: string, position: string, reason: string) {
-//     try {
-//       // In a real app, configure nodemailer with your SMTP settings
-//       const transporter = nodemailer.createTransport({
-//         // Your email configuration here
-//         service: 'gmail',
-//         auth: {
-//           user: process.env.EMAIL_USER,
-//           pass: process.env.EMAIL_PASS,
-//         },
-//       });
-
-//       const mailOptions = {
-//         from: process.env.EMAIL_FROM,
-//         to: email,
-//         subject: 'Management Team Application Update',
-//         text: `Dear ${name},\n\nThank you for your interest in joining our management team as ${position}.\n\nAfter careful consideration, we have decided not to move forward with your application at this time.\n\nReason for rejection:\n${reason}\n\nWe appreciate the time and effort you put into your application. We encourage you to apply for future opportunities that match your qualifications.\n\nBest regards,\nHR Management Team`,
-//       };
-
-//       await transporter.sendMail(mailOptions);
-//       return true;
-//     } catch (error) {
-//       console.error('Failed to send rejection email:', error);
-//       return false;
-//     }
-//   }
- }
-
-export default new AdminMTMemberServices();
+export default AdminMTMemberServices;

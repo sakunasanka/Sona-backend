@@ -1,37 +1,31 @@
-import { Router } from 'express';
-import mtMemberController from '../controllers/AdminMTMemberController';
-import { body } from 'express-validator';
+import express from 'express';
+import {
+  createMTMember,
+  getMTMembers,
+  getMTMemberById,
+  updateMTMember,
+  deleteMTMember
+} from '../controllers/AdminMTMemberController';
+import { authenticateToken } from '../middlewares/auth';
 
-const router = Router();
+const router = express.Router();
 
-// Validation middleware
-const validateMemberData = [
-  body('name').notEmpty().withMessage('Name is required'),
-  body('position').notEmpty().withMessage('Position is required'),
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('department').notEmpty().withMessage('Department is required'),
-  body('joinDate').isDate().withMessage('Valid join date is required'),
-];
+// All routes require authentication
+router.use(authenticateToken);
 
-// Create a new team member
-router.post('/', validateMemberData, mtMemberController.createMember);
+// Create a new MT Member
+router.post('/', createMTMember);
 
-// Get all team members with optional filtering
-router.get('/', mtMemberController.getAllMembers);
+// Get all MT Members with optional filtering
+router.get('/', getMTMembers);
 
-// Get a single team member by ID
-router.get('/:id', mtMemberController.getMemberById);
+// Get a specific MT Member by ID
+router.get('/:id', getMTMemberById);
 
-// Update a team member
-//router.put('/:id', mtMemberController.updateMember);
+// Update an MT Member
+router.put('/:id', updateMTMember);
 
-// Reject a team member
-//router.post('/:id/reject', mtMemberController.rejectMember);
-
-// Delete a team member
-//router.delete('/:id', mtMemberController.deleteMember);
-
-// Get unique departments
-//router.get('/departments/list', mtMemberController.getDepartments);
+// Delete an MT Member
+router.delete('/:id', deleteMTMember);
 
 export default router;

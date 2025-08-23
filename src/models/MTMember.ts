@@ -39,7 +39,7 @@ mt_members.init(
     },
     position: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     location: {
       type: DataTypes.STRING,
@@ -47,11 +47,11 @@ mt_members.init(
     },
     joinDate: {
       type: DataTypes.DATEONLY,
-      allowNull: false,
+      allowNull: true,
     },
     department: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     experience: {
       type: DataTypes.STRING,
@@ -78,8 +78,7 @@ mt_members.init(
     },
     previousRoles: {
       type: DataTypes.JSONB,
-      allowNull: false,
-      defaultValue: [],
+      allowNull: true
     },
     achievements: {
       type: DataTypes.ARRAY(DataTypes.STRING),
