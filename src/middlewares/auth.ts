@@ -13,7 +13,7 @@ declare global {
           firebaseId: string;
           name: string;
           email: string;
-          userType: 'Client' | 'Counselor' | 'Admin';
+          userType: 'Client' | 'Counselor' | 'Admin' | 'Psychiatrist';
           avatar?: string;
         }
       }
@@ -162,6 +162,30 @@ export const isClient = (req: Request, res: Response, next: NextFunction): void 
     res.status(403).json({
       success: false,
       message: 'Client access required',
+      error: 'Forbidden'
+    });
+    return;
+  }
+
+  next();
+};
+
+// Check if user has professional access (Counselor, Psychiatrist, or Admin)
+export const isProfessional = (req: Request, res: Response, next: NextFunction): void => {
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+      error: 'Unauthorized'
+    });
+    return;
+  }
+
+  const professionalRoles = ['Counselor', 'Psychiatrist', 'Admin'];
+  if (!professionalRoles.includes(req.user.dbUser.userType)) {
+    res.status(403).json({
+      success: false,
+      message: 'Professional access required (Counselor, Psychiatrist, or Admin)',
       error: 'Forbidden'
     });
     return;
