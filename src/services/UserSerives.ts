@@ -10,7 +10,7 @@ export interface CreateUserData {
     email: string;
     password: string;
     name: string;
-    userType: 'Client' | 'Counselor';
+    userType: 'Client' | 'Counselor' | 'Admin';
     avatar?: string;
     createdAt?: Date;
     updatedAt?: Date;
@@ -128,6 +128,19 @@ export class UserService {
                     rating: counselorData.rating,
                     sessionFee: counselorData.sessionFee
                 })
+            } else if(validatedData.userType === 'Admin') {
+                dbUser = await User.create({
+                    firebaseId: firebaseUser.uid,
+                    name: validatedData.name,
+                    email: validatedData.email,
+                    avatar: validatedData.avatar,
+                    role: 'Admin'
+                });
+            }
+
+            // Return the created user
+            if (!dbUser) {
+                throw new ExternalServiceError('Failed to create user in the database');
             }
 
             if (dbUser) {
