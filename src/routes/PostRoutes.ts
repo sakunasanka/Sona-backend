@@ -12,12 +12,15 @@ import {
 import { authenticateToken } from '../middlewares/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 
+import { likePost, unlikePost } from '../controllers/PostLikeController';
+
 const router = express.Router();
 
 router.get('/', asyncHandler(getPosts));
 router.get('/likes', asyncHandler(getPostsWithLikes));
 router.post('/', asyncHandler(createPost));
-router.post('/:postId/like', asyncHandler(toggleLikePost));
+router.post('/:postId/like', authenticateToken, likePost);
+router.delete('/:postId/like', authenticateToken, unlikePost);
 router.post('/:postId/view', asyncHandler(incrementViews));
 router.put('/:postId', asyncHandler(updatePost)); 
 router.delete('/:postId', asyncHandler(deletePost));

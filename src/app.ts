@@ -3,7 +3,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import { connectDB } from './config/db';
+import { connectAndSyncDb } from './config/db';
 import http from 'http';
 import path from 'path';
 import { WebSocketService } from './services/WebSocketServices';
@@ -126,7 +126,7 @@ app.use('*', (req, res) => {
 // Database Connection and Sync
 const initializeApp = async () => {
   try {
-    await connectDB();
+    await connectAndSyncDb();
     //Sync Database (uncomment if needed)
     // await syncDatabase();
 

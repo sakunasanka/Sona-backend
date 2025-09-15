@@ -1,5 +1,7 @@
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/db';
+import Post from './Post';
+import PostLike from './PostLike';
 
 class User extends Model {
   public id!: number;
@@ -34,6 +36,9 @@ class User extends Model {
   } 
 }
 
+User.hasMany(Post, { foreignKey: 'userId', as: 'posts' });
+User.hasMany(PostLike, { foreignKey: 'userId' });
+User.belongsToMany(Post, { through: PostLike, foreignKey: 'userId', as: 'likedPosts' });
 
 User.init(
   {

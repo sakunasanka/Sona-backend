@@ -1,6 +1,7 @@
 import { DataTypes, Model, Association } from 'sequelize';
 import { sequelize } from '../config/db';
 import User from './User';
+import PostLike from './PostLike';
 
 class Post extends Model {
   public id!: string;
@@ -70,6 +71,8 @@ Post.init(
 
 // Define associations
 Post.belongsTo(User, { foreignKey: 'userId', as: 'user' });
-User.hasMany(Post, { foreignKey: 'userId', as: 'posts' });
+Post.hasMany(PostLike, { foreignKey: 'postId' });
+Post.belongsToMany(User, { through: PostLike, foreignKey: 'postId', as: 'likingUsers' });
+
 
 export default Post;
