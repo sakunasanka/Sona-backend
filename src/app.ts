@@ -17,6 +17,7 @@ import authRoutes from './routes/AuthRoutes';
 import chatRoutes from './routes/ChatRoutes';
 import paymentRoutes from './routes/PaymentRoutes';
 import counselorRoutes from './routes/CounselorRoutes';
+import psychiatristRoutes from './routes/PsychiatristRoutes';
 import phq9Routes from './routes/PHQ9Routes';
 import { auth } from 'firebase-admin';
 
@@ -45,6 +46,8 @@ app.get('/', (req, res) => {
       auth: '/api/auth',
       chat: '/api/chat',
       payments: '/api/payments',
+      counselors: '/api/counselors',
+      psychiatrists: '/api/psychiatrists',
       questionnaire: '/api/questionnaire',
       websocket: 'ws://localhost:5001',
       paymentPage: '/payment-loader',
@@ -60,6 +63,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/counselors', counselorRoutes);
+// Alias for British spelling
+app.use('/api/counsellor', counselorRoutes);
+app.use('/api/psychiatrists', psychiatristRoutes);
 app.use('/api/questionnaire/phq9', phq9Routes);
 
 app.use(express.static(path.join(__dirname, '../public')));

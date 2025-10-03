@@ -3,6 +3,9 @@ import {
   getCounselors,
   getCounselorById,
   getAvailableTimeSlots,
+  getPsychiatrists,
+  getPsychiatristById,
+  getPsychiatristAvailableTimeSlots,
   bookSession,
   getUserSessions,
   getSessionById,
@@ -20,6 +23,11 @@ const router = express.Router();
 router.get('/counselors', getCounselors);
 router.get('/counselors/:id', getCounselorById);
 router.get('/timeslots/:counselorId/:date', getAvailableTimeSlots);
+
+// Psychiatrist routes
+router.get('/psychiatrists', getPsychiatrists);
+router.get('/psychiatrists/:id', getPsychiatristById);
+router.get('/psychiatrist-timeslots/:psychiatristId/:date', getPsychiatristAvailableTimeSlots);
 
 // Protected routes
 router.use(authenticateToken);

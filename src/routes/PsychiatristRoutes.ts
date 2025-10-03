@@ -1,0 +1,32 @@
+import express from 'express';
+import { 
+  getAvailablePsychiatrists,
+  getPsychiatristById,
+  updatePsychiatristAvailability,
+  getAllPsychiatrists,
+  updatePsychiatristStatus
+} from '../controllers/PsychiatristController';
+import { asyncHandler } from '../utils/asyncHandler';
+import { isAdmin, isAuthenticated, isPsychiatrist } from '../middlewares/auth';
+
+const router = express.Router();
+
+// Public routes
+// Get all available and approved psychiatrists
+router.get('/available', getAvailablePsychiatrists);
+
+// Get psychiatrist by ID
+router.get('/:id', getPsychiatristById);
+
+// Protected routes - Psychiatrist only
+// Update psychiatrist's own availability
+router.patch('/:id/availability', isAuthenticated, isPsychiatrist, updatePsychiatristAvailability);
+
+// Admin routes
+// Get all psychiatrists (including pending and rejected)
+router.get('/', isAuthenticated, isAdmin, getAllPsychiatrists);
+
+// Update psychiatrist status (approve/reject)
+router.patch('/:id/status', isAuthenticated, isAdmin, updatePsychiatristStatus);
+
+export default router;

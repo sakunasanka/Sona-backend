@@ -112,7 +112,14 @@ export const isCounselor = (req: Request, res: Response, next: NextFunction): vo
     return;
   }
 
+  console.log('🔍 Checking counselor access for user:', {
+    userId: req.user.dbUser.id,
+    userType: req.user.dbUser.userType,
+    expectedType: 'Counselor'
+  });
+
   if (req.user.dbUser.userType !== 'Counselor') {
+    console.log('❌ Role check failed:', req.user.dbUser.userType, '!== Counselor');
     res.status(403).json({
       success: false,
       message: 'Counselor access required',
@@ -121,6 +128,7 @@ export const isCounselor = (req: Request, res: Response, next: NextFunction): vo
     return;
   }
 
+  console.log('✅ Counselor access granted');
   next();
 };
 
@@ -162,6 +170,29 @@ export const isClient = (req: Request, res: Response, next: NextFunction): void 
     res.status(403).json({
       success: false,
       message: 'Client access required',
+      error: 'Forbidden'
+    });
+    return;
+  }
+
+  next();
+};
+
+// Check if user is a psychiatrist
+export const isPsychiatrist = (req: Request, res: Response, next: NextFunction): void => {
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+      error: 'Unauthorized'
+    });
+    return;
+  }
+
+  if (req.user.dbUser.userType !== 'Psychiatrist') {
+    res.status(403).json({
+      success: false,
+      message: 'Access denied. Psychiatrist access required.',
       error: 'Forbidden'
     });
     return;

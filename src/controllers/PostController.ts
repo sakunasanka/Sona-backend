@@ -62,21 +62,69 @@ export const getPostsWithLikes = async (req: Request, res: Response) => {
   }
 };
 
+// Get user's own posts (requires authentication)
+export const getMyPosts = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.dbUser.id;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+      });
+    }
+
+    const { sort = 'recent', page = 1, limit = 10 } = req.query;
+    
+    const result = await postService.getMyPosts(userId, {
+      sort: sort as 'recent' | 'popular',
+      page: Number(page),
+      limit: Number(limit)
+    });
+
+    res.json({
+      success: true,
+      data: {
+        posts: result.posts,
+        totalPosts: result.totalPosts,
+        currentPage: result.currentPage,
+        totalPages: result.totalPages,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching user posts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user posts',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
 // Create a new post
 export const createPost = async (req: Request, res: Response) => {
   try {
-    const { content, hashtags, backgroundColor } = req.body;
-    const userId = req.user?.dbUser.id || 1;
+    const { content, hashtags, backgroundColor, image } = req.body;
+    const userId = req.user?.dbUser.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+      });
+    }
 
     const post = await postService.createPost({
       userId,
       content,
       hashtags,
-      backgroundColor
+      backgroundColor,
+      image
     });
 
     res.status(201).json({
       success: true,
+      message: 'Post created successfully',
       data: post
     });
   } catch (error) {
@@ -93,16 +141,26 @@ export const createPost = async (req: Request, res: Response) => {
 export const updatePost = async (req: Request, res: Response) => {
   try {
     const { postId } = req.params;
-    const { content, hashtags, backgroundColor } = req.body;
+    const { content, hashtags, backgroundColor, image } = req.body;
+    const userId = req.user?.dbUser.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+      });
+    }
 
     const updatedPost = await postService.updatePost(postId, {
       content,
       hashtags,
-      backgroundColor
-    });
+      backgroundColor,
+      image
+    }, userId);
 
     res.json({
       success: true,
+      message: 'Post updated successfully',
       data: updatedPost
     });
   } catch (error) {
@@ -119,14 +177,20 @@ export const updatePost = async (req: Request, res: Response) => {
 export const deletePost = async (req: Request, res: Response) => {
   try {
     const { postId } = req.params;
+    const userId = req.user?.dbUser.id;
 
-    await postService.deletePost(postId);
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+      });
+    }
+
+    await postService.deletePost(postId, userId);
 
     res.json({
       success: true,
-      data: {
-        message: 'Post deleted successfully',
-      },
+      message: 'Post deleted successfully',
     });
   } catch (error) {
     console.error('Error deleting post:', error);

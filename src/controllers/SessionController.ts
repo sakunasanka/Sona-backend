@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
 import sessionService from '../services/SessionService';
+import { PsychiatristService } from '../services/PsychiatristService';
 /**
  * @desc    Get all counselors
  * @route   GET /api/sessions/counselors
@@ -53,6 +54,56 @@ export const getCounselorById = asyncHandler(async (req: Request, res: Response)
 });
 
 /**
+ * @desc    Get all psychiatrists
+ * @route   GET /api/sessions/psychiatrists
+ * @access  Public
+ */
+export const getPsychiatrists = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const result = await PsychiatristService.getAllAvailablePsychiatrists();
+    
+    res.status(200).json({
+      success: true,
+      data: result.psychiatrists
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error fetching psychiatrists'
+    });
+  }
+});
+
+/**
+ * @desc    Get psychiatrist details by ID
+ * @route   GET /api/sessions/psychiatrists/:id
+ * @access  Public
+ */
+export const getPsychiatristById = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const psychiatrist = await PsychiatristService.getPsychiatristById(Number(id));
+    
+    res.status(200).json({
+      success: true,
+      data: psychiatrist
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: 'Psychiatrist not found'
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error fetching psychiatrist'
+    });
+  }
+});
+
+/**
  * @desc    Get available time slots for a counselor on a specific date
  * @route   GET /api/sessions/timeslots/:counselorId/:date
  * @access  Public
@@ -71,6 +122,29 @@ export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Resp
     res.status(error instanceof Error && error.message.includes('not found') ? 404 : 500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Error fetching time slots'
+    });
+  }
+});
+
+/**
+ * @desc    Get available time slots for a psychiatrist on a specific date
+ * @route   GET /api/sessions/psychiatrist-timeslots/:psychiatristId/:date
+ * @access  Public
+ */
+export const getPsychiatristAvailableTimeSlots = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const { psychiatristId, date } = req.params;
+    
+    const result = await PsychiatristService.getDateAvailability(Number(psychiatristId), date);
+    
+    res.status(200).json({
+      success: true,
+      data: result.availability
+    });
+  } catch (error) {
+    res.status(error instanceof Error && error.message.includes('not found') ? 404 : 500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error fetching psychiatrist time slots'
     });
   }
 });

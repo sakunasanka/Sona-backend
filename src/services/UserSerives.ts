@@ -48,13 +48,13 @@ export interface UserResponse {
     name: string;
     email: string;
     avatar?: string;
-    userType: 'Client' | 'Counselor';
+    role: 'Client' | 'Counselor' | 'Admin' | 'Psychiatrist';
     createdAt: Date;
     updatedAt: Date;
 }
 
 export interface ClientResponse extends UserResponse {
-    userType: 'Client';
+    role: 'Client';
     isStudent?: boolean;
     nickName?: string;
 }

@@ -61,7 +61,7 @@ User.init(
       allowNull: true,
     },
     role: {
-      type: DataTypes.ENUM('Client', 'Counsellor' , 'Admin', 'Psychiatrist', 'MT-Team'),
+      type: DataTypes.ENUM('Client', 'Counselor' , 'Admin', 'Psychiatrist', 'MT-Team'),
       allowNull: false,
     },
   },
