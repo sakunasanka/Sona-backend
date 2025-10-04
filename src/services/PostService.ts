@@ -442,21 +442,58 @@ class PostService {
       // Unlike the post
       await existingLike.destroy();
       await post.decrement('likes');
-      
-      return {
-        liked: false,
-        likes: post.likes - 1,
-      };
+      await post.reload();
+      return { liked: false, likes: post.likes };
     } else {
       // Like the post
       await Like.create({ userId, postId });
       await post.increment('likes');
-      
-      return {
-        liked: true,
-        likes: post.likes + 1,
-      };
+      await post.reload();
+      return { liked: true, likes: post.likes };
     }
+  }
+
+  /**
+   * Like a post (idempotent)
+   */
+  async likePost(postId: string, userId: number): Promise<{ liked: boolean; likes: number }> {
+    const post = await Post.findByPk(postId);
+    if (!post) {
+      throw new Error('Post not found');
+    }
+
+    const existingLike = await Like.findOne({ where: { userId, postId } });
+    if (existingLike) {
+      // Ensure we return the current count
+      await post.reload();
+      return { liked: true, likes: post.likes };
+    }
+
+    await Like.create({ userId, postId });
+    await post.increment('likes');
+    await post.reload();
+    return { liked: true, likes: post.likes };
+  }
+
+  /**
+   * Dislike (unlike) a post (idempotent)
+   */
+  async dislikePost(postId: string, userId: number): Promise<{ liked: boolean; likes: number }> {
+    const post = await Post.findByPk(postId);
+    if (!post) {
+      throw new Error('Post not found');
+    }
+
+    const existingLike = await Like.findOne({ where: { userId, postId } });
+    if (!existingLike) {
+      await post.reload();
+      return { liked: false, likes: post.likes };
+    }
+
+    await existingLike.destroy();
+    await post.decrement('likes');
+    await post.reload();
+    return { liked: false, likes: post.likes };
   }
 
   /**
@@ -469,10 +506,21 @@ class PostService {
     }
 
     await post.increment('views');
+    await post.reload();
+    return { views: post.views };
+  }
 
-    return {
-      views: post.views + 1,
-    };
+  /**
+   * Get like status for a post for a specific user
+   */
+  async getLikeStatus(postId: string, userId: number): Promise<{ liked: boolean; likes: number; views: number }> {
+    const post = await Post.findByPk(postId);
+    if (!post) {
+      throw new Error('Post not found');
+    }
+
+    const existingLike = await Like.findOne({ where: { userId, postId } });
+    return { liked: !!existingLike, likes: post.likes, views: post.views };
   }
 
   /**

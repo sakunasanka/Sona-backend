@@ -238,6 +238,42 @@ export const toggleLikePost = async (req: Request, res: Response) => {
   }
 };
 
+// Like a post (idempotent)
+export const likePost = async (req: Request, res: Response) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user?.dbUser.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const result = await postService.likePost(postId, userId);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Error liking post:', error);
+    res.status(500).json({ success: false, message: 'Error liking post', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+// Dislike (unlike) a post (idempotent)
+export const dislikePost = async (req: Request, res: Response) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user?.dbUser.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const result = await postService.dislikePost(postId, userId);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Error disliking post:', error);
+    res.status(500).json({ success: false, message: 'Error disliking post', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
 // Increment post views
 export const incrementViews = async (req: Request, res: Response) => {
   try {
@@ -256,5 +292,23 @@ export const incrementViews = async (req: Request, res: Response) => {
       message: 'Error updating views',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
+  }
+};
+
+// Get like status for a post for the authenticated user
+export const getLikeStatus = async (req: Request, res: Response) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user?.dbUser.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const result = await postService.getLikeStatus(postId, userId);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Error getting like status:', error);
+    res.status(500).json({ success: false, message: 'Error getting like status', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
