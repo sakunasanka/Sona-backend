@@ -10,7 +10,12 @@ import {
   getRecentActivity,
   getCounselorProfile,
   updateCounselorProfile,
-  getCounselorDetailedProfile
+  getCounselorDetailedProfile,
+  getCounselorClients,
+  getClientDetails,
+  createClientNote,
+  deleteClientNote,
+  updateClientNote
 } from '../controllers/CounselorController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { isAdmin, isAuthenticated, isCounselor } from '../middlewares/auth';
@@ -31,6 +36,13 @@ router.get('/profile', isAuthenticated, isCounselor, getCounselorProfile);
 // Counselor profile management routes
 router.get('/profile/detailed', isAuthenticated, isCounselor, getCounselorDetailedProfile);
 router.put('/profile', isAuthenticated, isCounselor, updateCounselorProfile);
+
+// Counselor client management routes
+router.get('/clients', isAuthenticated, isCounselor, getCounselorClients);
+router.get('/clients/:clientId', isAuthenticated, isCounselor, getClientDetails);
+router.post('/clients/:clientId/notes', isAuthenticated, isCounselor, createClientNote);
+router.put('/clients/:clientId/notes/:noteId', isAuthenticated, isCounselor, updateClientNote);
+router.delete('/clients/:clientId/notes/:noteId', isAuthenticated, isCounselor, deleteClientNote);
 
 // Dynamic routes (put these AFTER static routes to avoid conflicts)
 // Get counselor by ID

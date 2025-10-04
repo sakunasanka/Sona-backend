@@ -5,6 +5,7 @@ import { CounselorService } from "../services/CounselorServices";
 import { ValidationError } from "../utils/errors";
 import Counselor from "../models/Counselor";
 import { validateData, updateCounselorProfileSchema } from "../schema/ValidationSchema";
+import CounselorClientService from "../services/CounselorClientService";
 
 export const getAllAvailableCounselors = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -196,4 +197,158 @@ export const getCounselorDetailedProfile = asyncHandler(async (req: Request, res
   const detailedProfile = await CounselorService.getCounselorDetailedProfile(counselorId);
 
   ApiResponseUtil.success(res, detailedProfile, "Detailed counselor profile retrieved successfully");
+});
+
+/**
+ * @desc    Get all clients for a counselor
+ * @route   GET /api/counselors/clients
+ * @access  Private (counselor only)
+ */
+export const getCounselorClients = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  // Extract query parameters
+  const {
+    page,
+    limit,
+    search,
+    filter,
+    sort
+  } = req.query;
+
+  // Validate filter parameter
+  const validFilters = ['all', 'active', 'inactive', 'new'];
+  if (filter && !validFilters.includes(filter as string)) {
+    throw new ValidationError('Invalid filter. Must be one of: all, active, inactive, new');
+  }
+
+  // Validate sort parameter
+  const validSorts = ['name', 'last_session', 'join_date'];
+  if (sort && !validSorts.includes(sort as string)) {
+    throw new ValidationError('Invalid sort. Must be one of: name, last_session, join_date');
+  }
+
+  const filters = {
+    page: page ? parseInt(page as string) : 1,
+    limit: limit ? parseInt(limit as string) : 20,
+    search: search as string,
+    filter: (filter as 'all' | 'active' | 'inactive' | 'new') || 'all',
+    sort: (sort as 'name' | 'last_session' | 'join_date') || 'name'
+  };
+
+  const clientsData = await CounselorClientService.getCounselorClients(counselorId, filters);
+
+  ApiResponseUtil.success(res, clientsData, "Counselor clients retrieved successfully");
+});
+
+/**
+ * @desc    Get detailed information about a specific client
+ * @route   GET /api/counsellor/clients/:clientId
+ * @access  Private (counselor only)
+ */
+export const getClientDetails = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+  const { clientId } = req.params;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  if (!clientId || isNaN(Number(clientId))) {
+    throw new ValidationError('Valid client ID is required');
+  }
+
+  const clientDetails = await CounselorClientService.getClientDetails(counselorId, Number(clientId));
+
+  ApiResponseUtil.success(res, clientDetails, "Client details retrieved successfully");
+});
+
+/**
+ * @desc    Create a new note for a specific client
+ * @route   POST /api/counsellor/clients/:clientId/notes
+ * @access  Private (counselor only)
+ */
+export const createClientNote = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+  const { clientId } = req.params;
+  const { content, isPrivate } = req.body;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  if (!clientId || isNaN(Number(clientId))) {
+    throw new ValidationError('Valid client ID is required');
+  }
+
+  if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    throw new ValidationError('Note content is required and cannot be empty');
+  }
+
+  const noteData = {
+    content: content.trim(),
+    isPrivate: Boolean(isPrivate)
+  };
+
+  const newNote = await CounselorClientService.createClientNote(counselorId, Number(clientId), noteData);
+
+  ApiResponseUtil.success(res, newNote, "Client note created successfully");
+});
+
+/**
+ * @desc    Soft delete a client note (only if created by the current counselor)
+ * @route   DELETE /api/counsellor/clients/:clientId/notes/:noteId
+ * @access  Private (counselor only - can only delete own notes)
+ */
+export const deleteClientNote = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+  const { noteId } = req.params;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  if (!noteId || isNaN(Number(noteId))) {
+    throw new ValidationError('Valid note ID is required');
+  }
+
+  const deletedNote = await CounselorClientService.deleteClientNote(counselorId, Number(noteId));
+
+  ApiResponseUtil.success(res, deletedNote, "Client note deleted successfully");
+});
+
+/**
+ * @desc    Update a client note (only if created by the current counselor)
+ * @route   PUT /api/counsellor/clients/:clientId/notes/:noteId
+ * @access  Private (counselor only - can only edit own notes)
+ */
+export const updateClientNote = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+  const { noteId } = req.params;
+  const { content, isPrivate } = req.body;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  if (!noteId || isNaN(Number(noteId))) {
+    throw new ValidationError('Valid note ID is required');
+  }
+
+  if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    throw new ValidationError('Note content is required and cannot be empty');
+  }
+
+  const noteData = {
+    content: content.trim(),
+    isPrivate: Boolean(isPrivate)
+  };
+
+  const updatedNote = await CounselorClientService.updateClientNote(counselorId, Number(noteId), noteData);
+
+  ApiResponseUtil.success(res, updatedNote, "Client note updated successfully");
 });
