@@ -6,6 +6,7 @@ import { ValidationError } from "../utils/errors";
 import Counselor from "../models/Counselor";
 import { validateData, updateCounselorProfileSchema } from "../schema/ValidationSchema";
 import CounselorClientService from "../services/CounselorClientService";
+import { isArray } from "util";
 
 export const getAllAvailableCounselors = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -351,4 +352,58 @@ export const updateClientNote = asyncHandler(async (req: Request, res: Response)
   const updatedNote = await CounselorClientService.updateClientNote(counselorId, Number(noteId), noteData);
 
   ApiResponseUtil.success(res, updatedNote, "Client note updated successfully");
+});
+
+/**
+ * @desc    Add a concern to a client's concerns list
+ * @route   POST /api/counsellor/clients/:clientId/concerns
+ * @access  Private (counselor only)
+ */
+export const addClientConcern = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+  const { clientId } = req.params;
+  const { concern } = req.body;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  if (!clientId || isNaN(Number(clientId))) {
+    throw new ValidationError('Valid client ID is required');
+  }
+
+  if (!concern || typeof concern !== 'string' || concern.trim().length === 0) {
+    throw new ValidationError('Concern is required and must be a non-empty string');
+  }
+
+  const result = await CounselorClientService.addConcernToClient(counselorId, Number(clientId), concern.trim());
+
+  ApiResponseUtil.success(res, result, 'Concern added successfully');
+});
+
+/**
+ * @desc    Remove a concern from a client's concerns list
+ * @route   DELETE /api/counsellor/clients/:clientId/concerns
+ * @access  Private (counselor only)
+ */
+export const removeClientConcern = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+  const { clientId } = req.params;
+  const { concern } = req.body;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  if (!clientId || isNaN(Number(clientId))) {
+    throw new ValidationError('Valid client ID is required');
+  }
+
+  if (!concern || typeof concern !== 'string' || concern.trim().length === 0) {
+    throw new ValidationError('Concern is required and must be a non-empty string');
+  }
+
+  const result = await CounselorClientService.removeConcernFromClient(counselorId, Number(clientId), concern.trim());
+
+  ApiResponseUtil.success(res, result, 'Concern removed successfully');
 });

@@ -15,7 +15,9 @@ import {
   getClientDetails,
   createClientNote,
   deleteClientNote,
-  updateClientNote
+  updateClientNote,
+  addClientConcern,
+  removeClientConcern
 } from '../controllers/CounselorController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { isAdmin, isAuthenticated, isCounselor } from '../middlewares/auth';
@@ -43,6 +45,10 @@ router.get('/clients/:clientId', isAuthenticated, isCounselor, getClientDetails)
 router.post('/clients/:clientId/notes', isAuthenticated, isCounselor, createClientNote);
 router.put('/clients/:clientId/notes/:noteId', isAuthenticated, isCounselor, updateClientNote);
 router.delete('/clients/:clientId/notes/:noteId', isAuthenticated, isCounselor, deleteClientNote);
+
+// Concerns management
+router.post('/clients/:clientId/concerns', isAuthenticated, isCounselor, addClientConcern);
+router.delete('/clients/:clientId/concerns', isAuthenticated, isCounselor, removeClientConcern);
 
 // Dynamic routes (put these AFTER static routes to avoid conflicts)
 // Get counselor by ID

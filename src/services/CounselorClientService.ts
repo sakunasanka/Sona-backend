@@ -319,6 +319,7 @@ class CounselorClientService {
           u."createdAt" as join_date,
           COALESCE(c."nickName", CONCAT('STU', LPAD(u.id::text, 7, '0'))) as student_id,
           c."isStudent",
+          COALESCE(c."concerns", '[]'::jsonb) AS concerns,
           CASE 
             WHEN c."nickName" IS NOT NULL AND c."nickName" != '' THEN false 
             ELSE true 
@@ -344,7 +345,7 @@ class CounselorClientService {
         JOIN clients c ON u.id = c."userId"
         LEFT JOIN sessions s ON u.id = s."userId" AND s."counselorId" = :counselorId
         WHERE u.id = :clientId AND u.role = 'Client'
-        GROUP BY u.id, u.name, u.avatar, u.email, u."createdAt", c."nickName", c."isStudent"
+        GROUP BY u.id, u.name, u.avatar, u.email, u."createdAt", c."nickName", c."isStudent", c."concerns"
       `;
 
       // Sessions query
@@ -406,7 +407,7 @@ class CounselorClientService {
         duration: session.duration || 60,
         type: 'video_call', // Static for now
         status: session.status || 'completed',
-        concerns: ["Anxiety", "Stress"], // Static for now
+        concerns: [], // No per-session concerns for now
         notes: session.notes || '',
         rating: 5 // Static for now
       }));
@@ -444,11 +445,7 @@ class CounselorClientService {
         program: "Computer Science", // Static for now - will be dynamic when program field is added
         year: "3rd Year", // Static for now - will be dynamic when year field is added
         referred_by: "University Counseling Center", // Static for now - will be dynamic when referred_by field is added
-        concerns: [
-          "Anxiety",
-          "Academic Stress",
-          "Sleep Issues"
-        ], // Will be dynamic when concerns system is implemented
+        concerns: Array.isArray(client.concerns) ? client.concerns : [],
         emergency_contact: {
           name: "Jane Doe",
           relationship: "Mother",
@@ -755,6 +752,119 @@ class CounselorClientService {
       console.error('Error updating client note:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Failed to update client note: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Add a concern to a client's concerns list (only if counselor has sessions with the client)
+   */
+  async addConcernToClient(counselorId: number, clientId: number, concern: string) {
+    try {
+      // Verify access: counselor must have at least one session with the client
+      const accessQuery = `
+        SELECT COUNT(*) as session_count
+        FROM sessions s
+        WHERE s."userId" = :clientId AND s."counselorId" = :counselorId
+      `;
+
+      const accessResult = await sequelize.query(accessQuery, {
+        replacements: { clientId, counselorId },
+        type: QueryTypes.SELECT
+      });
+
+      const sessionCount = (accessResult as any[])[0]?.session_count || 0;
+      if (sessionCount === 0) {
+        throw new Error('Access denied: No sessions with this client');
+      }
+
+      // Append concern to JSONB array if not already present
+      const updateQuery = `
+        UPDATE clients
+        SET concerns = CASE
+          WHEN NOT COALESCE(concerns, '[]'::jsonb) @> to_jsonb(ARRAY[:concern::text])
+          THEN COALESCE(concerns, '[]'::jsonb) || to_jsonb(ARRAY[:concern::text])
+          ELSE COALESCE(concerns, '[]'::jsonb)
+        END,
+        "updatedAt" = NOW()
+        WHERE "userId" = :clientId
+        RETURNING COALESCE(concerns, '[]'::jsonb) AS concerns
+      `;
+
+      const updateResult = await sequelize.query(updateQuery, {
+        replacements: { clientId, concern },
+        type: QueryTypes.SELECT
+      });
+
+      const row = (updateResult as any[])[0];
+      if (!row) {
+        throw new Error('Failed to update client concerns');
+      }
+
+      return {
+        clientId,
+        concerns: Array.isArray(row.concerns) ? row.concerns : row.concerns || []
+      };
+
+    } catch (error) {
+      console.error('Error adding concern to client:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to add concern: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Remove a concern from a client's concerns list (only if counselor has sessions with the client)
+   */
+  async removeConcernFromClient(counselorId: number, clientId: number, concern: string) {
+    try {
+      // Verify access
+      const accessQuery = `
+        SELECT COUNT(*) as session_count
+        FROM sessions s
+        WHERE s."userId" = :clientId AND s."counselorId" = :counselorId
+      `;
+
+      const accessResult = await sequelize.query(accessQuery, {
+        replacements: { clientId, counselorId },
+        type: QueryTypes.SELECT
+      });
+
+      const sessionCount = (accessResult as any[])[0]?.session_count || 0;
+      if (sessionCount === 0) {
+        throw new Error('Access denied: No sessions with this client');
+      }
+
+      // Rebuild array excluding the concern (exact match)
+      const updateQuery = `
+        UPDATE clients
+        SET concerns = (
+          SELECT COALESCE(jsonb_agg(elem) FILTER (WHERE elem <> to_jsonb(:concern::text)), '[]'::jsonb)
+          FROM jsonb_array_elements(COALESCE(concerns, '[]'::jsonb)) AS elem
+        ),
+        "updatedAt" = NOW()
+        WHERE "userId" = :clientId
+        RETURNING COALESCE(concerns, '[]'::jsonb) AS concerns
+      `;
+
+      const updateResult = await sequelize.query(updateQuery, {
+        replacements: { clientId, concern },
+        type: QueryTypes.SELECT
+      });
+
+      const row = (updateResult as any[])[0];
+      if (!row) {
+        throw new Error('Failed to update client concerns');
+      }
+
+      return {
+        clientId,
+        concerns: Array.isArray(row.concerns) ? row.concerns : row.concerns || []
+      };
+
+    } catch (error) {
+      console.error('Error removing concern from client:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to remove concern: ${errorMessage}`);
     }
   }
 }
