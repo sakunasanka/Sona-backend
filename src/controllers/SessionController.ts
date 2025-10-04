@@ -149,6 +149,33 @@ export const getPsychiatristAvailableTimeSlots = asyncHandler(async (req: Reques
   }
 });
 
+/**
+ * @desc    Get counselor monthly availability (no per-day recursion)
+ * @route   GET /api/sessions/counselors/:id/availability/:year/:month
+ * @access  Public
+ */
+export const getCounselorMonthlyAvailability = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const { id, year, month } = req.params;
+    const counselorId = Number(id);
+    const y = Number(year);
+    const m = Number(month);
+
+    const result = await sessionService.getCounselorMonthlyAvailability(counselorId, y, m);
+
+    res.status(200).json({
+      success: true,
+      message: 'Monthly availability fetched successfully',
+      data: result
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch monthly availability'
+    });
+  }
+});
+
 
 /**
  * @desc    Book a new session
@@ -278,21 +305,22 @@ export const setCounselorAvailability = asyncHandler(async (req: Request, res: R
     const [startHour] = startTime.split(':').map(Number);
     const [endHour] = endTime.split(':').map(Number);
     
-    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour > endHour) {
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour >= endHour) {
       return res.status(400).json({
         success: false,
         message: 'Invalid time range'
       });
     }
     
-    // Create slots to update
+    // Create slots to update (exclusive of endHour - treat as time range, not inclusive)
     const slots = [];
     const currentDate = new Date(start);
     
     while (currentDate <= end) {
       const dateString = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
       
-      for (let hour = startHour; hour <= endHour; hour++) {
+      // Exclusive range: startHour to endHour-1 (e.g., 9-10 creates only 9:00)
+      for (let hour = startHour; hour < endHour; hour++) {
         const timeString = `${hour.toString().padStart(2, '0')}:00`;
         slots.push({ date: dateString, time: timeString });
       }
@@ -352,21 +380,22 @@ export const setCounselorUnavailability = asyncHandler(async (req: Request, res:
     const [startHour] = startTime.split(':').map(Number);
     const [endHour] = endTime.split(':').map(Number);
     
-    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour > endHour) {
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour >= endHour) {
       return res.status(400).json({
         success: false,
         message: 'Invalid time range'
       });
     }
     
-    // Create slots to update
+    // Create slots to update (exclusive of endHour - treat as time range, not inclusive)
     const slots = [];
     const currentDate = new Date(start);
     
     while (currentDate <= end) {
       const dateString = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
       
-      for (let hour = startHour; hour <= endHour; hour++) {
+      // Exclusive range: startHour to endHour-1 (e.g., 9-10 creates only 9:00)
+      for (let hour = startHour; hour < endHour; hour++) {
         const timeString = `${hour.toString().padStart(2, '0')}:00`;
         slots.push({ date: dateString, time: timeString });
       }
