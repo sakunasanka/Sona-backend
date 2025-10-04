@@ -16,6 +16,12 @@ class Counselor extends User {
   public rating?: number;
   public sessionFee?: number;
   public status?: string;
+  public coverImage?: string;
+  public instagram?: string;
+  public linkedin?: string;
+  public x?: string;
+  public website?: string;
+  public languages?: string[];
 
   static async createCounselor( userData : {
     firebaseId: string;
@@ -34,6 +40,12 @@ class Counselor extends User {
     rating?: number;
     sessionFee?: number;
     status?: string;
+    coverImage?: string;
+    instagram?: string;
+    linkedin?: string;
+    x?: string;
+    website?: string;
+    languages?: string[];
   }) {
     const transaction = await sequelize.transaction();
 
@@ -43,7 +55,7 @@ class Counselor extends User {
         name: userData.name,
         email: userData.email,
         avatar: userData.avatar || null,
-        role: 'Counsellor', 
+        role: 'Counselor', 
       }, { transaction });
 
       console.log('User created with ID:', user.id); // ✅ Debug log
@@ -63,10 +75,16 @@ class Counselor extends User {
                 "rating",
                 "sessionFee",
                 "status",
+                "coverImage",
+                "instagram",
+                "linkedin",
+                "x",
+                "website",
+                "languages",
                 "createdAt",
                 "updatedAt"
             )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW())
       `, {
         bind: [
           user.id,
@@ -82,6 +100,12 @@ class Counselor extends User {
           userData.rating,
           userData.sessionFee,
           userData.status || 'pending', // Default status is pending
+          userData.coverImage,
+          userData.instagram,
+          userData.linkedin,
+          userData.x,
+          userData.website,
+          userData.languages,
         ],
         transaction
       });
@@ -107,6 +131,12 @@ class Counselor extends User {
       counselor.rating = userData.rating;
       counselor.sessionFee = userData.sessionFee;
       counselor.status = userData.status || 'pending';
+      counselor.coverImage = userData.coverImage;
+      counselor.instagram = userData.instagram;
+      counselor.linkedin = userData.linkedin;
+      counselor.x = userData.x;
+      counselor.website = userData.website;
+      counselor.languages = userData.languages;
 
       return counselor;
 
@@ -122,10 +152,11 @@ class Counselor extends User {
       SELECT 
         u.id, u."firebaseId", u.name, u.email, u.avatar, u.role, u."createdAt", u."updatedAt",
         c.title, c.specialities, c.address, c.contact_no, c."licenseNo", c."idCard", 
-        c."isVolunteer", c."isAvailable", c.description, c.rating, c."sessionFee", c.status
+        c."isVolunteer", c."isAvailable", c.description, c.rating, c."sessionFee", c.status,
+        c."coverImage", c.instagram, c.linkedin, c.x, c.website, c.languages
       FROM users u
       JOIN counselors c ON u.id = c."userId"
-      WHERE u.id = ? AND u.role = 'Counsellor'
+      WHERE u.id = ? AND u.role = 'Counselor'
     `, {
       replacements: [id],
       type: QueryTypes.SELECT
@@ -154,6 +185,12 @@ class Counselor extends User {
     counselor.rating = data.rating;
     counselor.sessionFee = data.sessionFee;
     counselor.status = data.status;
+    counselor.coverImage = data.coverImage;
+    counselor.instagram = data.instagram;
+    counselor.linkedin = data.linkedin;
+    counselor.x = data.x;
+    counselor.website = data.website;
+    counselor.languages = data.languages;
 
     return counselor;
   }
@@ -181,10 +218,16 @@ class Counselor extends User {
         c."description", 
         c."rating", 
         c."sessionFee",
-        c."status"
+        c."status",
+        c."coverImage", 
+        c."instagram", 
+        c."linkedin", 
+        c."x", 
+        c."website",
+        c."languages"
       FROM users u
       JOIN counselors c ON u.id = c."userId"
-      WHERE u."role" = 'Counsellor' AND c."isAvailable" = true AND c."status" = 'approved'
+      WHERE u."role" = 'Counselor' AND c."isAvailable" = true AND c."status" = 'approved'
     `, {
       type: QueryTypes.SELECT
     });
@@ -209,6 +252,12 @@ class Counselor extends User {
       counselor.rating = data.rating;
       counselor.sessionFee = data.sessionFee;
       counselor.status = data.status;
+      counselor.coverImage = data.coverImage;
+      counselor.instagram = data.instagram;
+      counselor.linkedin = data.linkedin;
+      counselor.x = data.x;
+      counselor.website = data.website;
+      counselor.languages = data.languages;
       return counselor;
     });
   }
@@ -236,10 +285,16 @@ class Counselor extends User {
         c."description", 
         c."rating", 
         c."sessionFee",
-        c."status"
+        c."status",
+        c."coverImage", 
+        c."instagram", 
+        c."linkedin", 
+        c."x", 
+        c."website",
+        c."languages"
       FROM users u
       JOIN counselors c ON u.id = c."userId"
-      WHERE u."role" = 'Counsellor'
+      WHERE u."role" = 'Counselor'
     `, {
       type: QueryTypes.SELECT
     });
@@ -264,6 +319,12 @@ class Counselor extends User {
       counselor.rating = data.rating;
       counselor.sessionFee = data.sessionFee;
       counselor.status = data.status;
+      counselor.coverImage = data.coverImage;
+      counselor.instagram = data.instagram;
+      counselor.linkedin = data.linkedin;
+      counselor.x = data.x;
+      counselor.website = data.website;
+      counselor.languages = data.languages;
       return counselor;
     });
   }

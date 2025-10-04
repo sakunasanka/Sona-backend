@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
 import sessionService from '../services/SessionService';
+import { PsychiatristService } from '../services/PsychiatristService';
 /**
  * @desc    Get all counselors
  * @route   GET /api/sessions/counselors
@@ -53,6 +54,56 @@ export const getCounselorById = asyncHandler(async (req: Request, res: Response)
 });
 
 /**
+ * @desc    Get all psychiatrists
+ * @route   GET /api/sessions/psychiatrists
+ * @access  Public
+ */
+export const getPsychiatrists = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const result = await PsychiatristService.getAllAvailablePsychiatrists();
+    
+    res.status(200).json({
+      success: true,
+      data: result.psychiatrists
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error fetching psychiatrists'
+    });
+  }
+});
+
+/**
+ * @desc    Get psychiatrist details by ID
+ * @route   GET /api/sessions/psychiatrists/:id
+ * @access  Public
+ */
+export const getPsychiatristById = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const psychiatrist = await PsychiatristService.getPsychiatristById(Number(id));
+    
+    res.status(200).json({
+      success: true,
+      data: psychiatrist
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: 'Psychiatrist not found'
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error fetching psychiatrist'
+    });
+  }
+});
+
+/**
  * @desc    Get available time slots for a counselor on a specific date
  * @route   GET /api/sessions/timeslots/:counselorId/:date
  * @access  Public
@@ -71,6 +122,56 @@ export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Resp
     res.status(error instanceof Error && error.message.includes('not found') ? 404 : 500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Error fetching time slots'
+    });
+  }
+});
+
+/**
+ * @desc    Get available time slots for a psychiatrist on a specific date
+ * @route   GET /api/sessions/psychiatrist-timeslots/:psychiatristId/:date
+ * @access  Public
+ */
+export const getPsychiatristAvailableTimeSlots = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const { psychiatristId, date } = req.params;
+    
+    const result = await PsychiatristService.getDateAvailability(Number(psychiatristId), date);
+    
+    res.status(200).json({
+      success: true,
+      data: result.availability
+    });
+  } catch (error) {
+    res.status(error instanceof Error && error.message.includes('not found') ? 404 : 500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error fetching psychiatrist time slots'
+    });
+  }
+});
+
+/**
+ * @desc    Get counselor monthly availability (no per-day recursion)
+ * @route   GET /api/sessions/counselors/:id/availability/:year/:month
+ * @access  Public
+ */
+export const getCounselorMonthlyAvailability = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const { id, year, month } = req.params;
+    const counselorId = Number(id);
+    const y = Number(year);
+    const m = Number(month);
+
+    const result = await sessionService.getCounselorMonthlyAvailability(counselorId, y, m);
+
+    res.status(200).json({
+      success: true,
+      message: 'Monthly availability fetched successfully',
+      data: result
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch monthly availability'
     });
   }
 });
@@ -204,21 +305,22 @@ export const setCounselorAvailability = asyncHandler(async (req: Request, res: R
     const [startHour] = startTime.split(':').map(Number);
     const [endHour] = endTime.split(':').map(Number);
     
-    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour > endHour) {
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour >= endHour) {
       return res.status(400).json({
         success: false,
         message: 'Invalid time range'
       });
     }
     
-    // Create slots to update
+    // Create slots to update (exclusive of endHour - treat as time range, not inclusive)
     const slots = [];
     const currentDate = new Date(start);
     
     while (currentDate <= end) {
       const dateString = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
       
-      for (let hour = startHour; hour <= endHour; hour++) {
+      // Exclusive range: startHour to endHour-1 (e.g., 9-10 creates only 9:00)
+      for (let hour = startHour; hour < endHour; hour++) {
         const timeString = `${hour.toString().padStart(2, '0')}:00`;
         slots.push({ date: dateString, time: timeString });
       }
@@ -278,21 +380,22 @@ export const setCounselorUnavailability = asyncHandler(async (req: Request, res:
     const [startHour] = startTime.split(':').map(Number);
     const [endHour] = endTime.split(':').map(Number);
     
-    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour > endHour) {
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour >= endHour) {
       return res.status(400).json({
         success: false,
         message: 'Invalid time range'
       });
     }
     
-    // Create slots to update
+    // Create slots to update (exclusive of endHour - treat as time range, not inclusive)
     const slots = [];
     const currentDate = new Date(start);
     
     while (currentDate <= end) {
       const dateString = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
       
-      for (let hour = startHour; hour <= endHour; hour++) {
+      // Exclusive range: startHour to endHour-1 (e.g., 9-10 creates only 9:00)
+      for (let hour = startHour; hour < endHour; hour++) {
         const timeString = `${hour.toString().padStart(2, '0')}:00`;
         slots.push({ date: dateString, time: timeString });
       }

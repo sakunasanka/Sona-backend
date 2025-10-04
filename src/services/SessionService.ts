@@ -361,22 +361,87 @@ class SessionService {
     const updatedSlots: TimeSlot[] = [];
     
     for (const { date, time } of slots) {
-      const slot = await TimeSlot.findOne({
+      const [slot, created] = await TimeSlot.findOrCreate({
         where: {
           counselorId,
           date,
-          time,
-          isBooked: false // Can't make booked slots unavailable
+          time
+        },
+        defaults: {
+          isAvailable: false,
+          isBooked: false
         }
       });
       
-      if (slot) {
-        await slot.update({ isAvailable: false });
+      // Only update if not booked (can't make booked slots unavailable)
+      if (!slot.isBooked) {
+        if (!created) {
+          await slot.update({ isAvailable: false });
+        }
         updatedSlots.push(slot);
       }
     }
     
     return updatedSlots;
+  }
+
+  /**
+   * Get counselor monthly availability (grouped by date)
+   */
+  async getCounselorMonthlyAvailability(
+    counselorId: number,
+    year: number,
+    month: number
+  ): Promise<{
+    counselorId: number;
+    year: number;
+    month: number;
+    availability: Array<{ date: string; slots: Array<{ id: number; time: string; isAvailable: boolean; isBooked: boolean }> }>;
+  }> {
+    // Validate inputs
+    if (!counselorId || !year || !month || month < 1 || month > 12) {
+      throw new Error('Invalid counselorId, year or month');
+    }
+
+    // Compute month range
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    const endDate = new Date(Date.UTC(year, month, 0)); // last day of month
+    const start = startDate.toISOString().split('T')[0];
+    const end = endDate.toISOString().split('T')[0];
+
+    // Fetch all time slots within range
+    const slots = await TimeSlot.findAll({
+      where: {
+        counselorId,
+        date: { [Op.between]: [start, end] }
+      },
+      order: [['date', 'ASC'], ['time', 'ASC']]
+    });
+
+    // Group by date
+    const grouped = new Map<string, Array<{ id: number; time: string; isAvailable: boolean; isBooked: boolean }>>();
+    for (const s of slots) {
+      const date = (s as any).date as string;
+      if (!grouped.has(date)) grouped.set(date, []);
+      grouped.get(date)!.push({
+        id: (s as any).id,
+        time: (s as any).time,
+        isAvailable: (s as any).isAvailable,
+        isBooked: (s as any).isBooked
+      });
+    }
+
+    const availability = Array.from(grouped.entries()).map(([date, daySlots]) => ({
+      date,
+      slots: daySlots
+    }));
+
+    return {
+      counselorId,
+      year,
+      month,
+      availability
+    };
   }
 
   /**

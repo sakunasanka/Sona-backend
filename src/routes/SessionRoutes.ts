@@ -3,6 +3,9 @@ import {
   getCounselors,
   getCounselorById,
   getAvailableTimeSlots,
+  getPsychiatrists,
+  getPsychiatristById,
+  getPsychiatristAvailableTimeSlots,
   bookSession,
   getUserSessions,
   getSessionById,
@@ -10,7 +13,8 @@ import {
   setCounselorUnavailability,
   cancelSession,
   getCounselorSessions,
-  getRemainingStudentSessions
+  getRemainingStudentSessions,
+  getCounselorMonthlyAvailability
 } from '../controllers/SessionController';
 import { authenticateToken } from '../middlewares/auth';
 
@@ -20,6 +24,12 @@ const router = express.Router();
 router.get('/counselors', getCounselors);
 router.get('/counselors/:id', getCounselorById);
 router.get('/timeslots/:counselorId/:date', getAvailableTimeSlots);
+router.get('/counselors/:id/availability/:year/:month', getCounselorMonthlyAvailability);
+
+// Psychiatrist routes
+router.get('/psychiatrists', getPsychiatrists);
+router.get('/psychiatrists/:id', getPsychiatristById);
+router.get('/psychiatrist-timeslots/:psychiatristId/:date', getPsychiatristAvailableTimeSlots);
 
 // Protected routes
 router.use(authenticateToken);
