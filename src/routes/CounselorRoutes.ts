@@ -19,6 +19,7 @@ import {
   addClientConcern,
   removeClientConcern
 } from '../controllers/CounselorController';
+import { getUserDailyMoods } from '../controllers/DailyMoodController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { isAdmin, isAuthenticated, isCounselor } from '../middlewares/auth';
 
@@ -49,6 +50,9 @@ router.delete('/clients/:clientId/notes/:noteId', isAuthenticated, isCounselor, 
 // Concerns management
 router.post('/clients/:clientId/concerns', isAuthenticated, isCounselor, addClientConcern);
 router.delete('/clients/:clientId/concerns', isAuthenticated, isCounselor, removeClientConcern);
+
+// Client moods for counselor
+router.get('/clients/:clientId/moods', isAuthenticated, isCounselor, getUserDailyMoods);
 
 // Dynamic routes (put these AFTER static routes to avoid conflicts)
 // Get counselor by ID

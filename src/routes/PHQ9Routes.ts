@@ -22,12 +22,13 @@ router.post('/submit', asyncHandler(PHQ9Controller.submitPHQ9));
  */
 router.get('/history', asyncHandler(PHQ9Controller.getUserHistory));
 
-/**
- * @route   GET /api/questionnaire/phq9/latest
- * @desc    Get user's latest PHQ-9 result
- * @access  Private (Authenticated users - own results only)
- */
-router.get('/latest', asyncHandler(PHQ9Controller.getUserLatest));
+
+// Professional access: fetch PHQ-9 by user id
+router.get('/user/:userId/history', 
+  requireRole(['Counselor', 'Admin', 'Psychiatrist']),
+  asyncHandler(PHQ9Controller.getUserHistoryById)
+);
+
 
 /**
  * @route   GET /api/questionnaire/phq9/recent-check

@@ -4,12 +4,19 @@ import postService from '../services/PostService';
 // Get all posts with pagination and sorting
 export const getPosts = async (req: Request, res: Response) => {
   try {
-    const { sort = 'recent', page = 1, limit = 10 } = req.query;
-    
+    const { sort = 'recent', limit, page } = req.query as any;
+
+    // If client requests unlimited (no limit param), return all posts without pagination
+    if (limit === undefined && page === undefined) {
+      const posts = await postService.getAllPosts(sort as 'recent' | 'popular');
+      return res.json({ success: true, data: { posts } });
+    }
+
+    // Otherwise, keep backward-compatible paginated behavior
     const result = await postService.getPosts({
       sort: sort as 'recent' | 'popular',
-      page: Number(page),
-      limit: Number(limit)
+      page: Number(page ?? 1),
+      limit: Number(limit ?? 10),
     });
 
     res.json({

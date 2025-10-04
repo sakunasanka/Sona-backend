@@ -131,6 +131,7 @@ class QuestionnaireResult extends Model<QuestionnaireResultAttributes, Questionn
       offset,
       include: [{
         model: User,
+        as: 'User',
         attributes: ['id', 'name', 'email']
       }]
     });
@@ -148,6 +149,7 @@ class QuestionnaireResult extends Model<QuestionnaireResultAttributes, Questionn
       order: [['completedAt', 'DESC']],
       include: [{
         model: User,
+        as: 'User',
         attributes: ['id', 'name', 'email']
       }]
     });

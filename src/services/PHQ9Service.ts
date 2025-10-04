@@ -115,6 +115,22 @@ export class PHQ9Service {
   }
 
   /**
+   * Get user's full PHQ-9 history (no pagination)
+   */
+  static async getUserHistoryFull(userId: number): Promise<QuestionnaireResult[]> {
+    try {
+      const results = await QuestionnaireResult.findAll({
+        where: { userId, deletedAt: { [Op.is]: null } } as any,
+        order: [['completedAt', 'DESC']]
+      });
+      return results;
+    } catch (error) {
+      console.error('Error fetching full user PHQ-9 history:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get user's latest PHQ-9 result
    */
   static async getUserLatest(userId: number): Promise<QuestionnaireResult | null> {
@@ -165,6 +181,7 @@ export class PHQ9Service {
         where: whereClause,
         include: [{
           model: QuestionnaireResult.associations.User?.target,
+          as: 'User',
           attributes: ['id', 'name', 'email']
         }]
       });
@@ -382,6 +399,7 @@ export class PHQ9Service {
         } as any,
         include: [{
           model: QuestionnaireResult.associations.User?.target,
+          as: 'User',
           attributes: ['id', 'name', 'email']
         }],
         order: [['completedAt', 'DESC']]

@@ -66,17 +66,10 @@ export class PHQ9Controller {
       }
 
       const userId = req.user.dbUser.id;
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = Math.min(parseInt(req.query.limit as string) || 10, 50); // Max 50 per page
-
-      if (page < 1 || limit < 1) {
-        throw new ValidationError('Page and limit must be positive integers');
-      }
-
-      const result = await PHQ9Service.getUserHistory(userId, page, limit);
+      const result = await PHQ9Service.getUserHistoryFull(userId);
 
       // Remove sensitive user information from responses
-      const sanitizedResults = result.results.map(item => ({
+      const sanitizedResults = result.map((item: any) => ({
         id: item.id,
         questionnaireType: item.questionnaireType,
         responses: item.responses,
@@ -88,51 +81,54 @@ export class PHQ9Controller {
         createdAt: item.createdAt
       }));
 
-      ApiResponseUtil.success(res, {
-        results: sanitizedResults,
-        pagination: result.pagination
-      }, 'PHQ-9 history retrieved successfully');
+      ApiResponseUtil.success(res, sanitizedResults, 'PHQ-9 history retrieved successfully');
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * Get user's latest PHQ-9 result
-   * GET /api/questionnaire/phq9/latest
+   * Get a specific user's PHQ-9 history (Professional access)
+   * GET /api/questionnaire/phq9/user/:userId/history?page=1&limit=10
    */
-  static async getUserLatest(req: Request, res: Response, next: NextFunction): Promise<void> {
+  static async getUserHistoryById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user || !req.user.dbUser) {
         throw new AuthenticationError('Authentication required');
       }
 
-      const userId = req.user.dbUser.id;
-      const result = await PHQ9Service.getUserLatest(userId);
-
-      if (!result) {
-        ApiResponseUtil.success(res, null, 'No PHQ-9 results found for user');
-        return;
+      // Access restricted to Counselor, Psychiatrist, or Admin
+      const userType = req.user.dbUser.userType;
+      const allowedRoles = ['Counselor', 'Admin', 'Psychiatrist'];
+      if (!allowedRoles.includes(userType)) {
+        throw new ValidationError('Access denied. Counselor, Psychiatrist, or Admin role required.');
       }
 
-      // Remove sensitive user information
-      const responseData = {
-        id: result.id,
-        questionnaireType: result.questionnaireType,
-        responses: result.responses,
-        totalScore: result.totalScore,
-        severity: result.severity,
-        impact: result.impact,
-        hasItem9Positive: result.hasItem9Positive,
-        completedAt: result.completedAt,
-        createdAt: result.createdAt
-      };
+      const userId = parseInt(req.params.userId, 10);
+      if (isNaN(userId)) {
+        throw new ValidationError('Invalid userId');
+      }
 
-      ApiResponseUtil.success(res, responseData, 'Latest PHQ-9 result retrieved successfully');
+      const result = await PHQ9Service.getUserHistoryFull(userId);
+
+      const sanitizedResults = result.map((item: any) => ({
+        id: item.id,
+        questionnaireType: item.questionnaireType,
+        responses: item.responses,
+        totalScore: item.totalScore,
+        severity: item.severity,
+        impact: item.impact,
+        hasItem9Positive: item.hasItem9Positive,
+        completedAt: item.completedAt,
+        createdAt: item.createdAt
+      }));
+
+      ApiResponseUtil.success(res, sanitizedResults, 'User PHQ-9 history retrieved successfully');
     } catch (error) {
       next(error);
     }
   }
+
 
   /**
    * Get specific PHQ-9 result by ID

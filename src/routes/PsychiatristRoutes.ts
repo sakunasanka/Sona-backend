@@ -8,6 +8,7 @@ import {
 } from '../controllers/PsychiatristController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { isAdmin, isAuthenticated, isPsychiatrist } from '../middlewares/auth';
+import { getUserDailyMoods } from '../controllers/DailyMoodController';
 
 const router = express.Router();
 
@@ -28,5 +29,8 @@ router.get('/', isAuthenticated, isAdmin, getAllPsychiatrists);
 
 // Update psychiatrist status (approve/reject)
 router.patch('/:id/status', isAuthenticated, isAdmin, updatePsychiatristStatus);
+
+// Psychiatrist can view a client's daily moods
+router.get('/clients/:clientId/moods', isAuthenticated, isPsychiatrist, getUserDailyMoods);
 
 export default router;

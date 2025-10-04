@@ -107,6 +107,49 @@ class PostService {
   }
 
   /**
+   * Get all posts without pagination (unlimited)
+   */
+  async getAllPosts(sort: 'recent' | 'popular' = 'recent'): Promise<PostData[]> {
+    let orderBy: any = [['createdAt', 'DESC']];
+
+    if (sort === 'popular') {
+      orderBy = [['likes', 'DESC'], ['createdAt', 'DESC']];
+    }
+
+    const posts = await Post.findAll({
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'avatar', 'role'],
+        },
+      ],
+      order: orderBy,
+    });
+
+    return posts.map((post) => ({
+      id: post.id,
+      author: {
+        name: post.user?.name || 'Unknown User',
+        avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        role: post.user?.role || 'User',
+      },
+      timeAgo: this.getTimeAgo(post.createdAt),
+      content: post.content,
+      hashtags: post.hashtags,
+      image: post.image,
+      stats: {
+        views: post.views,
+        likes: post.likes,
+        comments: post.comments,
+      },
+      backgroundColor: post.backgroundColor,
+      status: post.status || 'pending',
+      liked: false,
+    }));
+  }
+
+  /**
    * Get user's own posts
    */
   async getMyPosts(userId: number, filters: PostFilters = {}): Promise<{
