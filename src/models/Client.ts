@@ -106,7 +106,7 @@ class Client extends User {
     client.name = data.name;
     client.email = data.email;
     client.avatar = data.avatar;
-    client.role = data.userType; 
+    client.role = data.role; 
     client.isStudent = data.isStudent;
     client.nickName = data.nickName;
 
@@ -121,14 +121,14 @@ class Client extends User {
         u."name", 
         u."email", 
         u."avatar", 
-        u."userType", 
+        u."role", 
         u."createdAt", 
         u."updatedAt",
         c."nickName", 
         c."isStudent"
       FROM users u
       JOIN clients c ON u.id = c."userId"
-      WHERE u.userType = 'Client'
+      WHERE u.role = 'Client'
     `, {
       type: QueryTypes.SELECT
     });
@@ -140,7 +140,7 @@ class Client extends User {
       client.name = data.name;
       client.email = data.email;
       client.avatar = data.avatar;
-      client.role = data.userType;
+      client.role = data.role;
       client.nickName = data.nickName;
       client.isStudent = data.isStudent;
       return client;

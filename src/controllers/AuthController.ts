@@ -160,6 +160,21 @@ export const signin = async (req: Request, res: Response, next: NextFunction) =>
   if(result) {
     const jwtResult = await JwtServices.issueToken(result.tokens.idToken);
 
+    // Insert login record into user_logins table
+    try {
+      await sequelize.query(`
+        INSERT INTO user_logins (user_id)
+        VALUES (?)
+      `, {
+        replacements: [result.user.id],
+        type: QueryTypes.INSERT
+      });
+      console.log(`Login tracked for user ${result.user.id}`);
+    } catch (loginError) {
+      console.error('Failed to track login:', loginError);
+      // Don't fail the login if tracking fails
+    }
+
     ApiResponseUtil.success(res, {
       token: jwtResult.token,
       tokenType: 'Bearer',
@@ -489,6 +504,237 @@ export const updateClientStudentStatusById = async (req: Request, res: Response,
       isStudent
     }, "Student status updated successfully");
     
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getProfile = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get the user ID from the authenticated user
+    if (!req.user || !req.user.dbUser || !req.user.dbUser.id) {
+      throw new ValidationError("Authentication required");
+    }
+
+    const userId = req.user.dbUser.id;
+
+    // Query to get client profile data with new fields
+    const [profileData] = await sequelize.query(`
+      SELECT
+        u.id,
+        u.name,
+        u.email,
+        u.avatar,
+        u."createdAt" as memberSince,
+        c."nickName",
+        c."isStudent"
+      FROM users u
+      JOIN clients c ON u.id = c."userId"
+      WHERE u.id = ? AND u.role = 'Client'
+    `, {
+      replacements: [userId],
+      type: QueryTypes.SELECT
+    }) as any[];
+
+    if (!profileData) {
+      throw new ItemNotFoundError("Client profile not found");
+    }
+
+    // Format the response
+    const profile = {
+      id: profileData.id,
+      name: profileData.name,
+      email: profileData.email,
+      avatar: profileData.avatar,
+      nickName: profileData.nickName,
+      isStudent: profileData.isStudent,
+      memberSince: profileData.memberSince
+    };
+
+    ApiResponseUtil.success(res, profile, "Profile retrieved successfully");
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateProfile = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get the user ID from the authenticated user
+    if (!req.user || !req.user.dbUser || !req.user.dbUser.id) {
+      throw new ValidationError("Authentication required");
+    }
+
+    const userId = req.user.dbUser.id;
+    const { name, avatar, nickName, isStudent } = req.body;
+
+    // Validate input
+    if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0)) {
+      throw new ValidationError("Name must be a non-empty string");
+    }
+
+    if (avatar !== undefined && typeof avatar !== 'string') {
+      throw new ValidationError("Avatar must be a string");
+    }
+
+    if (nickName !== undefined && typeof nickName !== 'string') {
+      throw new ValidationError("NickName must be a string");
+    }
+
+    if (isStudent !== undefined && typeof isStudent !== 'boolean') {
+      throw new ValidationError("isStudent must be a boolean");
+    }
+
+    const transaction = await sequelize.transaction();
+
+    try {
+      // Update user table fields
+      const userUpdates: any = {};
+      if (name !== undefined) userUpdates.name = name.trim();
+      if (avatar !== undefined) userUpdates.avatar = avatar;
+
+      if (Object.keys(userUpdates).length > 0) {
+        await sequelize.query(`
+          UPDATE users
+          SET ${Object.keys(userUpdates).map(key => `"${key}" = ?`).join(', ')}, "updatedAt" = NOW()
+          WHERE id = ? AND role = 'Client'
+        `, {
+          replacements: [...Object.values(userUpdates), userId],
+          transaction
+        });
+      }
+
+      // Update client table fields
+      const clientUpdates: any = {};
+      if (nickName !== undefined) clientUpdates.nickName = nickName;
+      if (isStudent !== undefined) clientUpdates.isStudent = isStudent;
+
+      if (Object.keys(clientUpdates).length > 0) {
+        await sequelize.query(`
+          UPDATE clients
+          SET ${Object.keys(clientUpdates).map(key => `"${key}" = ?`).join(', ')}, "updatedAt" = NOW()
+          WHERE "userId" = ?
+        `, {
+          replacements: [...Object.values(clientUpdates), userId],
+          transaction
+        });
+      }
+
+      await transaction.commit();
+
+      // Return updated profile
+      const [updatedProfile] = await sequelize.query(`
+        SELECT
+          u.id,
+          u.name,
+          u.email,
+          u.avatar,
+          u."createdAt" as memberSince,
+          c."nickName",
+          c."isStudent"
+        FROM users u
+        JOIN clients c ON u.id = c."userId"
+        WHERE u.id = ? AND u.role = 'Client'
+      `, {
+        replacements: [userId],
+        type: QueryTypes.SELECT
+      }) as any[];
+
+      if (!updatedProfile) {
+        throw new ItemNotFoundError("Client profile not found");
+      }
+
+      const profile = {
+        id: updatedProfile.id,
+        name: updatedProfile.name,
+        email: updatedProfile.email,
+        avatar: updatedProfile.avatar,
+        nickName: updatedProfile.nickName,
+        isStudent: updatedProfile.isStudent,
+        memberSince: updatedProfile.memberSince
+      };
+
+      ApiResponseUtil.success(res, profile, "Profile updated successfully");
+
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserLoginStats = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get the user ID from the authenticated user
+    if (!req.user || !req.user.dbUser || !req.user.dbUser.id) {
+      throw new ValidationError("Authentication required");
+    }
+
+    const userId = req.user.dbUser.id;
+
+    // Get total login count
+    const [loginCountResult] = await sequelize.query(`
+      SELECT COUNT(*) as total_logins
+      FROM user_logins
+      WHERE user_id = ?
+    `, {
+      replacements: [userId],
+      type: QueryTypes.SELECT
+    }) as any[];
+
+    const totalLogins = parseInt(loginCountResult.total_logins) || 0;
+
+    // Get distinct login dates for streak calculation
+    const loginDates = await sequelize.query(`
+      SELECT DISTINCT DATE(login_at) as login_date
+      FROM user_logins
+      WHERE user_id = ?
+      ORDER BY DATE(login_at) DESC
+    `, {
+      replacements: [userId],
+      type: QueryTypes.SELECT
+    }) as any[];
+
+    // Calculate current day streak
+    let currentStreak = 0;
+    if (loginDates.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Convert login dates to Date objects
+      const loginDateObjects = loginDates.map((row: any) => {
+        const date = new Date(row.login_date);
+        date.setHours(0, 0, 0, 0);
+        return date;
+      });
+
+      // Check consecutive days starting from today backwards
+      let checkDate = new Date(today);
+      let streakBroken = false;
+
+      while (!streakBroken) {
+        const hasLoginOnDate = loginDateObjects.some(loginDate =>
+          loginDate.getTime() === checkDate.getTime()
+        );
+
+        if (hasLoginOnDate) {
+          currentStreak++;
+          // Move to previous day
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          streakBroken = true;
+        }
+      }
+    }
+
+    ApiResponseUtil.success(res, {
+      totalLogins,
+      currentStreak
+    }, "Login statistics retrieved successfully");
+
   } catch (error) {
     next(error);
   }
