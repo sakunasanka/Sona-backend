@@ -553,8 +553,13 @@ export class CounselorService {
       const transaction = await sequelize.transaction();
 
       try {
-        // Update user table
-        if (updateData.firstName || updateData.lastName || updateData.email || updateData.avatar) {
+        // Update user table (map profileImage -> users.avatar)
+        if (
+          updateData.firstName !== undefined ||
+          updateData.lastName !== undefined ||
+          updateData.email !== undefined ||
+          updateData.profileImage !== undefined
+        ) {
           const name = `${updateData.firstName || ''} ${updateData.lastName || ''}`.trim();
           await sequelize.query(`
             UPDATE users 

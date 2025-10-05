@@ -21,6 +21,7 @@ export interface PostData {
   };
   backgroundColor: string;
   status: string;
+  isAnonymous: boolean;
   liked: boolean;
 }
 
@@ -36,6 +37,7 @@ export interface CreatePostData {
   hashtags?: string[];
   backgroundColor?: string;
   image?: string;
+  isAnonymous?: boolean;
 }
 
 export interface UpdatePostData {
@@ -43,6 +45,7 @@ export interface UpdatePostData {
   hashtags?: string[];
   backgroundColor?: string;
   image?: string;
+  isAnonymous?: boolean;
 }
 
 class PostService {
@@ -95,6 +98,7 @@ class PostService {
       },
       backgroundColor: post.backgroundColor,
       status: post.status || 'pending',
+      isAnonymous: post.isAnonymous,
       liked: false, // Will be updated based on user authentication
     }));
 
@@ -145,6 +149,7 @@ class PostService {
       },
       backgroundColor: post.backgroundColor,
       status: post.status || 'pending',
+      isAnonymous: post.isAnonymous,
       liked: false,
     }));
   }
@@ -206,6 +211,7 @@ class PostService {
       },
       backgroundColor: post.backgroundColor,
       status: post.status || 'pending',
+      isAnonymous: post.isAnonymous,
       liked: userLikes.includes(post.id),
     }));
 
@@ -276,6 +282,7 @@ class PostService {
       },
       backgroundColor: post.backgroundColor,
       status: post.status || 'pending',
+      isAnonymous: post.isAnonymous,
       liked: userLikes.includes(post.id),
     }));
 
@@ -291,7 +298,7 @@ class PostService {
    * Create a new post
    */
   async createPost(data: CreatePostData): Promise<PostData> {
-    const { userId, content, hashtags = [], backgroundColor = '#FFFFFF', image } = data;
+    const { userId, content, hashtags = [], backgroundColor = '#FFFFFF', image, isAnonymous = false } = data;
 
     const post = await Post.create({
       userId,
@@ -299,6 +306,7 @@ class PostService {
       hashtags,
       backgroundColor,
       image,
+      isAnonymous,
       status: 'pending',
     });
 
@@ -336,6 +344,7 @@ class PostService {
       },
       backgroundColor: postWithUser.backgroundColor,
       status: postWithUser.status || 'pending',
+      isAnonymous: postWithUser.isAnonymous,
       liked: false,
     };
   }
@@ -361,6 +370,7 @@ class PostService {
       hashtags: data.hashtags || post.hashtags,
       backgroundColor: data.backgroundColor || post.backgroundColor,
       image: data.image !== undefined ? data.image : post.image,
+      isAnonymous: data.isAnonymous !== undefined ? data.isAnonymous : post.isAnonymous,
       status: 'edited',
     });
 
@@ -397,6 +407,7 @@ class PostService {
       },
       backgroundColor: updatedPost.backgroundColor,
       status: updatedPost.status || 'edited',
+      isAnonymous: updatedPost.isAnonymous,
       liked: false,
     };
   }

@@ -111,7 +111,7 @@ export const getMyPosts = async (req: Request, res: Response) => {
 // Create a new post
 export const createPost = async (req: Request, res: Response) => {
   try {
-    const { content, hashtags, backgroundColor, image } = req.body;
+    const { content, hashtags, backgroundColor, image, isAnonymous } = req.body;
     const userId = req.user?.dbUser.id;
 
     if (!userId) {
@@ -126,7 +126,8 @@ export const createPost = async (req: Request, res: Response) => {
       content,
       hashtags,
       backgroundColor,
-      image
+      image,
+      isAnonymous
     });
 
     res.status(201).json({
@@ -148,7 +149,7 @@ export const createPost = async (req: Request, res: Response) => {
 export const updatePost = async (req: Request, res: Response) => {
   try {
     const { postId } = req.params;
-    const { content, hashtags, backgroundColor, image } = req.body;
+    const { content, hashtags, backgroundColor, image, isAnonymous } = req.body;
     const userId = req.user?.dbUser.id;
 
     if (!userId) {
@@ -162,7 +163,8 @@ export const updatePost = async (req: Request, res: Response) => {
       content,
       hashtags,
       backgroundColor,
-      image
+      image,
+      isAnonymous
     }, userId);
 
     res.json({
