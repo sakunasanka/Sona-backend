@@ -28,33 +28,37 @@ export const generatePaymentLink = async (req: Request, res: Response): Promise<
 }
 
 export const processPayment = async (req: Request, res: Response): Promise<void> => {
-    const { amount, currency, sessionDetails } = req.body;
+    const { orderId, userhash, sessionDetails } = req.body;
 
-    if (!amount || !currency || !sessionDetails) {
-        throw new ValidationError('Amount, currency, and session details are required');
+    if (!orderId || !userhash || !sessionDetails) {
+        throw new ValidationError('Order ID, user hash, and session details are required');
+    }
+
+    if (!sessionDetails.amount || !sessionDetails.counselorId || !sessionDetails.date || !sessionDetails.time || !sessionDetails.duration) {
+        throw new ValidationError('Session details must include amount, counselorId, date, time, and duration');
+    }
+
+    if (typeof sessionDetails.amount !== 'number' || sessionDetails.amount <= 0) {
+        throw new ValidationError('Session amount must be a positive number');
     }
 
     // Process the payment using the PaymentServices
     const paymentResult = await PaymentServices.addNewTransaction({
         userId: req.user!.dbUser.id, // Get user ID from authenticated request
-        transactionId: '',
+        transactionId: orderId,
         paymentGateway: 'payhere',
-        amount: amount,
-        currency: currency,
+        amount: sessionDetails.amount,
+        currency: 'LKR',
         status: 'pending',
         paymentDate: new Date(),
     });
 
-    const orderId = `order_${req.user!.dbUser.id}`;
-    const fixedAmount = amount.toFixed(2);
-
-    const userhash = await PaymentServices.calculatePayhereHash(
+    ApiResponseUtil.success(res, {
+        paymentResult,
+        userhash,
         orderId,
-        fixedAmount,
-        currency
-    );
-
-    ApiResponseUtil.success(res, { paymentResult, userhash }, 'Payment processed successfully');
+        sessionDetails
+    }, 'Payment processed successfully');
 }
 
 export const checkPlatformFeeStatus = async (req: Request, res: Response): Promise<void> => {
