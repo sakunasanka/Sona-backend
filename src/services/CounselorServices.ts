@@ -384,10 +384,15 @@ export class CounselorService {
         throw new ItemNotFoundError('Counselor profile not found');
       }
 
+      const counselorData = profile[0] as any;
+
       return {
         success: true,
         message: "Profile retrieved successfully",
-        data: profile[0]
+        data: {
+          ...counselorData,
+          profileImage: " "
+        }
       };
     } catch (error) {
       if (error instanceof ItemNotFoundError) {

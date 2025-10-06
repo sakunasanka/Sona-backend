@@ -336,7 +336,15 @@ export const updateCounselorProfileSchema = yup.object({
     
     profileImage: yup
         .string()
-        .url('Profile image must be a valid URL')
+        .test('valid-url-or-empty', 'Profile image must be a valid URL or empty', function(value) {
+            if (!value || value.trim() === '') return true; // Allow empty strings
+            try {
+                new URL(value);
+                return true;
+            } catch {
+                return false;
+            }
+        })
         .optional(),
     
     coverImage: yup
