@@ -89,15 +89,7 @@ export class ComplaintController {
 
       const result = await ComplaintService.getComplaints(filters);
 
-      ApiResponseUtil.success(res, {
-        complaints: result.complaints,
-        pagination: {
-          total: result.total,
-          page: result.page,
-          limit: result.limit,
-          totalPages: result.totalPages
-        }
-      }, 'Complaints retrieved successfully');
+      ApiResponseUtil.success(res, result.complaints, 'Complaints retrieved successfully');
     } catch (error) {
       next(error);
     }

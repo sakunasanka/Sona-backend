@@ -29,7 +29,7 @@ const createSampleData = async () => {
           name: 'Uzumaki Naruto',
           email: 'naruto@konoha.com',
           password: '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36ZATYEKV/7kVgEgQTwdXKq', // secret123
-          avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+          avatar: 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
           badge: 'User',
         },
         {

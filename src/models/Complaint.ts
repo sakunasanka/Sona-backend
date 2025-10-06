@@ -107,4 +107,11 @@ Complaint.init(
 	}
 );
 
+import User from './User';
+import Session from './Session';
+
+Complaint.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+Complaint.belongsTo(Session, { foreignKey: 'session_id', as: 'session' });
+Complaint.belongsTo(User, { foreignKey: 'action_by', as: 'actionByUser' });
+
 export default Complaint;

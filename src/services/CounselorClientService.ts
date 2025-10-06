@@ -199,7 +199,7 @@ class CounselorClientService {
       const clients: ClientData[] = (clientsResult as any[]).map((row: any) => ({
         id: row.id,
         name: row.name,
-        avatar: row.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        avatar: row.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         student_id: row.student_id,
         is_anonymous: row.is_anonymous,
         status: row.status,
@@ -426,7 +426,7 @@ class CounselorClientService {
       const clientDetails = {
         id: client.id,
         name: client.name,
-        avatar: client.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        avatar: client.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         student_id: client.student_id,
         email: client.email,
         phone: "+1234567890", // Static for now - will be dynamic when phone field is added

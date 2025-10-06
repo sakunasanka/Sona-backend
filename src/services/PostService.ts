@@ -84,7 +84,7 @@ class PostService {
       id: post.id,
       author: {
         name: post.user?.name || 'Unknown User',
-        avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: post.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(post.createdAt),
@@ -135,7 +135,7 @@ class PostService {
       id: post.id,
       author: {
         name: post.user?.name || 'Unknown User',
-        avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: post.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(post.createdAt),
@@ -197,7 +197,7 @@ class PostService {
       id: post.id,
       author: {
         name: post.user?.name || 'Unknown User',
-        avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: post.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(post.createdAt),
@@ -268,7 +268,7 @@ class PostService {
       id: post.id,
       author: {
         name: post.user?.name || 'Unknown User',
-        avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: post.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(post.createdAt),
@@ -330,7 +330,7 @@ class PostService {
         name: postWithUser.user?.name || 'Unknown User',
         avatar:
           postWithUser.user?.avatar ||
-          'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+          'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: postWithUser.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(postWithUser.createdAt),
@@ -393,7 +393,7 @@ class PostService {
       id: updatedPost.id,
       author: {
         name: updatedPost.user?.name || 'Unknown User',
-        avatar: updatedPost.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        avatar: updatedPost.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: updatedPost.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(updatedPost.createdAt),
