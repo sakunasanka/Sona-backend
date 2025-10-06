@@ -3,6 +3,7 @@ import PaymentMethod, { PaymentMethodCreationAttributes} from "../models/Payment
 import { ItemNotFoundError } from "../utils/errors";
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import { Op } from 'sequelize';
 
 dotenv.config();
 
@@ -107,5 +108,111 @@ export class PaymentServices {
 
         console.log("Hash String:", hashString); // Debugging output
         return crypto.createHash('md5').update(hashString).digest('hex').toUpperCase();
+    }
+
+    static async checkPlatformFeeStatus(userId: number): Promise<{
+        hasPaid: boolean;
+        paymentDate?: Date;
+        expiryDate?: Date;
+        daysRemaining?: number;
+        message?: string;
+    }> {
+        const currentDate = new Date();
+
+        // Find the most recent successful platform fee payment
+        const platformFeePayments = await sequelize.query(`
+            SELECT * FROM payment_transactions
+            WHERE user_id = $1
+            AND status = 'success'
+            AND payment_for = 'platform_fee'
+            ORDER BY created_at DESC
+            LIMIT 1
+        `, {
+            bind: [userId],
+            type: 'SELECT'
+        });
+
+        const platformFeePayment = platformFeePayments[0] as any;
+
+        if (!platformFeePayment) {
+            return {
+                hasPaid: false,
+                message: "Platform fee payment required"
+            };
+        }
+
+        // Check if the payment is still valid (within 30 days)
+        const paymentDate = new Date(platformFeePayment.created_at);
+        const expiryDate = new Date(paymentDate);
+        expiryDate.setDate(expiryDate.getDate() + 30); // 30 days validity
+
+        if (currentDate > expiryDate) {
+            return {
+                hasPaid: false,
+                message: "Platform fee payment expired"
+            };
+        }
+
+        // Calculate days remaining
+        const timeDiff = expiryDate.getTime() - currentDate.getTime();
+        const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+        return {
+            hasPaid: true,
+            paymentDate,
+            expiryDate,
+            daysRemaining,
+            message: "Platform fee payment is valid"
+        };
+    }
+
+    static async addPlatformFeeTransaction(userId: number, orderId: string, amount: number, month?: string): Promise<{
+        success: boolean;
+        message: string;
+        transactionId: string;
+    }> {
+        const transaction = await sequelize.transaction();
+
+        try {
+            const transactionId = orderId;
+            const paymentMonth = month || new Date().toISOString().slice(0, 7); // YYYY-MM format
+
+            // Insert platform fee payment using raw SQL to match table structure
+            await sequelize.query(`
+                INSERT INTO payment_transactions (
+                    user_id, 
+                    transaction_id, 
+                    payment_for, 
+                    amount, 
+                    currency, 
+                    status, 
+                    created_at, 
+                    updated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            `, {
+                bind: [
+                    userId,
+                    transactionId,
+                    'platform_fee',
+                    amount,
+                    'LKR',
+                    'success',
+                    new Date(),
+                    new Date()
+                ],
+                transaction
+            });
+
+            await transaction.commit();
+
+            return {
+                success: true,
+                message: "Platform fee payment transaction created successfully",
+                transactionId
+            };
+        } catch (error: any) {
+            await transaction.rollback();
+            throw new Error(`Platform fee payment processing failed: ${error.message}`);
+        }
     }
 }
