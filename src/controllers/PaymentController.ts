@@ -3,6 +3,9 @@ import { PaymentServices } from '../services/PaymentServices';
 import { ApiResponseUtil } from '../utils/apiResponse';
 import { ValidationError } from '../utils/errors';
 
+// Helper function to get current date with +05:30 offset
+const getCurrentDatePlus0530 = () => new Date(Date.now() + (5.5 * 60 * 60 * 1000));
+
 export const generatePaymentLink = async (req: Request, res: Response): Promise<void> => {
     const { amount, sessionType } = req.body;
 
@@ -50,7 +53,7 @@ export const processPayment = async (req: Request, res: Response): Promise<void>
         amount: sessionDetails.amount,
         currency: 'LKR',
         status: 'pending',
-        paymentDate: new Date(),
+        paymentDate: getCurrentDatePlus0530(),
     });
 
     ApiResponseUtil.success(res, {

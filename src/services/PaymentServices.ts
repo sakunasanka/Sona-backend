@@ -10,6 +10,9 @@ dotenv.config();
 const PAYHERE_MERCHANT_ID = process.env.PAYHERE_MERCHANT_ID
 const PAYHERE_MERCHANT_SECRET = process.env.PAYHERE_MERCHANT_SECRET
 
+// Helper function to get current date with +05:30 offset
+const getCurrentDatePlus0530 = () => new Date(Date.now() + (5.5 * 60 * 60 * 1000));
+
 
 export interface ProcessPaymentTransactionData extends PaymentMethodCreationAttributes {
     counselorId?: number;
@@ -50,8 +53,8 @@ export class PaymentServices {
                     paymentData.amount,
                     paymentData.currency || 'LKR',
                     "success",
-                    new Date(),
-                    new Date()
+                    getCurrentDatePlus0530(),
+                    getCurrentDatePlus0530()
                 ],
                 transaction
             });
@@ -67,10 +70,10 @@ export class PaymentServices {
                 amount: paymentData.amount,
                 currency: paymentData.currency || 'LKR',
                 status: "success" as const,
-                paymentDate: new Date(),
+                paymentDate: getCurrentDatePlus0530(),
                 sessionData: paymentData.sessionData,
-                createdAt: new Date(),
-                updatedAt: new Date()
+                createdAt: getCurrentDatePlus0530(),
+                updatedAt: getCurrentDatePlus0530()
             };
 
             const hash = PaymentServices.calculatePayhereHash(
@@ -106,7 +109,7 @@ export class PaymentServices {
 
         payment.status = status;
         payment.gatewayResponse = gatewayResponse || null;
-        payment.paymentDate = new Date();
+        payment.paymentDate = getCurrentDatePlus0530();
 
         await payment.save();
 
@@ -231,8 +234,8 @@ export class PaymentServices {
                     amount,
                     'LKR',
                     'success',
-                    new Date(),
-                    new Date()
+                    getCurrentDatePlus0530(),
+                    getCurrentDatePlus0530()
                 ],
                 transaction
             });

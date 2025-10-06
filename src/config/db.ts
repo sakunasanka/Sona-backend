@@ -23,8 +23,7 @@ const sequelize = new Sequelize(
 
 // --- Simple +05:30 handling ---
 // 1) Tell Postgres session to use local timezone (affects NOW()/CURRENT_TIMESTAMP)
-// 2) Ensure Sequelize-managed timestamps (createdAt/updatedAt) use +05:30 as well
-// Note: This keeps it simple per the request; best practice is to store UTC and convert on read.
+// Note: PostgreSQL session timezone handles all timestamp operations automatically
 
 // Set DB session time zone for each new connection (PostgreSQL)
 sequelize.addHook('afterConnect', async (connection: any) => {
@@ -40,23 +39,23 @@ sequelize.addHook('afterConnect', async (connection: any) => {
   }
 });
 
-// Apply +05:30 offset for Sequelize-managed timestamps
-const nowPlus0530 = () => new Date(Date.now() + (5.5 * 60 * 60 * 1000)); // 5h30m in ms
+// Remove manual offset application - PostgreSQL session timezone handles this automatically
+// const nowPlus0530 = () => new Date(Date.now() + (5.5 * 60 * 60 * 1000)); // 5h30m in ms
 
-sequelize.addHook('beforeCreate', (instance: any) => {
-  if (!instance || !instance.dataValues) return;
-  if ('createdAt' in instance.dataValues) instance.set('createdAt', nowPlus0530());
-  if ('created_at' in instance.dataValues) instance.set('created_at', nowPlus0530());
-  if ('updatedAt' in instance.dataValues) instance.set('updatedAt', nowPlus0530());
-  if ('updated_at' in instance.dataValues) instance.set('updated_at', nowPlus0530());
-  if ('login_at' in instance.dataValues) instance.set('login_at', nowPlus0530());
-});
+// sequelize.addHook('beforeCreate', (instance: any) => {
+//   if (!instance || !instance.dataValues) return;
+//   if ('createdAt' in instance.dataValues) instance.set('createdAt', nowPlus0530());
+//   if ('created_at' in instance.dataValues) instance.set('created_at', nowPlus0530());
+//   if ('updatedAt' in instance.dataValues) instance.set('updatedAt', nowPlus0530());
+//   if ('updated_at' in instance.dataValues) instance.set('updated_at', nowPlus0530());
+//   if ('login_at' in instance.dataValues) instance.set('login_at', nowPlus0530());
+// });
 
-sequelize.addHook('beforeUpdate', (instance: any) => {
-  if (!instance || !instance.dataValues) return;
-  if ('updatedAt' in instance.dataValues) instance.set('updatedAt', nowPlus0530());
-  if ('updated_at' in instance.dataValues) instance.set('updated_at', nowPlus0530());
-});
+// sequelize.addHook('beforeUpdate', (instance: any) => {
+//   if (!instance || !instance.dataValues) return;
+//   if ('updatedAt' in instance.dataValues) instance.set('updatedAt', nowPlus0530());
+//   if ('updated_at' in instance.dataValues) instance.set('updated_at', nowPlus0530());
+// });
 
 const connectDB = async () => {
   try {
