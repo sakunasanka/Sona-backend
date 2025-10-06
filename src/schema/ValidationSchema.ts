@@ -544,3 +544,40 @@ export const validateData = async <T>(schema: yup.ObjectSchema<any>, data: any):
         throw error; // Re-throw unexpected errors
     }
 }
+
+// Complaint validation schemas
+export const createComplaintSchema = yup.object({
+    additional_details: yup
+        .string()
+        .max(1000, 'Additional details cannot exceed 1000 characters')
+        .optional(),
+
+    session_id: yup
+        .number()
+        .integer('Session ID must be an integer')
+        .positive('Session ID must be positive')
+        .required('Session ID is required'),
+
+    proof: yup
+        .string()
+        .url('Proof must be a valid URL')
+        .optional(),
+
+    reason: yup
+        .string()
+        .max(100, 'Reason cannot exceed 100 characters')
+        .optional()
+});
+
+export const updateComplaintStatusSchema = yup.object({
+    status: yup
+        .string()
+        .oneOf(['pending', 'resolved', 'rejected', 'in review'], 'Invalid status value')
+        .required('Status is required'),
+
+    reasonID: yup
+        .number()
+        .integer('Reason ID must be an integer')
+        .positive('Reason ID must be positive')
+        .optional()
+});
