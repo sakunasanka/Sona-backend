@@ -20,6 +20,7 @@ export interface ClientData {
   total_sessions: number;
   next_appointment: string | null;
   progress_status: string;
+  concerns: string[];
 }
 
 export interface ClientListResponse {
@@ -66,6 +67,7 @@ class CounselorClientService {
           u.avatar,
           COALESCE(c."nickName", CONCAT('STU', LPAD(u.id::text, 7, '0'))) as student_id,
           c."isStudent",
+          COALESCE(c."concerns", '[]'::jsonb) AS concerns,
           CASE 
             WHEN c."nickName" IS NOT NULL AND c."nickName" != '' THEN false 
             ELSE true 
@@ -99,7 +101,7 @@ class CounselorClientService {
       }
 
       // Add group by
-      clientsQuery += ` GROUP BY u.id, u.name, u.avatar, c."nickName", c."isStudent"`;
+      clientsQuery += ` GROUP BY u.id, u.name, u.avatar, c."nickName", c."isStudent", c."concerns"`;
       
       // Add having clause
       clientsQuery += ` HAVING COUNT(CASE WHEN s."counselorId" = :counselorId THEN 1 END) > 0`;
@@ -208,6 +210,7 @@ class CounselorClientService {
         avatar: row.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         student_id: row.student_id,
         is_anonymous: row.is_anonymous,
+        concerns: row.concerns || [],
         status: row.status,
         last_session: row.last_session_date ? new Date(row.last_session_date).toISOString() : null,
         total_sessions: parseInt(row.total_sessions) || 0,

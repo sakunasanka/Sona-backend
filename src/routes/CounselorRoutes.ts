@@ -17,7 +17,9 @@ import {
   deleteClientNote,
   updateClientNote,
   addClientConcern,
-  removeClientConcern
+  removeClientConcern,
+  updateCounselorVolunteerStatus,
+  getCounselorVolunteerStatus
 } from '../controllers/CounselorController';
 import { getUserDailyMoods } from '../controllers/DailyMoodController';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -39,6 +41,8 @@ router.get('/profile', isAuthenticated, isCounselor, getCounselorProfile);
 // Counselor profile management routes
 router.get('/profile/detailed', isAuthenticated, isCounselor, getCounselorDetailedProfile);
 router.put('/profile', isAuthenticated, isCounselor, updateCounselorProfile);
+router.get('/volunteer-status', isAuthenticated, isCounselor, getCounselorVolunteerStatus);
+router.put('/volunteer-status', isAuthenticated, isCounselor, updateCounselorVolunteerStatus);
 
 // Counselor client management routes
 router.get('/clients', isAuthenticated, isCounselor, getCounselorClients);

@@ -638,4 +638,76 @@ export class CounselorService {
       throw new DatabaseError('Failed to update counselor profile');
     }
   }
-} 
+
+  /**
+   * Update counselor volunteer status and session fee
+   */
+  static async updateCounselorVolunteerStatus(counselorId: number, isVolunteer: boolean, sessionFee: number): Promise<CounselorResponse> {
+    if (!counselorId || typeof counselorId !== 'number' || counselorId <= 0) {
+      throw new ValidationError('Counselor ID is required and must be a positive number');
+    }
+
+    if (typeof isVolunteer !== 'boolean') {
+      throw new ValidationError('isVolunteer must be a boolean value');
+    }
+
+    if (typeof sessionFee !== 'number' || sessionFee < 0) {
+      throw new ValidationError('Session fee must be a non-negative number');
+    }
+
+    try {
+      // First, find the counselor to ensure they exist
+      const counselor = await Counselor.findCounselorById(counselorId);
+
+      if (!counselor) {
+        throw new ItemNotFoundError('Counselor not found with the provided ID');
+      }
+
+      // Update volunteer status and session fee in the database
+      await sequelize.query(`
+        UPDATE counselors
+        SET "isVolunteer" = $1, "sessionFee" = $2, "updatedAt" = NOW()
+        WHERE "userId" = $3
+      `, {
+        bind: [isVolunteer, sessionFee, counselorId],
+        type: QueryTypes.UPDATE
+      });
+
+      // Update the counselor object
+      counselor.isVolunteer = isVolunteer;
+      counselor.sessionFee = sessionFee;
+
+      return {
+        id: counselor.id,
+        firebaseId: counselor.firebaseId,
+        name: counselor.name,
+        email: counselor.email,
+        avatar: counselor.avatar,
+        role: counselor.role,
+        title: counselor.title,
+        specialities: counselor.specialities,
+        address: counselor.address,
+        contact_no: counselor.contact_no,
+        license_no: counselor.license_no,
+        idCard: counselor.idCard,
+        isVolunteer: isVolunteer,
+        isAvailable: counselor.isAvailable,
+        description: counselor.description,
+        rating: counselor.rating,
+        sessionFee: sessionFee,
+        status: counselor.status,
+        coverImage: counselor.coverImage,
+        instagram: counselor.instagram,
+        linkedin: counselor.linkedin,
+        x: counselor.x,
+        website: counselor.website,
+        languages: counselor.languages
+      };
+    } catch (error) {
+      if (error instanceof ItemNotFoundError || error instanceof ValidationError) {
+        throw error;
+      }
+      throw new DatabaseError('Failed to update counselor volunteer status and session fee');
+    }
+  }
+}

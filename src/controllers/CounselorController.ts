@@ -4,7 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { CounselorService } from "../services/CounselorServices";
 import { ValidationError } from "../utils/errors";
 import Counselor from "../models/Counselor";
-import { validateData, updateCounselorProfileSchema } from "../schema/ValidationSchema";
+import { validateData, updateCounselorProfileSchema, updateCounselorVolunteerSchema } from "../schema/ValidationSchema";
 import CounselorClientService from "../services/CounselorClientService";
 import { isArray } from "util";
 
@@ -406,4 +406,48 @@ export const removeClientConcern = asyncHandler(async (req: Request, res: Respon
   const result = await CounselorClientService.removeConcernFromClient(counselorId, Number(clientId), concern.trim());
 
   ApiResponseUtil.success(res, result, 'Concern removed successfully');
+});
+
+/**
+ * @desc    Update counselor volunteer status and session fee
+ * @route   PUT /api/counselors/volunteer-status
+ * @access  Private (counselor only)
+ */
+export const updateCounselorVolunteerStatus = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  // Validate the request body
+  const validatedData = await validateData(updateCounselorVolunteerSchema, req.body) as { isVolunteer: boolean; sessionFee: number };
+
+  const updatedCounselor = await CounselorService.updateCounselorVolunteerStatus(
+    counselorId, 
+    validatedData.isVolunteer, 
+    validatedData.sessionFee
+  );
+
+  ApiResponseUtil.success(res, updatedCounselor, "Counselor volunteer status and session fee updated successfully");
+});
+
+/**
+ * @desc    Get counselor volunteer status and session fee
+ * @route   GET /api/counselors/volunteer-status
+ * @access  Private (counselor only)
+ */
+export const getCounselorVolunteerStatus = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  const counselor = await CounselorService.getCounselorById(counselorId);
+
+  ApiResponseUtil.success(res, {
+    isVolunteer: counselor.isVolunteer,
+    sessionFee: counselor.sessionFee
+  }, "Counselor volunteer status retrieved successfully");
 });

@@ -589,3 +589,15 @@ export const updateComplaintStatusSchema = yup.object({
         .positive('Reason ID must be positive')
         .optional()
 });
+
+export const updateCounselorVolunteerSchema = yup.object({
+    isVolunteer: yup
+        .boolean()
+        .required('isVolunteer status is required'),
+
+    sessionFee: yup
+        .number()
+        .min(0, 'Session fee cannot be negative')
+        .max(10000, 'Session fee cannot exceed 10,000')
+        .required('Session fee is required')
+});
