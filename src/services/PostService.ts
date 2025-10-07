@@ -2,6 +2,7 @@ import Post from '../models/Post';
 import User from '../models/User';
 import Like from '../models/Like';
 import { Op } from 'sequelize';
+import Client from '../models/Client';
 
 export interface PostData {
   id: string;
@@ -49,6 +50,23 @@ export interface UpdatePostData {
 }
 
 class PostService {
+  /**
+   * Helper function to get display name for post author
+   */
+  private async getPostAuthorName(user: any, isAnonymous: boolean): Promise<string> {
+    if (isAnonymous) {
+      return 'Anonymous';
+    }
+
+    if (user?.role === 'Client') {
+      const client = await Client.findClientById(user.id);
+      if (client && client.nickName) {
+        return client.nickName;
+      }
+    }
+
+    return user?.name || 'Unknown User';
+  }
   /**
    * Get all posts with pagination and sorting
    */
@@ -131,10 +149,10 @@ class PostService {
       order: orderBy,
     });
 
-    return posts.map((post) => ({
+    const postPromises = posts.map(async (post) => ({
       id: post.id,
       author: {
-        name: post.user?.name || 'Unknown User',
+        name: await this.getPostAuthorName(post.user, post.isAnonymous),
         avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: post.user?.role || 'User',
       },
@@ -152,6 +170,8 @@ class PostService {
       isAnonymous: post.isAnonymous,
       liked: false,
     }));
+
+    return await Promise.all(postPromises);
   }
 
   /**
@@ -193,10 +213,10 @@ class PostService {
     });
     const userLikes = likes.map((like) => like.postId);
 
-    const postsWithUserData = posts.rows.map((post) => ({
+    const postPromises = posts.rows.map(async (post) => ({
       id: post.id,
       author: {
-        name: post.user?.name || 'Unknown User',
+        name: await this.getPostAuthorName(post.user, post.isAnonymous),
         avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: post.user?.role || 'User',
       },
@@ -214,6 +234,8 @@ class PostService {
       isAnonymous: post.isAnonymous,
       liked: userLikes.includes(post.id),
     }));
+
+    const postsWithUserData = await Promise.all(postPromises);
 
     return {
       posts: postsWithUserData,
@@ -264,10 +286,10 @@ class PostService {
       userLikes = likes.map((like) => like.postId);
     }
 
-    const postsWithUserData = posts.rows.map((post) => ({
+    const postPromises = posts.rows.map(async (post) => ({
       id: post.id,
       author: {
-        name: post.user?.name || 'Unknown User',
+        name: await this.getPostAuthorName(post.user, post.isAnonymous),
         avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: post.user?.role || 'User',
       },
@@ -285,6 +307,8 @@ class PostService {
       isAnonymous: post.isAnonymous,
       liked: userLikes.includes(post.id),
     }));
+
+    const postsWithUserData = await Promise.all(postPromises);
 
     return {
       posts: postsWithUserData,
@@ -327,7 +351,7 @@ class PostService {
     return {
       id: postWithUser.id,
       author: {
-        name: postWithUser.user?.name || 'Unknown User',
+        name: await this.getPostAuthorName(postWithUser.user, postWithUser.isAnonymous),
         avatar:
           postWithUser.user?.avatar ||
           'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
@@ -392,7 +416,7 @@ class PostService {
     return {
       id: updatedPost.id,
       author: {
-        name: updatedPost.user?.name || 'Unknown User',
+        name: await this.getPostAuthorName(updatedPost.user, updatedPost.isAnonymous),
         avatar: updatedPost.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: updatedPost.user?.role || 'User',
       },

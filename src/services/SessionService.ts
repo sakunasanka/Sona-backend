@@ -244,33 +244,66 @@ class SessionService {
    * Get specific session details
    */
   async getSessionById(sessionId: number, userId: number): Promise<Session | null> {
-    return Session.findOne({
-      where: {
-        id: sessionId,
-        [Op.or]: [
-          { userId },
-          { counselorId: userId } // Allow both user and counselor to view session
-        ]
-      },
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['id', 'name', 'avatar']
-        },
-        {
-          model: User,
-          as: 'counselor',
-          attributes: ['id', 'name', 'avatar'],
-          include: [
-            {
-              model: Counselor,
-              attributes: ['title', 'specialties', 'rating']
-            }
-          ]
-        }
-      ]
+    const sessionQuery = `
+      SELECT
+        s.*,
+        CASE
+          WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+          ELSE u.name
+        END as user_name,
+        u.avatar as user_avatar,
+        u.role as user_role,
+        u.id as user_id,
+        cu.name as counselor_name,
+        cu.avatar as counselor_avatar,
+        cu.role as counselor_role,
+        cu.id as counselor_id,
+        co.title as counselor_title,
+        co.specialties as counselor_specialties,
+        co.rating as counselor_rating
+      FROM sessions s
+      JOIN users u ON s."userId" = u.id
+      LEFT JOIN clients c ON u.id = c."userId"
+      JOIN users cu ON s."counselorId" = cu.id
+      LEFT JOIN counselors co ON cu.id = co."userId"
+      WHERE s.id = :sessionId
+      AND (s."userId" = :userId OR s."counselorId" = :userId)
+    `;
+
+    const result = await sequelize.query(sessionQuery, {
+      replacements: { sessionId, userId },
+      type: QueryTypes.SELECT,
+      model: Session,
+      mapToModel: true
     });
+
+    if (result.length === 0) {
+      return null;
+    }
+
+    const session = result[0] as any;
+
+    // Construct the proper nested structure
+    return {
+      ...session.toJSON(),
+      user: {
+        id: session.get('user_id'),
+        name: session.get('user_name'),
+        avatar: session.get('user_avatar'),
+        role: session.get('user_role')
+      },
+      counselor: {
+        id: session.get('counselor_id'),
+        name: session.get('counselor_name'),
+        avatar: session.get('counselor_avatar'),
+        role: session.get('counselor_role'),
+        Counselor: {
+          title: session.get('counselor_title'),
+          specialties: session.get('counselor_specialties'),
+          rating: session.get('counselor_rating')
+        }
+      }
+    } as Session;
   }
 
   /**
@@ -448,20 +481,36 @@ class SessionService {
    * Get counselor's sessions
    */
   async getCounselorSessions(counselorId: number): Promise<(Session & { isStudent?: boolean })[]> {
-    const sessions = await Session.findAll({
-      where: { counselorId },
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['id', 'name', 'avatar']
-        }
-      ],
-      order: [['date', 'ASC'], ['timeSlot', 'ASC']]
+    const sessionsQuery = `
+      SELECT 
+        s.*,
+        CASE
+          WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+          ELSE u.name
+        END as user_name,
+        u.avatar as user_avatar,
+        u.role as user_role,
+        u.id as user_id,
+        CASE
+          WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+          ELSE u.name
+        END as client_display_name
+      FROM sessions s
+      JOIN users u ON s."userId" = u.id
+      LEFT JOIN clients c ON u.id = c."userId"
+      WHERE s."counselorId" = :counselorId
+      ORDER BY s.date ASC, s."timeSlot" ASC
+    `;
+
+    const sessions = await sequelize.query(sessionsQuery, {
+      replacements: { counselorId },
+      type: QueryTypes.SELECT,
+      model: Session,
+      mapToModel: true
     });
 
     // Get userIds from sessions
-    const userIds = sessions.map(s => s.userId);
+    const userIds = sessions.map((s: any) => s.userId);
 
     // Query isStudent status for all users in clients table
     const clientRows = await sequelize.query(
@@ -479,8 +528,14 @@ class SessionService {
     }
 
     // Attach isStudent to each session
-    return sessions.map(session => ({
+    return sessions.map((session: any) => ({
       ...session.toJSON(),
+      user: {
+        id: session.get('user_id'),
+        name: session.get('user_name'),
+        avatar: session.get('user_avatar'),
+        role: session.get('user_role')
+      },
       isStudent: isStudentMap.get(session.userId) || false
     })) as (Session & { isStudent?: boolean })[];
   }

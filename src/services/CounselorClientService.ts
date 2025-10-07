@@ -59,7 +59,10 @@ class CounselorClientService {
       let clientsQuery = `
         SELECT DISTINCT
           u.id,
-          u.name,
+          CASE
+            WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+            ELSE u.name
+          END as name,
           u.avatar,
           COALESCE(c."nickName", CONCAT('STU', LPAD(u.id::text, 7, '0'))) as student_id,
           c."isStudent",
@@ -112,7 +115,10 @@ class CounselorClientService {
 
       // Add sorting
       if (sort === 'name') {
-        clientsQuery += ` ORDER BY u.name ASC`;
+        clientsQuery += ` ORDER BY CASE
+            WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+            ELSE u.name
+          END ASC`;
       } else if (sort === 'last_session') {
         clientsQuery += ` ORDER BY last_session_date DESC NULLS LAST`;
       } else if (sort === 'join_date') {
@@ -313,7 +319,10 @@ class CounselorClientService {
       const clientQuery = `
         SELECT DISTINCT
           u.id,
-          u.name,
+          CASE
+            WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+            ELSE u.name
+          END as name,
           u.avatar,
           u.email,
           u."createdAt" as join_date,

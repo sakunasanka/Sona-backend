@@ -316,4 +316,30 @@ export class UserService {
 
         return user.toJSON() as UserResponse;
     }
+
+    // Get display name for a user (nickname for clients, name for others)
+    static async getUserDisplayName(userId: number): Promise<string> {
+        if (!userId || typeof userId !== 'number' || userId <= 0) {
+            throw new ValidationError('User ID is required and must be a positive number');
+        }
+
+        const user = await User.findByPk(userId, {
+            attributes: ['id', 'name', 'role'],
+        });
+
+        if (!user) {
+            throw new ItemNotFoundError('User not found with the provided ID');
+        }
+
+        // If user is a client, check for nickname
+        if (user.role === 'Client') {
+            const client = await Client.findClientById(userId);
+            if (client && client.nickName) {
+                return client.nickName;
+            }
+        }
+
+        // Return the display name (name field) if no nickname or not a client
+        return user.name;
+    }
 }

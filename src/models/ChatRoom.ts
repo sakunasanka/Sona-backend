@@ -95,7 +95,14 @@ static async getUserChatRooms(userId: number): Promise<any[]> {
                 CASE 
                     WHEN cr.type = 'global' THEN 'Global Chat'
                     WHEN cr."counselorId" = $1 THEN (
-                        SELECT name FROM users WHERE id = cr."clientId"
+                        SELECT 
+                            CASE 
+                                WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+                                ELSE u.name
+                            END
+                        FROM users u
+                        LEFT JOIN clients c ON u.id = c."userId" AND u.role = 'Client'
+                        WHERE u.id = cr."clientId"
                     )
                     ELSE (
                         SELECT name FROM users WHERE id = cr."counselorId"
