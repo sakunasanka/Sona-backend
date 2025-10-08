@@ -1,5 +1,5 @@
-import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
+import { Sequelize } from 'sequelize';
 
 dotenv.config();
 
@@ -17,45 +17,19 @@ const sequelize = new Sequelize(
         require: true,
         rejectUnauthorized: false // Use this if you're connecting to a cloud database with SSL
       }
+    },
+    // Database timezone is set to 'Asia/Colombo' at DB level
+    // Don't override with Sequelize timezone to avoid conflicts
+    define: {
+      timestamps: true,
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt'
     }
   }
 );
 
-// --- Simple +05:30 handling ---
-// 1) Tell Postgres session to use local timezone (affects NOW()/CURRENT_TIMESTAMP)
-// Note: PostgreSQL session timezone handles all timestamp operations automatically
-
-// Set DB session time zone for each new connection (PostgreSQL)
-sequelize.addHook('afterConnect', async (connection: any) => {
-  try {
-    // Use IANA zone or fixed offset; here we use fixed +05:30 as requested
-    await new Promise<void>((resolve, reject) => {
-      connection.query("SET TIME ZONE '+05:30';", (err: any) => {
-        if (err) reject(err); else resolve();
-      });
-    });
-  } catch (err) {
-    console.warn('Failed to set session time zone to +05:30:', err);
-  }
-});
-
-// Remove manual offset application - PostgreSQL session timezone handles this automatically
-// const nowPlus0530 = () => new Date(Date.now() + (5.5 * 60 * 60 * 1000)); // 5h30m in ms
-
-// sequelize.addHook('beforeCreate', (instance: any) => {
-//   if (!instance || !instance.dataValues) return;
-//   if ('createdAt' in instance.dataValues) instance.set('createdAt', nowPlus0530());
-//   if ('created_at' in instance.dataValues) instance.set('created_at', nowPlus0530());
-//   if ('updatedAt' in instance.dataValues) instance.set('updatedAt', nowPlus0530());
-//   if ('updated_at' in instance.dataValues) instance.set('updated_at', nowPlus0530());
-//   if ('login_at' in instance.dataValues) instance.set('login_at', nowPlus0530());
-// });
-
-// sequelize.addHook('beforeUpdate', (instance: any) => {
-//   if (!instance || !instance.dataValues) return;
-//   if ('updatedAt' in instance.dataValues) instance.set('updatedAt', nowPlus0530());
-//   if ('updated_at' in instance.dataValues) instance.set('updated_at', nowPlus0530());
-// });
+// Database timezone is now set to 'Asia/Colombo' at the database level
+// Sequelize is configured to handle timezone conversion properly
 
 const connectDB = async () => {
   try {
@@ -67,4 +41,4 @@ const connectDB = async () => {
   }
 };
 
-export { sequelize, connectDB };
+export { connectDB, sequelize };

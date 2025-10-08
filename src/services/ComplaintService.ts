@@ -46,18 +46,6 @@ class ComplaintService {
         throw new Error('Session not found or you do not have permission to complain about this session');
       }
 
-      // Check if user already has a complaint for this session
-      const existingComplaint = await Complaint.findOne({
-        where: {
-          user_id: data.user_id,
-          session_id: data.session_id
-        }
-      });
-
-      if (existingComplaint) {
-        throw new Error('You have already submitted a complaint for this session');
-      }
-
       const complaint = await Complaint.create({
         ...data,
         status: 'pending'

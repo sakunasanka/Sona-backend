@@ -702,6 +702,7 @@ export const getUserLoginStats = async (req: Request, res: Response, next: NextF
     let currentStreak = 0;
     if (loginDates.length > 0) {
       const today = new Date();
+      console.log("Today's date:", today);
       today.setHours(0, 0, 0, 0);
 
       // Convert login dates to Date objects
