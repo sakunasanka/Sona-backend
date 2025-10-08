@@ -689,10 +689,10 @@ export const getUserLoginStats = async (req: Request, res: Response, next: NextF
 
     // Get distinct login dates for streak calculation
     const loginDates = await sequelize.query(`
-      SELECT DISTINCT DATE(login_at) as login_date
+      SELECT DISTINCT DATE(login_at + INTERVAL '5.5 hours') as login_date
       FROM user_logins
       WHERE user_id = ?
-      ORDER BY DATE(login_at) DESC
+      ORDER BY DATE(login_at + INTERVAL '5.5 hours') DESC
     `, {
       replacements: [userId],
       type: QueryTypes.SELECT
@@ -701,25 +701,29 @@ export const getUserLoginStats = async (req: Request, res: Response, next: NextF
     // Calculate current day streak
     let currentStreak = 0;
     if (loginDates.length > 0) {
+      // Get today's date in the same timezone as the database (IST)
+      // Since both server and DB are in IST, we can use local date
       const today = new Date();
-      console.log("Today's date:", today);
-      today.setHours(0, 0, 0, 0);
+      const todayStr = today.getFullYear() + '-' +
+                       String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                       String(today.getDate()).padStart(2, '0');
 
-      // Convert login dates to Date objects
-      const loginDateObjects = loginDates.map((row: any) => {
-        const date = new Date(row.login_date);
-        date.setHours(0, 0, 0, 0);
-        return date;
-      });
+      const loginDateStrings = loginDates.map((row: any) => row.login_date);
+
+      console.log('Today (IST):', todayStr);
+      console.log('Login date strings:', loginDateStrings);
 
       // Check consecutive days starting from today backwards
       let checkDate = new Date(today);
       let streakBroken = false;
 
       while (!streakBroken) {
-        const hasLoginOnDate = loginDateObjects.some(loginDate =>
-          loginDate.getTime() === checkDate.getTime()
-        );
+        const checkDateStr = checkDate.getFullYear() + '-' +
+                            String(checkDate.getMonth() + 1).padStart(2, '0') + '-' +
+                            String(checkDate.getDate()).padStart(2, '0');
+        const hasLoginOnDate = loginDateStrings.includes(checkDateStr);
+
+        console.log(`Checking ${checkDateStr}: ${hasLoginOnDate ? 'YES' : 'NO'}`);
 
         if (hasLoginOnDate) {
           currentStreak++;
@@ -729,6 +733,8 @@ export const getUserLoginStats = async (req: Request, res: Response, next: NextF
           streakBroken = true;
         }
       }
+
+      console.log('Final streak:', currentStreak);
     }
 
     ApiResponseUtil.success(res, {
