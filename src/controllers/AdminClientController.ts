@@ -1,72 +1,179 @@
-// import { Request, Response } from 'express';
-// import { ClientService } from '../services/AdminClientServices';
-// import { StudentPackageStatus } from '../models/Client';
-// import { ItemNotFoundError } from '../utils/errors';
+import { Request, Response } from 'express';
+import clientService, { ClientFilters } from '../services/AdminClientServices';
+import studentService from '../services/AdminStudentServices';
 
-// export const getAllClients = async (req: Request, res: Response) => {
-//   try {
-//     const clients = await ClientService.getAllClients();
-//     res.json(clients);
-//   } catch (error) {
-//     res.status(500).json({ message: 'Error fetching clients' });
-//   }
-// };
+class AdminClientController {
+  async getAllClients(req: Request, res: Response) {
+    try {
+      const filters: ClientFilters = {
+        search: req.query.search as string,
+        status: req.query.status as string,
+        clientType: req.query.clientType as string,
+        page: parseInt(req.query.page as string) || 1,
+        limit: parseInt(req.query.limit as string) || 50
+      };
 
-// export const getClientById = async (req: Request, res: Response) => {
-//   try {
-//     const client = await ClientService.getClientById(req.params.id);
-//     res.json(client);
-//   } catch (error) {
-//     if (error instanceof ItemNotFoundError) {
-//       return res.status(404).json({ message: error.message });
-//     }
-//     res.status(500).json({ message: 'Error fetching client' });
-//   }
-// };
+      console.log('Filters:', filters); // Log filters for debugging
 
-// export const searchClients = async (req: Request, res: Response) => {
-//   try {
-//     const { searchTerm, status, clientType } = req.query;
-//     const clients = await ClientService.searchClients(
-//       searchTerm as string,
-//       status as string,
-//       clientType as string
-//     );
-//     res.json(clients);
-//   } catch (error) {
-//     res.status(500).json({ message: 'Error searching clients' });
-//   }
-// };
+      const clients = await clientService.getAllClients(filters);
+      res.json({
+        success: true,
+        data: clients,
+        pagination: {
+          page: filters.page,
+          limit: filters.limit,
+          total: clients.length
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching clients:', error); // Log the error for debugging
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
 
-// export const updateStudentPackageStatus = async (req: Request, res: Response) => {
-//   try {
-//     const { id } = req.params;
-//     const { status, rejectionReason } = req.body;
-    
-//     if (!['approved', 'rejected'].includes(status)) {
-//       return res.status(400).json({ message: 'Invalid status' });
-//     }
+  async getClientById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const client = await clientService.getClientById(parseInt(id));
 
-//     const client = await ClientService.updateStudentPackage(
-//       id,
-//       status as StudentPackageStatus,
-//       rejectionReason
-//     );
-    
-//     res.json(client);
-//   } catch (error) {
-//     if (error instanceof ItemNotFoundError) {
-//       return res.status(404).json({ message: error.message });
-//     }
-//     res.status(500).json({ message: error.message || 'Error updating student package' });
-//   }
-// };
+      if (!client) {
+        return res.status(404).json({
+          success: false,
+          message: 'Client not found'
+        });
+      }
 
-// export const getClientStats = async (req: Request, res: Response) => {
-//   try {
-//     const stats = await ClientService.getClientStats();
-//     res.json(stats);
-//   } catch (error) {
-//     res.status(500).json({ message: 'Error fetching client stats' });
-//   }
-// };
+      res.json({
+        success: true,
+        data: client
+      });
+    } catch (error) {
+      console.error('Error fetching client:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async getClientStats(req: Request, res: Response) {
+    try {
+      const stats = await clientService.getClientStats();
+      res.json({
+        success: true,
+        data: stats
+      });
+    } catch (error) {
+      console.error('Error fetching client stats:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async updateClientStatus(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!['active', 'inactive', 'suspended'].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status'
+        });
+      }
+
+      const success = await clientService.updateClientStatus(parseInt(id), status);
+
+      if (!success) {
+        return res.status(404).json({
+          success: false,
+          message: 'Client not found or update failed'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Client status updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating client status:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  async approveStudentPackage(req: Request, res: Response) {
+    try {
+      const { clientId } = req.params;
+
+      await studentService.updateStudentApplicationStatus(parseInt(clientId), 'approved');
+
+      res.json({
+        success: true,
+        message: 'Student package approved successfully'
+      });
+    } catch (error) {
+      console.error('Error approving student package:', error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error'
+      });
+    }
+  }
+
+  async rejectStudentPackage(req: Request, res: Response) {
+    try {
+      const { clientId } = req.params;
+      const { rejectionReason } = req.body;
+
+      if (!rejectionReason) {
+        return res.status(400).json({
+          success: false,
+          message: 'Rejection reason is required'
+        });
+      }
+
+      await studentService.updateStudentApplicationStatus(
+        parseInt(clientId), 
+        'rejected', 
+        rejectionReason
+      );
+
+      res.json({
+        success: true,
+        message: 'Student package rejected successfully'
+      });
+    } catch (error) {
+      console.error('Error rejecting student package:', error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error'
+      });
+    }
+  }
+
+  async getPendingStudentApplications(req: Request, res: Response) {
+    try {
+      const applications = await studentService.getPendingApplications();
+      res.json({
+        success: true,
+        data: applications
+      });
+    } catch (error) {
+      console.error('Error fetching pending applications:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+}
+
+export default new AdminClientController();

@@ -8,6 +8,7 @@ import http from 'http';
 import path from 'path';
 import { WebSocketService } from './services/WebSocketServices';
 import { syncDatabase } from './config/sync';
+import { initializeAssociations } from './models';
 
 // Import routes
 import userRoutes from './routes/UserRoutes';
@@ -19,7 +20,7 @@ import paymentRoutes from './routes/PaymentRoutes';
 import admincounsellorRoutes from './routes/AdminCounselorRoutes';
 import adminblogsRoutes from './routes/AdminBlogsRoutes';
 import adminpsychiatristRoutes from './routes/AdminPsychiatristRoutes';
-//import adminclientRoutes from './routes/AdminClientRoutes';
+import adminclientRoutes from './routes/AdminClientRoutes';
 import adminmtmemberRoutes from './routes/AdminMTMemberRoutes';
 import { auth } from 'firebase-admin';
 
@@ -64,7 +65,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/admincounsellors', admincounsellorRoutes);
 app.use('/api/adminblogs', adminblogsRoutes);
 app.use('/api/adminpsychiatrists', adminpsychiatristRoutes);
-//app.use('/api/adminclients', adminclientRoutes);
+app.use('/api/adminclients', adminclientRoutes);
 app.use('/api/adminmtmembers', adminmtmemberRoutes);
 
 
@@ -153,5 +154,8 @@ const initializeApp = async () => {
     process.exit(1);
   }
 };
+
+// Initialize associations
+initializeAssociations();
 
 initializeApp();

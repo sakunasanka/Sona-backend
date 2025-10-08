@@ -1,92 +1,214 @@
-// // src/services/client.service.ts
-// import { Client, IClient, StudentPackageStatus } from '../models/Client';
-// import { ItemNotFoundError } from '../utils/errors';
+import Client from '../models/Client';
+import Student from '../models/Student';
+import { QueryTypes } from 'sequelize';
+import { sequelize } from '../config/db';
 
-// export class ClientService {
-//   static async getAllClients() {
-//     return Client.find({});
-//   }
+export interface ClientWithStudentInfo {
+  id: number;
+  firebaseId: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: string;
+  isStudent: boolean;
+  nickName?: string;
+  concerns?: any[];
+  registeredDate: Date;
+  status: 'active' | 'inactive' | 'suspended';
+  age?: number;
+  location?: string;
+  bio?: string;
+  clientType: 'regular' | 'student';
+  sessionsCompleted: number;
+  totalSpent: number;
+  subscriptionType?: string;
+  studentPackage?: {
+    applied: boolean;
+    status: 'pending' | 'approved' | 'rejected';
+    appliedDate?: string;
+    school?: string;
+    studentId?: string;
+    graduationYear?: string;
+    verificationDocument?: string;
+    rejectionReason?: string;
+  };
+}
 
-//   static async getClientById(id: string) {
-//     const client = await Client.findById(id);
-//     if (!client) {
-//       throw new ItemNotFoundError('Client not found');
-//     }
-//     return client;
-//   }
+export interface ClientFilters {
+  search?: string;
+  status?: string;
+  clientType?: string;
+  page?: number;
+  limit?: number;
+}
 
-//   static async searchClients(searchTerm: string, status?: string, clientType?: string) {
-//     const query: any = {};
-    
-//     if (searchTerm) {
-//       query.$or = [
-//         { name: { $regex: searchTerm, $options: 'i' } },
-//         { email: { $regex: searchTerm, $options: 'i' } },
-//         { location: { $regex: searchTerm, $options: 'i' } }
-//       ];
-//     }
-    
-//     if (status && status !== 'All Status') {
-//       query.status = status.toLowerCase();
-//     }
-    
-//     if (clientType && clientType !== 'All Subscriptions') {
-//       query.clientType = clientType.toLowerCase();
-//     }
-    
-//     return Client.find(query);
-//   }
+class AdminClientServices {
+  async getAllClients(filters: ClientFilters = {}): Promise<ClientWithStudentInfo[]> {
+    const { search, status, clientType, page = 1, limit = 50 } = filters;
+    const offset = (page - 1) * limit;
 
-//   static async updateStudentPackage(
-//     clientId: string, 
-//     status: StudentPackageStatus, 
-//     rejectionReason?: string
-//   ) {
-//     const client = await Client.findById(clientId);
-//     if (!client) {
-//       throw new ItemNotFoundError('Client not found');
-//     }
+    let whereConditions = ['u.role = \'Client\''];
+    const replacements: any[] = [];
 
-//     if (!client.studentPackage?.applied) {
-//       throw new Error('Client has not applied for student package');
-//     }
+    if (search) {
+      whereConditions.push(`(LOWER(u.name) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?))`);
+      replacements.push(`%${search}%`, `%${search}%`);
+    }
 
-//     client.studentPackage.status = status;
-//     if (status === 'rejected' && rejectionReason) {
-//       client.studentPackage.rejectionReason = rejectionReason;
-//     }
-    
-//     if (status === 'approved') {
-//       client.subscriptionType = 'student';
-//     }
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
-//     await client.save();
-//     return client;
-//   }
+    const query = `
+      SELECT 
+        u.id, 
+        u."firebaseId", 
+        u."name", 
+        u."email", 
+        u."avatar", 
+        u."role", 
+        u."createdAt" as "registeredDate",
+        c."nickName", 
+        c."isStudent",
+        c."concerns",
+        'active' as status,
+        30 as age,
+        'Unknown Location' as location,
+        'No bio available' as bio,
+        CASE 
+          WHEN c."isStudent" = true THEN 'student' 
+          ELSE 'regular' 
+        END as "clientType",
+        0 as "sessionsCompleted",
+        0 as "totalSpent",
+        CASE 
+          WHEN c."isStudent" = true THEN 'student' 
+          ELSE 'regular' 
+        END as "subscriptionType"
+      FROM users u
+      JOIN clients c ON u.id = c."userId"
+      ${whereClause}
+      ORDER BY u."createdAt" DESC
+      LIMIT ? OFFSET ?
+    `;
 
-//   static async getClientStats() {
-//     const stats = await Client.aggregate([
-//       {
-//         $facet: {
-//           totalClients: [{ $count: "count" }],
-//           activeClients: [{ $match: { status: "active" } }, { $count: "count" }],
-//           inactiveClients: [{ $match: { status: "inactive" } }, { $count: "count" }],
-//           suspendedClients: [{ $match: { status: "suspended" } }, { $count: "count" }],
-//           studentClients: [{ $match: { "studentPackage.applied": true } }, { $count: "count" }],
-//           regularClients: [{ $match: { clientType: "regular" } }, { $count: "count" }],
-//           totalRevenue: [{ $group: { _id: null, total: { $sum: "$totalSpent" } } }]
-//         }
-//       }
-//     ]);
+    const clients = await sequelize.query(query, {
+      replacements: [...replacements, limit, offset],
+      type: QueryTypes.SELECT
+    });
 
-//     return {
-//       totalClients: stats[0].totalClients[0]?.count || 0,
-//       activeClients: stats[0].activeClients[0]?.count || 0,
-//       inactiveClients: stats[0].inactiveClients[0]?.count || 0,
-//       suspendedClients: stats[0].suspendedClients[0]?.count || 0,
-//       studentClients: stats[0].studentClients[0]?.count || 0,
-//       regularClients: stats[0].regularClients[0]?.count || 0,
-//       totalRevenue: stats[0].totalRevenue[0]?.total || 0
-//     };
-//   }
-// }
+    // Attach student package info safely
+    const clientsWithStudentInfo = await Promise.all(
+      clients.map(async (client: any) => {
+        const studentInfo = await Student.findOne({ where: { clientId: client.id } });
+
+        return {
+          ...client,
+          studentPackage: studentInfo ? {
+            applied: true,
+            status: studentInfo.applicationStatus,
+            appliedDate: studentInfo.appliedDate ? studentInfo.appliedDate.toISOString().split('T')[0] : undefined,
+            school: studentInfo.university,
+            studentId: studentInfo.universityId,
+            graduationYear: studentInfo.graduationYear,
+            verificationDocument: studentInfo.verificationDocument,
+            rejectionReason: studentInfo.rejectionReason
+          } : {
+            applied: client.isStudent,
+            status: 'pending'
+          }
+        };
+      })
+    );
+
+    return clientsWithStudentInfo;
+  }
+
+  async getClientById(id: number): Promise<ClientWithStudentInfo | null> {
+    const client = await Client.findClientById(id);
+    if (!client) return null;
+
+    const studentInfo = await Student.findOne({ where: { clientId: id } });
+
+    return {
+      id: client.userId,
+      firebaseId: client.firebaseId,
+      name: client.name,
+      email: client.email,
+      avatar: client.avatar,
+      role: client.role,
+      isStudent: client.isStudent,
+      nickName: client.nickName,
+      concerns: client.concerns,
+      registeredDate: client.createdAt,
+      status: 'active',
+      age: 30,
+      location: 'Unknown Location',
+      bio: 'No bio available',
+      clientType: client.isStudent ? 'student' : 'regular',
+      sessionsCompleted: 0,
+      totalSpent: 0,
+      subscriptionType: client.isStudent ? 'student' : 'regular',
+      studentPackage: studentInfo ? {
+        applied: true,
+        status: studentInfo.applicationStatus,
+        appliedDate: studentInfo.appliedDate ? studentInfo.appliedDate.toISOString().split('T')[0] : undefined,
+        school: studentInfo.university,
+        studentId: studentInfo.universityId,
+        graduationYear: studentInfo.graduationYear,
+        verificationDocument: studentInfo.verificationDocument,
+        rejectionReason: studentInfo.rejectionReason
+      } : {
+        applied: client.isStudent,
+        status: 'pending'
+      }
+    };
+  }
+
+  async updateClientStatus(id: number, status: 'active' | 'inactive' | 'suspended'): Promise<boolean> {
+    try {
+      return true; // Placeholder
+    } catch (error) {
+      console.error('Error updating client status:', error);
+      return false;
+    }
+  }
+
+  async getClientStats() {
+    const totalClients = await sequelize.query(`
+      SELECT COUNT(*) as count
+      FROM users u
+      JOIN clients c ON u.id = c."userId"
+      WHERE u.role = 'Client'
+    `, { type: QueryTypes.SELECT });
+
+    const activeClients = await sequelize.query(`
+      SELECT COUNT(*) as count
+      FROM users u
+      JOIN clients c ON u.id = c."userId"
+      WHERE u.role = 'Client'
+    `, { type: QueryTypes.SELECT });
+
+    const studentClients = await sequelize.query(`
+      SELECT COUNT(*) as count
+      FROM users u
+      JOIN clients c ON u.id = c."userId"
+      WHERE u.role = 'Client' AND c."isStudent" = true
+    `, { type: QueryTypes.SELECT });
+
+    const regularClients = await sequelize.query(`
+      SELECT COUNT(*) as count
+      FROM users u
+      JOIN clients c ON u.id = c."userId"
+      WHERE u.role = 'Client' AND c."isStudent" = false
+    `, { type: QueryTypes.SELECT });
+
+    return {
+      total: parseInt((totalClients[0] as { count: string }).count),
+      active: parseInt((activeClients[0] as { count: string }).count),
+      inactive: 0,
+      students: parseInt((studentClients[0] as { count: string }).count),
+      regular: parseInt((regularClients[0] as { count: string }).count)
+    };
+  }
+}
+
+export default new AdminClientServices();

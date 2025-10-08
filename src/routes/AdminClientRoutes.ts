@@ -1,28 +1,63 @@
-// import express from 'express';
-// import {
-//   getAllClients,
-//   getClientById,
-//   searchClients,
-//   updateStudentPackageStatus,
-//   getClientStats
-// } from '../controllers/AdminClientController';
-// import { authenticateToken } from '../middlewares/auth';
+import { Router } from 'express';
+import { check } from 'express-validator';
+import clientController from '../controllers/AdminClientController';
+import { authenticateToken } from '../middlewares/auth';
 
-// const router = express.Router();
+const router = Router();
 
-// // Get all clients
-// router.get('/', authenticateToken, getAllClients);
+// All routes require authentication
+router.use(authenticateToken);
 
-// // Get client by ID
-// router.get('/:id', authenticateToken, getClientById);
+// Client management routes
+router.get(
+  '/',
+  clientController.getAllClients
+);
 
-// // Search clients with filters
-// router.get('/search', authenticateToken, searchClients);
+router.get(
+  '/stats',
+  clientController.getClientStats
+);
 
-// // Update student package status (approve/reject)
-// router.patch('/:id/student-package', authenticateToken, updateStudentPackageStatus);
+router.get(
+  '/:id',
+  clientController.getClientById
+);
 
-// // Get client statistics
-// router.get('/stats', authenticateToken, getClientStats);
+router.patch(
+  '/:id/status',
+  [
+    check('status')
+      .isIn(['active', 'inactive', 'banned'])
+      .withMessage('Invalid status value')
+  ],
+  clientController.updateClientStatus
+);
 
-// export default router;
+// Student package management routes
+router.get(
+  '/students/pending',
+  clientController.getPendingStudentApplications
+);
+
+router.post(
+  '/:clientId/student-package/approve',
+  [
+    check('packageId')
+      .notEmpty()
+      .withMessage('Package ID is required')
+  ],
+  clientController.approveStudentPackage
+);
+
+router.post(
+  '/:clientId/student-package/reject',
+  [
+    check('rejectionReason')
+      .notEmpty()
+      .withMessage('Rejection reason is required')
+  ],
+  clientController.rejectStudentPackage
+);
+
+export default router;
