@@ -19,7 +19,10 @@ import {
   addClientConcern,
   removeClientConcern,
   updateCounselorVolunteerStatus,
-  getCounselorVolunteerStatus
+  getCounselorVolunteerStatus,
+  getCounselorEarningsSummary,
+  getCounselorMonthlyEarnings,
+  getCounselorEarningsPerClient
 } from '../controllers/CounselorController';
 import { getUserDailyMoods } from '../controllers/DailyMoodController';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -54,6 +57,11 @@ router.delete('/clients/:clientId/notes/:noteId', isAuthenticated, isCounselor, 
 // Concerns management
 router.post('/clients/:clientId/concerns', isAuthenticated, isCounselor, addClientConcern);
 router.delete('/clients/:clientId/concerns', isAuthenticated, isCounselor, removeClientConcern);
+
+// Counselor earnings routes
+router.get('/earnings/summary', isAuthenticated, isCounselor, getCounselorEarningsSummary);
+router.get('/earnings/monthly', isAuthenticated, isCounselor, getCounselorMonthlyEarnings);
+router.get('/earnings/per-client/:clientId', isAuthenticated, isCounselor, getCounselorEarningsPerClient);
 
 // Client moods for counselor
 router.get('/clients/:clientId/moods', isAuthenticated, isCounselor, getUserDailyMoods);
