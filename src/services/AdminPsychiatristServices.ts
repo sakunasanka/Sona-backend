@@ -143,7 +143,7 @@ export const getPsychiatristCounts = async (): Promise<PsychiatristCounts> => {
   };
 
   return psychiatrists.reduce((acc, p) => {
-    const status = p.status.toLowerCase() as keyof PsychiatristCounts;
+    const status = (p.status || 'unset').toLowerCase() as keyof PsychiatristCounts;
     acc[status] = (acc[status] || 0) + 1;
     return acc;
   }, initialCounts);

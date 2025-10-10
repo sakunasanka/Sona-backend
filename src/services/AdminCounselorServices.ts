@@ -139,7 +139,7 @@ export const getCounselorCounts = async (): Promise<CounselorCounts> => {
   };
 
   return counselors.reduce((acc, c) => {
-    const status = c.status.toLowerCase() as keyof CounselorCounts;
+    const status = (c.status || 'unset').toLowerCase() as keyof CounselorCounts;
     acc[status] = (acc[status] || 0) + 1;
     return acc;
   }, initialCounts);
