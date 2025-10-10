@@ -503,3 +503,43 @@ export const getRemainingStudentSessions = asyncHandler(async (req: Request, res
     });
   }
 });
+
+export const getSessionLink = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const userId = req.user!.dbUser.id;
+
+    console.log('session id: ', id);
+
+    if(!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Session ID is required'
+      })
+    }
+
+    try {
+      const session = await sessionService.getSessionById(Number(id), userId);
+
+      if(!session) {
+        return res.status(404).json({
+          success: false,
+          message: 'Session not found'
+        })
+      }
+
+      const sessionLink = await sessionService.generateSessionLink(session.id, userId);
+      
+      res.status(200).json({
+        success: true,
+        data: {
+          sessionLink
+        }
+      });
+      
+    }catch(e ) {
+      return res.status(500).json({
+        success: false,
+        message: e instanceof Error ? e.message : 'Error fetching session'
+      })
+    }
+});
