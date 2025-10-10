@@ -12,6 +12,7 @@ export interface StudentData {
   rejectionReason?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
+  
 }
 
 class Student {
@@ -93,9 +94,19 @@ class Student {
       WHERE id = ?
       RETURNING *
     `, {
-      replacements: [status, rejectionReason || null, id],
+      replacements: [
+        status,
+        rejectionReason !== undefined ? rejectionReason : null, // Ensure rejectionReason is null if undefined
+        id
+      ],
       type: QueryTypes.SELECT
     });
+
+    console.log('Replacements:', [
+      status,
+      rejectionReason !== undefined ? rejectionReason : null, // Ensure rejectionReason is null if undefined
+      id
+    ]); // Debug log for replacements array
 
     if (!result || result.length === 0) return null;
     return this.mapToStudent(result[0] as any);
