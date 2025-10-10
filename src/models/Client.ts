@@ -1,7 +1,6 @@
 import { DataTypes, Model, QueryTypes } from "sequelize";
 import { sequelize } from "../config/db";
 import User from "./User";
-import Student from "./Student"; // ✅ optional import to ensure model is available
 
 class Client extends User {
   public userId!: number; // Explicitly define userId as the primary key
@@ -16,11 +15,6 @@ class Client extends User {
 
   // ✅ Define the association as a static method
   static associate(models: any) {
-    Client.hasOne(models.Student, {
-      foreignKey: "clientId",
-      as: "student",
-    });
-
     // Define association with User
     Client.belongsTo(models.User, {
       foreignKey: "userId",

@@ -98,19 +98,19 @@ class AdminClientServices {
     // Attach student package info safely
     const clientsWithStudentInfo = await Promise.all(
       clients.map(async (client: any) => {
-        const studentInfo = await Student.findOne({ where: { clientId: client.id } });
+        const studentInfo = await Student.findByClientId(client.id);
 
         return {
           ...client,
           studentPackage: studentInfo ? {
             applied: true,
             status: studentInfo.applicationStatus,
-            appliedDate: studentInfo.appliedDate ? studentInfo.appliedDate.toISOString().split('T')[0] : undefined,
+            appliedDate: studentInfo.createdAt.toISOString().split('T')[0],
             school: studentInfo.university,
-            studentId: studentInfo.universityId,
-            graduationYear: studentInfo.graduationYear,
-            verificationDocument: studentInfo.verificationDocument,
-            rejectionReason: studentInfo.rejectionReason
+            studentId: studentInfo.studentIDCopy,
+            graduationYear: undefined,
+            verificationDocument: undefined,
+            rejectionReason: studentInfo.rejectionReason || undefined
           } : {
             applied: client.isStudent,
             status: 'pending'
@@ -126,7 +126,7 @@ class AdminClientServices {
     const client = await Client.findClientById(id);
     if (!client) return null;
 
-    const studentInfo = await Student.findOne({ where: { clientId: id } });
+    const studentInfo = await Student.findByClientId(id);
 
     return {
       id: client.userId,
@@ -150,12 +150,12 @@ class AdminClientServices {
       studentPackage: studentInfo ? {
         applied: true,
         status: studentInfo.applicationStatus,
-        appliedDate: studentInfo.appliedDate ? studentInfo.appliedDate.toISOString().split('T')[0] : undefined,
+        appliedDate: studentInfo.createdAt.toISOString().split('T')[0],
         school: studentInfo.university,
-        studentId: studentInfo.universityId,
-        graduationYear: studentInfo.graduationYear,
-        verificationDocument: studentInfo.verificationDocument,
-        rejectionReason: studentInfo.rejectionReason
+        studentId: studentInfo.studentIDCopy,
+        graduationYear: undefined,
+        verificationDocument: undefined,
+        rejectionReason: studentInfo.rejectionReason || undefined
       } : {
         applied: client.isStudent,
         status: 'pending'

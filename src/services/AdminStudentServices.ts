@@ -4,40 +4,35 @@ import User from '../models/User';
 
 export interface StudentApplicationData {
   clientId: number;
+  fullName: string;
   university: string;
-  universityId: string;
-  universityEmail: string;
-  graduationYear?: string;
-  verificationDocument?: string;
+  studentIDCopy: string;
+  uniEmail: string;
 }
 
 class AdminStudentServices {
   async applyForStudentPackage(applicationData: StudentApplicationData) {
-    const transaction = await Student.sequelize!.transaction();
     try {
       const client = await Client.findClientById(applicationData.clientId);
       if (!client) throw new Error('Client not found');
 
-      const existingApplication = await Student.findOne({ where: { clientId: applicationData.clientId } });
+      const existingApplication = await Student.findByClientId(applicationData.clientId);
       if (existingApplication) throw new Error('Student application already exists');
 
-      const studentApplication = await Student.create({
+      const studentApplication = await Student.createStudentApplication({
         clientId: applicationData.clientId,
+        fullName: applicationData.fullName,
         university: applicationData.university,
-        universityId: applicationData.universityId,
-        universityEmail: applicationData.universityEmail,
-        graduationYear: applicationData.graduationYear,
-        verificationDocument: applicationData.verificationDocument,
+        studentIDCopy: applicationData.studentIDCopy,
+        uniEmail: applicationData.uniEmail,
         applicationStatus: 'pending',
-        appliedDate: new Date()
-      }, { transaction });
+        rejectionReason: null
+      });
 
       await Client.updateClient(applicationData.clientId, { isStudent: true });
 
-      await transaction.commit();
       return studentApplication;
     } catch (error) {
-      await transaction.rollback();
       throw error;
     }
   }
@@ -47,50 +42,28 @@ class AdminStudentServices {
     status: 'approved' | 'rejected', 
     rejectionReason?: string
   ) {
-    const transaction = await Student.sequelize!.transaction();
     try {
-      const studentApplication = await Student.findOne({ where: { clientId } });
+      const studentApplication = await Student.findByClientId(clientId);
       if (!studentApplication) throw new Error('Student application not found');
 
-      await studentApplication.update({
-        applicationStatus: status,
-        ...(rejectionReason && { rejectionReason })
-      }, { transaction });
+      const updatedApplication = await Student.updateApplicationStatus(studentApplication.id, status, rejectionReason);
 
       if (status === 'rejected') {
         await Client.updateClient(clientId, { isStudent: false });
       }
 
-      await transaction.commit();
-      return studentApplication;
+      return updatedApplication;
     } catch (error) {
-      await transaction.rollback();
       throw error;
     }
   }
 
   async getPendingApplications() {
-    return await Student.findAll({
-      include: [
-        {
-          model: Client,
-          as: 'client',
-          attributes: ['userId'],
-          include: [
-            {
-              model: User,
-              as: 'user', // Specify the alias for the User model
-              attributes: ['name', 'email', 'avatar'],
-            },
-          ],
-        },
-      ],
-      where: { applicationStatus: 'pending' },
-    });
+    return await Student.findAll('pending');
   }
 
   async getStudentApplicationByClientId(clientId: number) {
-    return await Student.findOne({ where: { clientId } });
+    return await Student.findByClientId(clientId);
   }
 }
 
