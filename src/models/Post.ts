@@ -11,7 +11,9 @@ class Post extends Model {
   public likes!: number;
   public comments!: number;
   public backgroundColor!: string;
-  public status!: String;
+  public image?: string;
+  public status?: string;
+  public isAnonymous!: boolean;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -61,10 +63,20 @@ Post.init(
       type: DataTypes.STRING,
       defaultValue: '#FFFFFF',
     },
+    image: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     status: {
-    type: DataTypes.ENUM('pending', 'approved', 'rejected', 'Unset'),
-    defaultValue: 'pending'
-  },
+      type: DataTypes.ENUM('pending', 'approved', 'rejected', 'unset', 'edited'),
+      defaultValue: 'pending',
+      allowNull: true,
+    },
+    isAnonymous: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+    },
   },
   {
     sequelize,

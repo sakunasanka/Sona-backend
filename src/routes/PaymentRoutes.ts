@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middlewares/auth';
 import { asyncHandler } from '../utils/asyncHandler';
-import { generatePaymentLink, processPayment } from '../controllers/PaymentController';
+import { generatePaymentLink, processPayment, checkPlatformFeeStatus, initiatePlatformFeePayment } from '../controllers/PaymentController';
 
 const router = Router();
 
@@ -20,6 +20,8 @@ const router = Router();
  */
 router.post('/generate-link', authenticateToken, asyncHandler(generatePaymentLink));
 router.post('/initiate-payment', authenticateToken, asyncHandler(processPayment));
+router.post('/initiate-platform-fee', authenticateToken, asyncHandler(initiatePlatformFeePayment));
+router.get('/platform-fee-status', authenticateToken, asyncHandler(checkPlatformFeeStatus));
 
 /**
  * @route GET /api/payments/:transactionId

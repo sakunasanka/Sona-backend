@@ -8,6 +8,9 @@ import { ApiResponseUtil } from "../utils/apiResponse";
 import { validateData, signInSchema } from "../schema/ValidationSchema";
 import { JwtServices } from "../services/JwtServices";
 import * as path from "path";
+import Client from "../models/Client";
+import { QueryTypes } from "sequelize";
+import { sequelize } from "../config/db";
 
 
 const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY!;
@@ -82,6 +85,28 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
         }
       }, "Counselor created successfully");
     }
+  } else if (userType === "Admin") {
+    console.log("Creating admin with data:", { email, displayName, userType });
+    const adminData: CreateUserData = {
+      email: email,
+      password: password,
+      name: displayName,
+      userType: 'Admin' as const,
+      avatar: additionalData.avatar || "",
+    };
+
+    const result = await UserService.createUser(adminData);
+
+    if (result) {
+      ApiResponseUtil.created(res, {
+        user: result.dbUser,
+        firebaseUser: {
+          uid: result.firebaseUser.uid,
+          email: result.firebaseUser.email,
+          displayName: result.firebaseUser.displayName,
+        }
+      }, "Admin created successfully");
+    }
   } else {
     throw new ValidationError("Invalid userType. Must be 'Client' or 'Counselor'");
   }
@@ -134,6 +159,21 @@ export const signin = async (req: Request, res: Response, next: NextFunction) =>
 
   if(result) {
     const jwtResult = await JwtServices.issueToken(result.tokens.idToken);
+
+    // Insert login record into user_logins table
+    try {
+      await sequelize.query(`
+        INSERT INTO user_logins (user_id)
+        VALUES (?)
+      `, {
+        replacements: [result.user.id],
+        type: QueryTypes.INSERT
+      });
+      console.log(`Login tracked for user ${result.user.id}`);
+    } catch (loginError) {
+      console.error('Failed to track login:', loginError);
+      // Don't fail the login if tracking fails
+    }
 
     ApiResponseUtil.success(res, {
       token: jwtResult.token,
@@ -322,5 +362,387 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
   } catch (error: any) {
     console.error("Reset Password Error:", error);
     res.status(400).json({ error: error.message });
+  }
+};
+
+export const checkIsStudent = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get the client ID from the authenticated user
+    if (!req.user || !req.user.dbUser || !req.user.dbUser.id) {
+      throw new ValidationError("Authentication required");
+    }
+
+    const userId = req.user.dbUser.id;
+
+    // Find the client by user ID
+    const client = await Client.findClientById(userId);
+
+    if (!client) {
+      throw new ItemNotFoundError("Client not found");
+    }
+
+    // Return the isStudent status
+    ApiResponseUtil.success(res, {
+      isStudent: client.isStudent
+    }, "Student status retrieved successfully");
+    
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const checkClientIsStudentById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const clientId = parseInt(req.params.clientId);
+    
+    if (isNaN(clientId)) {
+      throw new ValidationError("Valid client ID is required");
+    }
+    
+    // Check if the requester is an admin or authorized user
+    if (!req.user || !req.user.dbUser || req.user.dbUser.userType !== 'Admin') {
+      throw new ValidationError("Admin authorization required");
+    }
+
+    // Find the client by ID
+    const client = await Client.findClientById(clientId);
+
+    if (!client) {
+      throw new ItemNotFoundError("Client not found");
+    }
+
+    // Return the isStudent status
+    ApiResponseUtil.success(res, {
+      clientId: client.id,
+      isStudent: client.isStudent
+    }, "Student status retrieved successfully");
+    
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateClientStudentStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get the client ID from the authenticated user
+    if (!req.user || !req.user.dbUser || !req.user.dbUser.id) {
+      throw new ValidationError("Authentication required");
+    }
+
+    const userId = req.user.dbUser.id;
+    const { isStudent } = req.body;
+
+    if (typeof isStudent !== 'boolean') {
+      throw new ValidationError("isStudent field must be a boolean value");
+    }
+
+    // Find the client by user ID
+    const client = await Client.findClientById(userId);
+
+    if (!client) {
+      throw new ItemNotFoundError("Client not found");
+    }
+
+    // Update the isStudent status in the database
+    await sequelize.query(`
+      UPDATE clients 
+      SET "isStudent" = ?, "updatedAt" = NOW()
+      WHERE "userId" = ?
+    `, {
+      replacements: [isStudent, userId],
+      type: QueryTypes.UPDATE
+    });
+
+    // Return the updated status
+    ApiResponseUtil.success(res, {
+      isStudent
+    }, "Student status updated successfully");
+    
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateClientStudentStatusById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const clientId = parseInt(req.params.clientId);
+    const { isStudent } = req.body;
+    
+    if (isNaN(clientId)) {
+      throw new ValidationError("Valid client ID is required");
+    }
+    
+    if (typeof isStudent !== 'boolean') {
+      throw new ValidationError("isStudent field must be a boolean value");
+    }
+    
+    // Check if the requester is an admin or authorized user
+    if (!req.user || !req.user.dbUser || req.user.dbUser.userType !== 'Admin') {
+      throw new ValidationError("Admin authorization required");
+    }
+
+    // Find the client by ID
+    const client = await Client.findClientById(clientId);
+
+    if (!client) {
+      throw new ItemNotFoundError("Client not found");
+    }
+
+    // Update the isStudent status in the database
+    await sequelize.query(`
+      UPDATE clients 
+      SET "isStudent" = ?, "updatedAt" = NOW()
+      WHERE "userId" = ?
+    `, {
+      replacements: [isStudent, clientId],
+      type: QueryTypes.UPDATE
+    });
+
+    // Return the updated status
+    ApiResponseUtil.success(res, {
+      clientId,
+      isStudent
+    }, "Student status updated successfully");
+    
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getProfile = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get the user ID from the authenticated user
+    if (!req.user || !req.user.dbUser || !req.user.dbUser.id) {
+      throw new ValidationError("Authentication required");
+    }
+
+    const userId = req.user.dbUser.id;
+
+    // Query to get client profile data with new fields
+    const [profileData] = await sequelize.query(`
+      SELECT
+        u.id,
+        u.name,
+        u.email,
+        u.avatar,
+        u."createdAt" as memberSince,
+        c."nickName",
+        c."isStudent"
+      FROM users u
+      JOIN clients c ON u.id = c."userId"
+      WHERE u.id = ? AND u.role = 'Client'
+    `, {
+      replacements: [userId],
+      type: QueryTypes.SELECT
+    }) as any[];
+
+    if (!profileData) {
+      throw new ItemNotFoundError("Client profile not found");
+    }
+
+    // Format the response
+    const profile = {
+      id: profileData.id,
+      name: profileData.name,
+      email: profileData.email,
+      avatar: profileData.avatar,
+      nickName: profileData.nickName,
+      isStudent: profileData.isStudent,
+      memberSince: profileData.memberSince
+    };
+
+    ApiResponseUtil.success(res, profile, "Profile retrieved successfully");
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateProfile = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get the user ID from the authenticated user
+    if (!req.user || !req.user.dbUser || !req.user.dbUser.id) {
+      throw new ValidationError("Authentication required");
+    }
+
+    const userId = req.user.dbUser.id;
+    const { name, avatar, nickName, isStudent } = req.body;
+
+    // Validate input
+    if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0)) {
+      throw new ValidationError("Name must be a non-empty string");
+    }
+
+    if (avatar !== undefined && typeof avatar !== 'string') {
+      throw new ValidationError("Avatar must be a string");
+    }
+
+    if (nickName !== undefined && typeof nickName !== 'string') {
+      throw new ValidationError("NickName must be a string");
+    }
+
+    if (isStudent !== undefined && typeof isStudent !== 'boolean') {
+      throw new ValidationError("isStudent must be a boolean");
+    }
+
+    const transaction = await sequelize.transaction();
+
+    try {
+      // Update user table fields
+      const userUpdates: any = {};
+      if (name !== undefined) userUpdates.name = name.trim();
+      if (avatar !== undefined) userUpdates.avatar = avatar;
+
+      if (Object.keys(userUpdates).length > 0) {
+        await sequelize.query(`
+          UPDATE users
+          SET ${Object.keys(userUpdates).map(key => `"${key}" = ?`).join(', ')}, "updatedAt" = NOW()
+          WHERE id = ? AND role = 'Client'
+        `, {
+          replacements: [...Object.values(userUpdates), userId],
+          transaction
+        });
+      }
+
+      // Update client table fields
+      const clientUpdates: any = {};
+      if (nickName !== undefined) clientUpdates.nickName = nickName;
+      if (isStudent !== undefined) clientUpdates.isStudent = isStudent;
+
+      if (Object.keys(clientUpdates).length > 0) {
+        await sequelize.query(`
+          UPDATE clients
+          SET ${Object.keys(clientUpdates).map(key => `"${key}" = ?`).join(', ')}, "updatedAt" = NOW()
+          WHERE "userId" = ?
+        `, {
+          replacements: [...Object.values(clientUpdates), userId],
+          transaction
+        });
+      }
+
+      await transaction.commit();
+
+      // Return updated profile
+      const [updatedProfile] = await sequelize.query(`
+        SELECT
+          u.id,
+          u.name,
+          u.email,
+          u.avatar,
+          u."createdAt" as memberSince,
+          c."nickName",
+          c."isStudent"
+        FROM users u
+        JOIN clients c ON u.id = c."userId"
+        WHERE u.id = ? AND u.role = 'Client'
+      `, {
+        replacements: [userId],
+        type: QueryTypes.SELECT
+      }) as any[];
+
+      if (!updatedProfile) {
+        throw new ItemNotFoundError("Client profile not found");
+      }
+
+      const profile = {
+        id: updatedProfile.id,
+        name: updatedProfile.name,
+        email: updatedProfile.email,
+        avatar: updatedProfile.avatar,
+        nickName: updatedProfile.nickName,
+        isStudent: updatedProfile.isStudent,
+        memberSince: updatedProfile.memberSince
+      };
+
+      ApiResponseUtil.success(res, profile, "Profile updated successfully");
+
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserLoginStats = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get the user ID from the authenticated user
+    if (!req.user || !req.user.dbUser || !req.user.dbUser.id) {
+      throw new ValidationError("Authentication required");
+    }
+
+    const userId = req.user.dbUser.id;
+
+    // Get total login count
+    const [loginCountResult] = await sequelize.query(`
+      SELECT COUNT(*) as total_logins
+      FROM user_logins
+      WHERE user_id = ?
+    `, {
+      replacements: [userId],
+      type: QueryTypes.SELECT
+    }) as any[];
+
+    const totalLogins = parseInt(loginCountResult.total_logins) || 0;
+
+    // Get distinct login dates for streak calculation
+    const loginDates = await sequelize.query(`
+      SELECT DISTINCT DATE(login_at + INTERVAL '5.5 hours') as login_date
+      FROM user_logins
+      WHERE user_id = ?
+      ORDER BY DATE(login_at + INTERVAL '5.5 hours') DESC
+    `, {
+      replacements: [userId],
+      type: QueryTypes.SELECT
+    }) as any[];
+
+    // Calculate current day streak
+    let currentStreak = 0;
+    if (loginDates.length > 0) {
+      // Get today's date in the same timezone as the database (IST)
+      // Since both server and DB are in IST, we can use local date
+      const today = new Date();
+      const todayStr = today.getFullYear() + '-' +
+                       String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                       String(today.getDate()).padStart(2, '0');
+
+      const loginDateStrings = loginDates.map((row: any) => row.login_date);
+
+      console.log('Today (IST):', todayStr);
+      console.log('Login date strings:', loginDateStrings);
+
+      // Check consecutive days starting from today backwards
+      let checkDate = new Date(today);
+      let streakBroken = false;
+
+      while (!streakBroken) {
+        const checkDateStr = checkDate.getFullYear() + '-' +
+                            String(checkDate.getMonth() + 1).padStart(2, '0') + '-' +
+                            String(checkDate.getDate()).padStart(2, '0');
+        const hasLoginOnDate = loginDateStrings.includes(checkDateStr);
+
+        console.log(`Checking ${checkDateStr}: ${hasLoginOnDate ? 'YES' : 'NO'}`);
+
+        if (hasLoginOnDate) {
+          currentStreak++;
+          // Move to previous day
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          streakBroken = true;
+        }
+      }
+
+      console.log('Final streak:', currentStreak);
+    }
+
+    ApiResponseUtil.success(res, {
+      totalLogins,
+      currentStreak
+    }, "Login statistics retrieved successfully");
+
+  } catch (error) {
+    next(error);
   }
 };

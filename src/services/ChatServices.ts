@@ -57,7 +57,10 @@ export class ChatServices {
         // Get updated unread count for the user
         const unreadCount = await ChatMessage.getUnreadCount(roomId, userId);
 
-        // Get user details for the read receipt
+        // Get user display name for the read receipt (nickname for clients)
+        const displayName = await UserService.getUserDisplayName(userId);
+
+        // Get user details for avatar
         const user = await UserService.getUserDetails(userId);
         if (!user) {
             throw new AuthenticationError('User not found');
@@ -69,7 +72,7 @@ export class ChatServices {
             messageId: messageId,
             readBy: {
                 id: userId,
-                name: user?.name || 'Unknown User',
+                name: displayName,
                 avatar: user?.avatar || null
             },
             unreadCount: unreadCount,

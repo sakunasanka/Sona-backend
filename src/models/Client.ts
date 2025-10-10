@@ -84,19 +84,17 @@ class Client extends User {
     const result = await sequelize.query(
       `
       SELECT 
-        u.id AS "userId", 
-        u.firebaseId, 
-        u.name, u.email, u.avatar, u.role, u.createdAt, u.updatedAt,
-        c.nickName, c.isStudent
+        u.id, 
+        u."firebaseId", 
+        u."name", u."email", u."avatar", u."role", u."createdAt", u."updatedAt",
+        c."nickName", c."isStudent"
       FROM users u
-      JOIN clients c ON u.id = c.userId
-      WHERE u.id = ? AND u.role = 'Client'
-    `,
-      {
-        replacements: [id],
-        type: QueryTypes.SELECT,
-      }
-    );
+      JOIN clients c ON u.id = c."userId"
+      WHERE u.id = ? AND u."role" = 'Client'
+    `, {
+      replacements: [id],
+      type: QueryTypes.SELECT
+    });
 
     if (result.length === 0) return null;
 
@@ -108,7 +106,7 @@ class Client extends User {
     client.name = data.name;
     client.email = data.email;
     client.avatar = data.avatar;
-    client.role = data.role;
+    client.role = data.role; 
     client.isStudent = data.isStudent;
     client.nickName = data.nickName;
 
@@ -119,24 +117,22 @@ class Client extends User {
     const results = await sequelize.query(
       `
       SELECT 
-        u.id AS "userId", 
-        u.firebaseId, 
-        u.name, 
-        u.email, 
-        u.avatar, 
-        u.role, 
-        u.createdAt, 
-        u.updatedAt,
-        c.nickName, 
-        c.isStudent
+        u.id, 
+        u."firebaseId", 
+        u."name", 
+        u."email", 
+        u."avatar", 
+        u."role", 
+        u."createdAt", 
+        u."updatedAt",
+        c."nickName", 
+        c."isStudent"
       FROM users u
-      JOIN clients c ON u.id = c.userId
+      JOIN clients c ON u.id = c."userId"
       WHERE u.role = 'Client'
-    `,
-      {
-        type: QueryTypes.SELECT,
-      }
-    );
+    `, {
+      type: QueryTypes.SELECT
+    });
 
     return results.map((data: any) => {
       const client = new Client();

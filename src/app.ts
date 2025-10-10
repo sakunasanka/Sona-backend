@@ -22,6 +22,11 @@ import adminblogsRoutes from './routes/AdminBlogsRoutes';
 import adminpsychiatristRoutes from './routes/AdminPsychiatristRoutes';
 import adminclientRoutes from './routes/AdminClientRoutes';
 import adminmtmemberRoutes from './routes/AdminMTMemberRoutes';
+import counselorRoutes from './routes/CounselorRoutes';
+import psychiatristRoutes from './routes/PsychiatristRoutes';
+import phq9Routes from './routes/PHQ9Routes';
+import complaintRoutes from './routes/ComplaintRoutes';
+import studentRoutes from './routes/StudentRoutes';
 import { auth } from 'firebase-admin';
 
 dotenv.config();
@@ -49,6 +54,9 @@ app.get('/', (req, res) => {
       auth: '/api/auth',
       chat: '/api/chat',
       payments: '/api/payments',
+      counselors: '/api/counselors',
+      psychiatrists: '/api/psychiatrists',
+      questionnaire: '/api/questionnaire',
       websocket: 'ws://localhost:5001',
       paymentPage: '/payment-loader',
     },
@@ -68,6 +76,13 @@ app.use('/api/adminpsychiatrists', adminpsychiatristRoutes);
 app.use('/api/adminclients', adminclientRoutes);
 app.use('/api/adminmtmembers', adminmtmemberRoutes);
 
+app.use('/api/counselors', counselorRoutes);
+// Alias for British spelling
+app.use('/api/counsellor', counselorRoutes);
+app.use('/api/psychiatrists', psychiatristRoutes);
+app.use('/api/questionnaire/phq9', phq9Routes);
+app.use('/api/complaints', complaintRoutes);
+app.use('/api/students', studentRoutes);
 
 app.use(express.static(path.join(__dirname, '../public')));
 

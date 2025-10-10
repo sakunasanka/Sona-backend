@@ -1,36 +1,45 @@
 import express from 'express';
 import {
-  getSessionTypes,
   getCounselors,
   getCounselorById,
   getAvailableTimeSlots,
-  getUserPaymentMethods,
-  addPaymentMethod,
+  getPsychiatrists,
+  getPsychiatristById,
+  getPsychiatristAvailableTimeSlots,
   bookSession,
   getUserSessions,
   getSessionById,
-  cancelSession,
   setCounselorAvailability,
-  setCounselorUnavailability
+  setCounselorUnavailability,
+  cancelSession,
+  getCounselorSessions,
+  getRemainingStudentSessions,
+  getCounselorMonthlyAvailability
 } from '../controllers/SessionController';
 import { authenticateToken } from '../middlewares/auth';
 
 const router = express.Router();
 
 // Public routes
-router.get('/types', getSessionTypes);
 router.get('/counselors', getCounselors);
 router.get('/counselors/:id', getCounselorById);
 router.get('/timeslots/:counselorId/:date', getAvailableTimeSlots);
-router.post('/availability', setCounselorAvailability);
-router.post('/unavailability', setCounselorUnavailability);
+router.get('/counselors/:id/availability/:year/:month', getCounselorMonthlyAvailability);
 
-// Protected routes (require authentication)
-router.get('/payment-methods', getUserPaymentMethods);
-router.post('/payment-methods', addPaymentMethod);
-router.post('/', bookSession);
+// Psychiatrist routes
+router.get('/psychiatrists', getPsychiatrists);
+router.get('/psychiatrists/:id', getPsychiatristById);
+router.get('/psychiatrist-timeslots/:psychiatristId/:date', getPsychiatristAvailableTimeSlots);
+
+// Protected routes
+router.use(authenticateToken);
+router.post('/book', bookSession);
 router.get('/my-sessions', getUserSessions);
+router.get('/remaining', getRemainingStudentSessions);
 router.get('/:id', getSessionById);
 router.put('/:id/cancel', cancelSession);
+router.post('/availability', setCounselorAvailability);
+router.post('/unavailability', setCounselorUnavailability);
+router.get('/counselor/:id', getCounselorSessions);
 
 export default router;
