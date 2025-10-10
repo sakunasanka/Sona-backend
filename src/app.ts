@@ -8,6 +8,7 @@ import http from 'http';
 import path from 'path';
 import { WebSocketService } from './services/WebSocketServices';
 import { syncDatabase } from './config/sync';
+import { initializeAssociations } from './models';
 
 // Import routes
 import userRoutes from './routes/UserRoutes';
@@ -16,6 +17,11 @@ import sessionRoutes from './routes/SessionRoutes';
 import authRoutes from './routes/AuthRoutes';
 import chatRoutes from './routes/ChatRoutes';
 import paymentRoutes from './routes/PaymentRoutes';
+import admincounsellorRoutes from './routes/AdminCounselorRoutes';
+import adminblogsRoutes from './routes/AdminBlogsRoutes';
+import adminpsychiatristRoutes from './routes/AdminPsychiatristRoutes';
+import adminclientRoutes from './routes/AdminClientRoutes';
+import adminmtmemberRoutes from './routes/AdminMTMemberRoutes';
 import counselorRoutes from './routes/CounselorRoutes';
 import psychiatristRoutes from './routes/PsychiatristRoutes';
 import phq9Routes from './routes/PHQ9Routes';
@@ -64,6 +70,12 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/admincounsellors', admincounsellorRoutes);
+app.use('/api/adminblogs', adminblogsRoutes);
+app.use('/api/adminpsychiatrists', adminpsychiatristRoutes);
+app.use('/api/adminclients', adminclientRoutes);
+app.use('/api/adminmtmembers', adminmtmemberRoutes);
+
 app.use('/api/counselors', counselorRoutes);
 // Alias for British spelling
 app.use('/api/counsellor', counselorRoutes);
@@ -157,5 +169,8 @@ const initializeApp = async () => {
     process.exit(1);
   }
 };
+
+// Initialize associations
+initializeAssociations();
 
 initializeApp();

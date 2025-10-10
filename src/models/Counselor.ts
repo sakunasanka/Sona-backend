@@ -348,4 +348,98 @@ class Counselor extends User {
   }
 }
 
+Counselor.init(
+  {
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      primaryKey: true,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    specialities: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+    },
+    address: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    contact_no: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    licenseNo: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    idCard: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    isVolunteer: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    isAvailable: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    rating: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
+    sessionFee: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+    },
+    status: {
+      type: DataTypes.ENUM('pending', 'approved', 'rejected', 'unset'),
+      allowNull: false,
+      defaultValue: 'pending',
+    },
+    coverImage: { 
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    instagram: {  
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    linkedin: {  
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    x: {  
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    website: {  
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    languages: {  
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'counselor',
+    tableName: 'counselors',
+  }
+);
+
+Counselor.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 export default Counselor;

@@ -120,7 +120,7 @@ export class UserService {
                     specialities: counselorData.specialities,
                     address: counselorData.address,
                     contact_no: counselorData.contact_no,
-                    license_no: counselorData.license_no,
+                    licenseNo: counselorData.license_no,
                     idCard: counselorData.idCard,
                     isVolunteer: counselorData.isVolunteer,
                     isAvailable: counselorData.isAvailable,
