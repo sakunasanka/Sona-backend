@@ -20,6 +20,7 @@ export interface ClientData {
   total_sessions: number;
   next_appointment: string | null;
   progress_status: string;
+  concerns: string[];
 }
 
 export interface ClientListResponse {
@@ -59,10 +60,14 @@ class CounselorClientService {
       let clientsQuery = `
         SELECT DISTINCT
           u.id,
-          u.name,
+          CASE
+            WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+            ELSE u.name
+          END as name,
           u.avatar,
           COALESCE(c."nickName", CONCAT('STU', LPAD(u.id::text, 7, '0'))) as student_id,
           c."isStudent",
+          COALESCE(c."concerns", '[]'::jsonb) AS concerns,
           CASE 
             WHEN c."nickName" IS NOT NULL AND c."nickName" != '' THEN false 
             ELSE true 
@@ -96,7 +101,7 @@ class CounselorClientService {
       }
 
       // Add group by
-      clientsQuery += ` GROUP BY u.id, u.name, u.avatar, c."nickName", c."isStudent"`;
+      clientsQuery += ` GROUP BY u.id, u.name, u.avatar, c."nickName", c."isStudent", c."concerns"`;
       
       // Add having clause
       clientsQuery += ` HAVING COUNT(CASE WHEN s."counselorId" = :counselorId THEN 1 END) > 0`;
@@ -112,7 +117,10 @@ class CounselorClientService {
 
       // Add sorting
       if (sort === 'name') {
-        clientsQuery += ` ORDER BY u.name ASC`;
+        clientsQuery += ` ORDER BY CASE
+            WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+            ELSE u.name
+          END ASC`;
       } else if (sort === 'last_session') {
         clientsQuery += ` ORDER BY last_session_date DESC NULLS LAST`;
       } else if (sort === 'join_date') {
@@ -199,9 +207,10 @@ class CounselorClientService {
       const clients: ClientData[] = (clientsResult as any[]).map((row: any) => ({
         id: row.id,
         name: row.name,
-        avatar: row.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        avatar: row.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         student_id: row.student_id,
         is_anonymous: row.is_anonymous,
+        concerns: row.concerns || [],
         status: row.status,
         last_session: row.last_session_date ? new Date(row.last_session_date).toISOString() : null,
         total_sessions: parseInt(row.total_sessions) || 0,
@@ -313,7 +322,10 @@ class CounselorClientService {
       const clientQuery = `
         SELECT DISTINCT
           u.id,
-          u.name,
+          CASE
+            WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+            ELSE u.name
+          END as name,
           u.avatar,
           u.email,
           u."createdAt" as join_date,
@@ -426,7 +438,7 @@ class CounselorClientService {
       const clientDetails = {
         id: client.id,
         name: client.name,
-        avatar: client.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        avatar: client.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         student_id: client.student_id,
         email: client.email,
         phone: "+1234567890", // Static for now - will be dynamic when phone field is added

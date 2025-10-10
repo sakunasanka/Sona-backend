@@ -3,6 +3,9 @@ import { PaymentServices } from '../services/PaymentServices';
 import { ApiResponseUtil } from '../utils/apiResponse';
 import { ValidationError } from '../utils/errors';
 
+// Helper function to get current date with +05:30 offset
+const getCurrentDatePlus0530 = () => new Date(Date.now() + (5.5 * 60 * 60 * 1000));
+
 export const generatePaymentLink = async (req: Request, res: Response): Promise<void> => {
     const { amount, sessionType } = req.body;
 
@@ -28,31 +31,71 @@ export const generatePaymentLink = async (req: Request, res: Response): Promise<
 }
 
 export const processPayment = async (req: Request, res: Response): Promise<void> => {
-    const { amount, currency, sessionDetails } = req.body;
+    const { orderId, userhash, sessionDetails } = req.body;
 
-    if (!amount || !currency || !sessionDetails) {
-        throw new ValidationError('Amount, currency, and session details are required');
+    if (!orderId || !userhash || !sessionDetails) {
+        throw new ValidationError('Order ID, user hash, and session details are required');
+    }
+
+    if (!sessionDetails.amount || !sessionDetails.counselorId || !sessionDetails.date || !sessionDetails.time || !sessionDetails.duration) {
+        throw new ValidationError('Session details must include amount, counselorId, date, time, and duration');
+    }
+
+    if (typeof sessionDetails.amount !== 'number' || sessionDetails.amount <= 0) {
+        throw new ValidationError('Session amount must be a positive number');
     }
 
     // Process the payment using the PaymentServices
     const paymentResult = await PaymentServices.addNewTransaction({
         userId: req.user!.dbUser.id, // Get user ID from authenticated request
-        transactionId: '',
+        transactionId: orderId,
         paymentGateway: 'payhere',
-        amount: amount,
-        currency: currency,
+        amount: sessionDetails.amount,
+        currency: 'LKR',
         status: 'pending',
-        paymentDate: new Date(),
+        paymentDate: getCurrentDatePlus0530(),
     });
 
-    const orderId = `order_${req.user!.dbUser.id}`;
-    const fixedAmount = amount.toFixed(2);
-
-    const userhash = await PaymentServices.calculatePayhereHash(
+    ApiResponseUtil.success(res, {
+        paymentResult,
+        userhash,
         orderId,
-        fixedAmount,
-        currency
+        sessionDetails
+    }, 'Payment processed successfully');
+}
+
+export const checkPlatformFeeStatus = async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user!.dbUser.id;
+
+    // Check if user has valid platform fee payment (within 30 days)
+    const platformFeeStatus = await PaymentServices.checkPlatformFeeStatus(userId);
+
+    ApiResponseUtil.success(res, platformFeeStatus, 'Platform fee status retrieved successfully');
+}
+
+export const initiatePlatformFeePayment = async (req: Request, res: Response): Promise<void> => {
+    const { orderId, userhash, amount, description } = req.body;
+
+    if (!orderId || !userhash || !amount) {
+        throw new ValidationError('Order ID, user hash, and amount are required');
+    }
+
+    if (typeof amount !== 'number' || amount <= 0) {
+        throw new ValidationError('Amount must be a positive number');
+    }
+
+    // Process the platform fee payment using the specific method
+    const paymentResult = await PaymentServices.addPlatformFeeTransaction(
+        req.user!.dbUser.id,
+        orderId,
+        amount
     );
 
-    ApiResponseUtil.success(res, { paymentResult, userhash }, 'Payment processed successfully');
+    ApiResponseUtil.success(res, {
+        transactionId: paymentResult.transactionId,
+        paymentUrl: `https://sandbox.payhere.lk/pay/${orderId}`,
+        orderId,
+        amount,
+        description: description || 'Platform access fee'
+    }, 'Platform fee payment initiated successfully');
 }

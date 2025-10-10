@@ -384,10 +384,15 @@ export class CounselorService {
         throw new ItemNotFoundError('Counselor profile not found');
       }
 
+      const counselorData = profile[0] as any;
+
       return {
         success: true,
         message: "Profile retrieved successfully",
-        data: profile[0]
+        data: {
+          ...counselorData,
+          profileImage: " "
+        }
       };
     } catch (error) {
       if (error instanceof ItemNotFoundError) {
@@ -553,8 +558,13 @@ export class CounselorService {
       const transaction = await sequelize.transaction();
 
       try {
-        // Update user table
-        if (updateData.firstName || updateData.lastName || updateData.email || updateData.avatar) {
+        // Update user table (map profileImage -> users.avatar)
+        if (
+          updateData.firstName !== undefined ||
+          updateData.lastName !== undefined ||
+          updateData.email !== undefined ||
+          updateData.profileImage !== undefined
+        ) {
           const name = `${updateData.firstName || ''} ${updateData.lastName || ''}`.trim();
           await sequelize.query(`
             UPDATE users 
@@ -628,4 +638,255 @@ export class CounselorService {
       throw new DatabaseError('Failed to update counselor profile');
     }
   }
-} 
+
+  /**
+   * Update counselor volunteer status and session fee
+   */
+  static async updateCounselorVolunteerStatus(counselorId: number, isVolunteer: boolean, sessionFee: number): Promise<CounselorResponse> {
+    if (!counselorId || typeof counselorId !== 'number' || counselorId <= 0) {
+      throw new ValidationError('Counselor ID is required and must be a positive number');
+    }
+
+    if (typeof isVolunteer !== 'boolean') {
+      throw new ValidationError('isVolunteer must be a boolean value');
+    }
+
+    if (typeof sessionFee !== 'number' || sessionFee < 0) {
+      throw new ValidationError('Session fee must be a non-negative number');
+    }
+
+    try {
+      // First, find the counselor to ensure they exist
+      const counselor = await Counselor.findCounselorById(counselorId);
+
+      if (!counselor) {
+        throw new ItemNotFoundError('Counselor not found with the provided ID');
+      }
+
+      // Update volunteer status and session fee in the database
+      await sequelize.query(`
+        UPDATE counselors
+        SET "isVolunteer" = $1, "sessionFee" = $2, "updatedAt" = NOW()
+        WHERE "userId" = $3
+      `, {
+        bind: [isVolunteer, sessionFee, counselorId],
+        type: QueryTypes.UPDATE
+      });
+
+      // Update the counselor object
+      counselor.isVolunteer = isVolunteer;
+      counselor.sessionFee = sessionFee;
+
+      return {
+        id: counselor.id,
+        firebaseId: counselor.firebaseId,
+        name: counselor.name,
+        email: counselor.email,
+        avatar: counselor.avatar,
+        role: counselor.role,
+        title: counselor.title,
+        specialities: counselor.specialities,
+        address: counselor.address,
+        contact_no: counselor.contact_no,
+        license_no: counselor.license_no,
+        idCard: counselor.idCard,
+        isVolunteer: isVolunteer,
+        isAvailable: counselor.isAvailable,
+        description: counselor.description,
+        rating: counselor.rating,
+        sessionFee: sessionFee,
+        status: counselor.status,
+        coverImage: counselor.coverImage,
+        instagram: counselor.instagram,
+        linkedin: counselor.linkedin,
+        x: counselor.x,
+        website: counselor.website,
+        languages: counselor.languages
+      };
+    } catch (error) {
+      if (error instanceof ItemNotFoundError || error instanceof ValidationError) {
+        throw error;
+      }
+      throw new DatabaseError('Failed to update counselor volunteer status and session fee');
+    }
+  }
+
+  /**
+   * Get counselor earnings summary
+   */
+  static async getCounselorEarningsSummary(counselorId: number): Promise<{
+    totalEarnings: number;
+    thisMonth: number;
+    lastMonth: number;
+    pendingAmount: number;
+    totalSessions: number;
+    avgPerSession: number;
+  }> {
+    try {
+      // Get current date info
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
+      const lastMonthNum = currentMonth === 1 ? 12 : currentMonth - 1;
+      const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+      // Get total earnings (all sessions with payment)
+      const [totalResult] = await sequelize.query(`
+        SELECT COALESCE(SUM(price), 0) as total
+        FROM sessions
+        WHERE "counselorId" = $1 AND price > 0
+      `, {
+        bind: [counselorId],
+        type: QueryTypes.SELECT
+      });
+
+      // Get this month's earnings
+      const [thisMonthResult] = await sequelize.query(`
+        SELECT COALESCE(SUM(price), 0) as total
+        FROM sessions
+        WHERE "counselorId" = $1 AND price > 0
+        AND EXTRACT(YEAR FROM date) = $2 AND EXTRACT(MONTH FROM date) = $3
+      `, {
+        bind: [counselorId, currentYear, currentMonth],
+        type: QueryTypes.SELECT
+      });
+
+      // Get last month's earnings
+      const [lastMonthEarnings] = await sequelize.query(`
+        SELECT COALESCE(SUM(price), 0) as total
+        FROM sessions
+        WHERE "counselorId" = $1 AND price > 0
+        AND EXTRACT(YEAR FROM date) = $2 AND EXTRACT(MONTH FROM date) = $3
+      `, {
+        bind: [counselorId, lastMonthYear, lastMonthNum],
+        type: QueryTypes.SELECT
+      });
+
+      // Get pending amount (scheduled sessions)
+      const [pendingResult] = await sequelize.query(`
+        SELECT COALESCE(SUM(price), 0) as total
+        FROM sessions
+        WHERE "counselorId" = $1 AND status = 'scheduled'
+      `, {
+        bind: [counselorId],
+        type: QueryTypes.SELECT
+      });
+
+      // Get total sessions count
+      const [sessionsResult] = await sequelize.query(`
+        SELECT COUNT(*) as count
+        FROM sessions
+        WHERE "counselorId" = $1 AND price > 0
+      `, {
+        bind: [counselorId],
+        type: QueryTypes.SELECT
+      });
+
+      const totalEarnings = parseFloat((totalResult as any).total) || 0;
+      const thisMonth = parseFloat((thisMonthResult as any).total) || 0;
+      const lastMonth = parseFloat((lastMonthEarnings as any).total) || 0;
+      const pendingAmount = parseFloat((pendingResult as any).total) || 0;
+      const totalSessions = parseInt((sessionsResult as any).count) || 0;
+      const avgPerSession = totalSessions > 0 ? Math.round((totalEarnings / totalSessions) * 100) / 100 : 0;
+
+      return {
+        totalEarnings,
+        thisMonth,
+        lastMonth,
+        pendingAmount,
+        totalSessions,
+        avgPerSession
+      };
+    } catch (error) {
+      throw new DatabaseError('Failed to get counselor earnings summary');
+    }
+  }
+
+  /**
+   * Get counselor monthly earnings for specified period
+   */
+  static async getCounselorMonthlyEarnings(counselorId: number, months: number): Promise<Array<{
+    month: string;
+    earnings: number;
+    sessions: number;
+  }>> {
+    try {
+      const results = await sequelize.query(`
+        SELECT
+          TO_CHAR(date, 'Mon') as month_name,
+          EXTRACT(YEAR FROM date) as year,
+          EXTRACT(MONTH FROM date) as month_num,
+          COALESCE(SUM(price), 0) as earnings,
+          COUNT(*) as sessions
+        FROM sessions
+        WHERE "counselorId" = $1 AND price > 0
+        AND date >= CURRENT_DATE - INTERVAL '${months} months'
+        GROUP BY EXTRACT(YEAR FROM date), EXTRACT(MONTH FROM date), TO_CHAR(date, 'Mon')
+        ORDER BY year DESC, month_num DESC
+      `, {
+        bind: [counselorId],
+        type: QueryTypes.SELECT
+      });
+
+      return (results as any[]).map(row => ({
+        month: row.month_name,
+        earnings: parseFloat(row.earnings) || 0,
+        sessions: parseInt(row.sessions) || 0
+      }));
+    } catch (error) {
+      throw new DatabaseError('Failed to get counselor monthly earnings');
+    }
+  }
+
+  /**
+   * Get counselor earnings per client
+   */
+  static async getCounselorEarningsPerClient(counselorId: number, clientId?: number): Promise<Array<{
+    clientId: number;
+    clientName: string;
+    totalEarnings: number;
+    totalSessions: number;
+    lastSessionDate: string;
+  }>> {
+    try {
+      let whereClause = 'WHERE u.id IN (SELECT DISTINCT "userId" FROM sessions WHERE "counselorId" = $1 AND price > 0)';
+      let bindParams = [counselorId];
+
+      if (clientId) {
+        whereClause = 'WHERE u.id = $2 AND u.id IN (SELECT DISTINCT "userId" FROM sessions WHERE "counselorId" = $1 AND price > 0)';
+        bindParams = [counselorId, clientId];
+      }
+
+      const results = await sequelize.query(`
+        SELECT
+          u.id as client_id,
+          CASE
+            WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+            ELSE u.name
+          END as client_name,
+          COALESCE(SUM(s.price), 0) as total_earnings,
+          COUNT(s.id) as total_sessions,
+          MAX(s.date) as last_session_date
+        FROM users u
+        LEFT JOIN clients c ON u.id = c."userId"
+        LEFT JOIN sessions s ON u.id = s."userId" AND s."counselorId" = $1 AND s.price > 0
+        ${whereClause}
+        GROUP BY u.id, u.name, c."nickName"
+        ORDER BY total_earnings DESC
+      `, {
+        bind: bindParams,
+        type: QueryTypes.SELECT
+      });
+
+      return (results as any[]).map(row => ({
+        clientId: row.client_id,
+        clientName: row.client_name,
+        totalEarnings: parseFloat(row.total_earnings) || 0,
+        totalSessions: parseInt(row.total_sessions) || 0,
+        lastSessionDate: row.last_session_date || null
+      }));
+    } catch (error) {
+      throw new DatabaseError('Failed to get counselor earnings per client');
+    }
+  }
+}

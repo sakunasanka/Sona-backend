@@ -10,7 +10,7 @@ export interface CreateUserData {
     email: string;
     password: string;
     name: string;
-    userType: 'Client' | 'Counselor' | 'Admin';
+    userType: 'Client' | 'Counselor' | 'Admin' | 'Psychiatrist';
     avatar?: string;
     createdAt?: Date;
     updatedAt?: Date;
@@ -48,13 +48,13 @@ export interface UserResponse {
     name: string;
     email: string;
     avatar?: string;
-    role: 'Client' | 'Counselor' | 'Admin' | 'Psychiatrist';
+    userType: 'Client' | 'Counselor' | 'Admin';
     createdAt: Date;
     updatedAt: Date;
 }
 
 export interface ClientResponse extends UserResponse {
-    role: 'Client';
+    userType: 'Client';
     isStudent?: boolean;
     nickName?: string;
 }
@@ -114,7 +114,7 @@ export class UserService {
                 dbUser = await Counselor.createCounselor({
                     firebaseId: firebaseUser.uid,
                     name: counselorData.name,
-                    email: counselorData.email,
+                    email: validatedData.email,
                     avatar: counselorData.avatar,
                     title: counselorData.title,
                     specialities: counselorData.specialities,
@@ -128,19 +128,16 @@ export class UserService {
                     rating: counselorData.rating,
                     sessionFee: counselorData.sessionFee
                 })
-            } else if(validatedData.userType === 'Admin') {
+            }
+
+            else if(validatedData.userType === 'Admin') {
                 dbUser = await User.create({
                     firebaseId: firebaseUser.uid,
-                    name: validatedData.name,
+                    name: userData.name,
                     email: validatedData.email,
                     avatar: validatedData.avatar,
                     role: 'Admin'
                 });
-            }
-
-            // Return the created user
-            if (!dbUser) {
-                throw new ExternalServiceError('Failed to create user in the database');
             }
 
             if (dbUser) {
@@ -315,5 +312,28 @@ export class UserService {
         }
 
         return user.toJSON() as UserResponse;
+    }
+
+    static async getUserDisplayName(userId: number): Promise<string> {
+        if (!userId || typeof userId !== 'number' || userId <= 0) {
+            throw new ValidationError('User ID is required and must be a positive number');
+        }
+
+        const user = await User.findByPk(userId);
+
+        if (!user) {
+            throw new ItemNotFoundError('User not found with the provided ID');
+        }
+
+        // For clients, check if they have a nickname
+        if (user.role === 'Client') {
+            const client = await Client.findClientById(userId);
+            if (client && client.nickName) {
+                return client.nickName;
+            }
+        }
+
+        // Return the user's name as default
+        return user.name;
     }
 }

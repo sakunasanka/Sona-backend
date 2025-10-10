@@ -2,6 +2,7 @@ import Post from '../models/Post';
 import User from '../models/User';
 import Like from '../models/Like';
 import { Op } from 'sequelize';
+import Client from '../models/Client';
 
 export interface PostData {
   id: string;
@@ -21,6 +22,7 @@ export interface PostData {
   };
   backgroundColor: string;
   status: string;
+  isAnonymous: boolean;
   liked: boolean;
 }
 
@@ -36,6 +38,7 @@ export interface CreatePostData {
   hashtags?: string[];
   backgroundColor?: string;
   image?: string;
+  isAnonymous?: boolean;
 }
 
 export interface UpdatePostData {
@@ -43,9 +46,27 @@ export interface UpdatePostData {
   hashtags?: string[];
   backgroundColor?: string;
   image?: string;
+  isAnonymous?: boolean;
 }
 
 class PostService {
+  /**
+   * Helper function to get display name for post author
+   */
+  private async getPostAuthorName(user: any, isAnonymous: boolean): Promise<string> {
+    if (isAnonymous) {
+      return 'Anonymous';
+    }
+
+    if (user?.role === 'Client') {
+      const client = await Client.findClientById(user.id);
+      if (client && client.nickName) {
+        return client.nickName;
+      }
+    }
+
+    return user?.name || 'Unknown User';
+  }
   /**
    * Get all posts with pagination and sorting
    */
@@ -81,7 +102,7 @@ class PostService {
       id: post.id,
       author: {
         name: post.user?.name || 'Unknown User',
-        avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: post.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(post.createdAt),
@@ -95,6 +116,7 @@ class PostService {
       },
       backgroundColor: post.backgroundColor,
       status: post.status || 'pending',
+      isAnonymous: post.isAnonymous,
       liked: false, // Will be updated based on user authentication
     }));
 
@@ -127,11 +149,11 @@ class PostService {
       order: orderBy,
     });
 
-    return posts.map((post) => ({
+    const postPromises = posts.map(async (post) => ({
       id: post.id,
       author: {
-        name: post.user?.name || 'Unknown User',
-        avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        name: await this.getPostAuthorName(post.user, post.isAnonymous),
+        avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: post.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(post.createdAt),
@@ -145,8 +167,11 @@ class PostService {
       },
       backgroundColor: post.backgroundColor,
       status: post.status || 'pending',
+      isAnonymous: post.isAnonymous,
       liked: false,
     }));
+
+    return await Promise.all(postPromises);
   }
 
   /**
@@ -188,11 +213,11 @@ class PostService {
     });
     const userLikes = likes.map((like) => like.postId);
 
-    const postsWithUserData = posts.rows.map((post) => ({
+    const postPromises = posts.rows.map(async (post) => ({
       id: post.id,
       author: {
-        name: post.user?.name || 'Unknown User',
-        avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        name: await this.getPostAuthorName(post.user, post.isAnonymous),
+        avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: post.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(post.createdAt),
@@ -206,8 +231,11 @@ class PostService {
       },
       backgroundColor: post.backgroundColor,
       status: post.status || 'pending',
+      isAnonymous: post.isAnonymous,
       liked: userLikes.includes(post.id),
     }));
+
+    const postsWithUserData = await Promise.all(postPromises);
 
     return {
       posts: postsWithUserData,
@@ -258,11 +286,11 @@ class PostService {
       userLikes = likes.map((like) => like.postId);
     }
 
-    const postsWithUserData = posts.rows.map((post) => ({
+    const postPromises = posts.rows.map(async (post) => ({
       id: post.id,
       author: {
-        name: post.user?.name || 'Unknown User',
-        avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        name: await this.getPostAuthorName(post.user, post.isAnonymous),
+        avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: post.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(post.createdAt),
@@ -276,8 +304,11 @@ class PostService {
       },
       backgroundColor: post.backgroundColor,
       status: post.status || 'pending',
+      isAnonymous: post.isAnonymous,
       liked: userLikes.includes(post.id),
     }));
+
+    const postsWithUserData = await Promise.all(postPromises);
 
     return {
       posts: postsWithUserData,
@@ -291,7 +322,7 @@ class PostService {
    * Create a new post
    */
   async createPost(data: CreatePostData): Promise<PostData> {
-    const { userId, content, hashtags = [], backgroundColor = '#FFFFFF', image } = data;
+    const { userId, content, hashtags = [], backgroundColor = '#FFFFFF', image, isAnonymous = false } = data;
 
     const post = await Post.create({
       userId,
@@ -299,6 +330,7 @@ class PostService {
       hashtags,
       backgroundColor,
       image,
+      isAnonymous,
       status: 'pending',
     });
 
@@ -319,10 +351,10 @@ class PostService {
     return {
       id: postWithUser.id,
       author: {
-        name: postWithUser.user?.name || 'Unknown User',
+        name: await this.getPostAuthorName(postWithUser.user, postWithUser.isAnonymous),
         avatar:
           postWithUser.user?.avatar ||
-          'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+          'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: postWithUser.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(postWithUser.createdAt),
@@ -336,6 +368,7 @@ class PostService {
       },
       backgroundColor: postWithUser.backgroundColor,
       status: postWithUser.status || 'pending',
+      isAnonymous: postWithUser.isAnonymous,
       liked: false,
     };
   }
@@ -361,6 +394,7 @@ class PostService {
       hashtags: data.hashtags || post.hashtags,
       backgroundColor: data.backgroundColor || post.backgroundColor,
       image: data.image !== undefined ? data.image : post.image,
+      isAnonymous: data.isAnonymous !== undefined ? data.isAnonymous : post.isAnonymous,
       status: 'edited',
     });
 
@@ -382,8 +416,8 @@ class PostService {
     return {
       id: updatedPost.id,
       author: {
-        name: updatedPost.user?.name || 'Unknown User',
-        avatar: updatedPost.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        name: await this.getPostAuthorName(updatedPost.user, updatedPost.isAnonymous),
+        avatar: updatedPost.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: updatedPost.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(updatedPost.createdAt),
@@ -397,6 +431,7 @@ class PostService {
       },
       backgroundColor: updatedPost.backgroundColor,
       status: updatedPost.status || 'edited',
+      isAnonymous: updatedPost.isAnonymous,
       liked: false,
     };
   }

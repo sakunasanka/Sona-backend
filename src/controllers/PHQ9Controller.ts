@@ -88,7 +88,7 @@ export class PHQ9Controller {
   }
 
   /**
-   * Get a specific user's PHQ-9 history (Professional access)
+   * Get a specific user's PHQ-9 history (Professional access or own history for clients)
    * GET /api/questionnaire/phq9/user/:userId/history?page=1&limit=10
    */
   static async getUserHistoryById(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -97,19 +97,27 @@ export class PHQ9Controller {
         throw new AuthenticationError('Authentication required');
       }
 
-      // Access restricted to Counselor, Psychiatrist, or Admin
-      const userType = req.user.dbUser.userType;
-      const allowedRoles = ['Counselor', 'Admin', 'Psychiatrist'];
-      if (!allowedRoles.includes(userType)) {
-        throw new ValidationError('Access denied. Counselor, Psychiatrist, or Admin role required.');
-      }
+      const requestingUserId = req.user.dbUser.id;
+      const requestingUserType = req.user.dbUser.userType;
+      const requestedUserId = parseInt(req.params.userId, 10);
 
-      const userId = parseInt(req.params.userId, 10);
-      if (isNaN(userId)) {
+      if (isNaN(requestedUserId)) {
         throw new ValidationError('Invalid userId');
       }
 
-      const result = await PHQ9Service.getUserHistoryFull(userId);
+      // Check access permissions
+      const professionalRoles = ['Counselor', 'Admin', 'Psychiatrist'];
+      const isProfessional = professionalRoles.includes(requestingUserType);
+      const isAccessingOwnHistory = requestingUserId === requestedUserId;
+
+      // Allow access if:
+      // 1. User is a professional (Counselor, Admin, Psychiatrist), OR
+      // 2. User is accessing their own history
+      if (!isProfessional && !isAccessingOwnHistory) {
+        throw new ValidationError('Access denied. You can only view your own PHQ-9 history.');
+      }
+
+      const result = await PHQ9Service.getUserHistoryFull(requestedUserId);
 
       const sanitizedResults = result.map((item: any) => ({
         id: item.id,

@@ -4,7 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { CounselorService } from "../services/CounselorServices";
 import { ValidationError } from "../utils/errors";
 import Counselor from "../models/Counselor";
-import { validateData, updateCounselorProfileSchema } from "../schema/ValidationSchema";
+import { validateData, updateCounselorProfileSchema, updateCounselorVolunteerSchema } from "../schema/ValidationSchema";
 import CounselorClientService from "../services/CounselorClientService";
 import { isArray } from "util";
 
@@ -406,4 +406,113 @@ export const removeClientConcern = asyncHandler(async (req: Request, res: Respon
   const result = await CounselorClientService.removeConcernFromClient(counselorId, Number(clientId), concern.trim());
 
   ApiResponseUtil.success(res, result, 'Concern removed successfully');
+});
+
+/**
+ * @desc    Update counselor volunteer status and session fee
+ * @route   PUT /api/counselors/volunteer-status
+ * @access  Private (counselor only)
+ */
+export const updateCounselorVolunteerStatus = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  // Validate the request body
+  const validatedData = await validateData(updateCounselorVolunteerSchema, req.body) as { isVolunteer: boolean; sessionFee: number };
+
+  const updatedCounselor = await CounselorService.updateCounselorVolunteerStatus(
+    counselorId, 
+    validatedData.isVolunteer, 
+    validatedData.sessionFee
+  );
+
+  ApiResponseUtil.success(res, updatedCounselor, "Counselor volunteer status and session fee updated successfully");
+});
+
+/**
+ * @desc    Get counselor volunteer status and session fee
+ * @route   GET /api/counselors/volunteer-status
+ * @access  Private (counselor only)
+ */
+export const getCounselorVolunteerStatus = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  const counselor = await CounselorService.getCounselorById(counselorId);
+
+  ApiResponseUtil.success(res, {
+    isVolunteer: counselor.isVolunteer,
+    sessionFee: counselor.sessionFee
+  }, "Counselor volunteer status retrieved successfully");
+});
+
+/**
+ * @desc    Get counselor earnings summary
+ * @route   GET /api/counselors/earnings/summary
+ * @access  Private (counselor only)
+ */
+export const getCounselorEarningsSummary = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  const summary = await CounselorService.getCounselorEarningsSummary(counselorId);
+
+  ApiResponseUtil.success(res, summary, "Counselor earnings summary retrieved successfully");
+});
+
+/**
+ * @desc    Get counselor monthly earnings
+ * @route   GET /api/counselors/earnings/monthly
+ * @access  Private (counselor only)
+ * @query   period?: number (default: 12, max: 24)
+ */
+export const getCounselorMonthlyEarnings = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+  const period = parseInt(req.query.period as string) || 12;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  if (period < 1 || period > 24) {
+    throw new ValidationError('Period must be between 1 and 24 months');
+  }
+
+  const monthlyEarnings = await CounselorService.getCounselorMonthlyEarnings(counselorId, period);
+
+  ApiResponseUtil.success(res, monthlyEarnings, "Counselor monthly earnings retrieved successfully");
+});
+
+/**
+ * @desc    Get counselor earnings per client
+ * @route   GET /api/counselors/earnings/per-client/:clientId
+ * @access  Private (counselor only)
+ */
+export const getCounselorEarningsPerClient = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+  const { clientId } = req.params;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  if (!clientId || isNaN(Number(clientId))) {
+    throw new ValidationError('Valid client ID is required');
+  }
+
+  const earningsPerClient = await CounselorService.getCounselorEarningsPerClient(counselorId, Number(clientId));
+
+  // If clientId is provided, return single object instead of array
+  const responseData = clientId ? (earningsPerClient.length > 0 ? earningsPerClient[0] : null) : earningsPerClient;
+
+  ApiResponseUtil.success(res, responseData, "Counselor earnings per client retrieved successfully");
 });

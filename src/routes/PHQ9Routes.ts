@@ -23,9 +23,8 @@ router.post('/submit', asyncHandler(PHQ9Controller.submitPHQ9));
 router.get('/history', asyncHandler(PHQ9Controller.getUserHistory));
 
 
-// Professional access: fetch PHQ-9 by user id
-router.get('/user/:userId/history', 
-  requireRole(['Counselor', 'Admin', 'Psychiatrist']),
+// Professional access: fetch PHQ-9 by user id (professionals can access any, clients can access own)
+router.get('/user/:userId/history',
   asyncHandler(PHQ9Controller.getUserHistoryById)
 );
 

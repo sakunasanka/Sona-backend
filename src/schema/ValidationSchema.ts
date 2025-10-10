@@ -336,7 +336,15 @@ export const updateCounselorProfileSchema = yup.object({
     
     profileImage: yup
         .string()
-        .url('Profile image must be a valid URL')
+        .test('valid-url-or-empty', 'Profile image must be a valid URL or empty', function(value) {
+            if (!value || value.trim() === '') return true; // Allow empty strings
+            try {
+                new URL(value);
+                return true;
+            } catch {
+                return false;
+            }
+        })
         .optional(),
     
     coverImage: yup
@@ -544,3 +552,52 @@ export const validateData = async <T>(schema: yup.ObjectSchema<any>, data: any):
         throw error; // Re-throw unexpected errors
     }
 }
+
+// Complaint validation schemas
+export const createComplaintSchema = yup.object({
+    additional_details: yup
+        .string()
+        .max(1000, 'Additional details cannot exceed 1000 characters')
+        .optional(),
+
+    session_id: yup
+        .number()
+        .integer('Session ID must be an integer')
+        .positive('Session ID must be positive')
+        .required('Session ID is required'),
+
+    proof: yup
+        .string()
+        .url('Proof must be a valid URL')
+        .optional(),
+
+    reason: yup
+        .string()
+        .max(100, 'Reason cannot exceed 100 characters')
+        .optional()
+});
+
+export const updateComplaintStatusSchema = yup.object({
+    status: yup
+        .string()
+        .oneOf(['pending', 'resolved', 'rejected', 'in review'], 'Invalid status value')
+        .required('Status is required'),
+
+    reasonID: yup
+        .number()
+        .integer('Reason ID must be an integer')
+        .positive('Reason ID must be positive')
+        .optional()
+});
+
+export const updateCounselorVolunteerSchema = yup.object({
+    isVolunteer: yup
+        .boolean()
+        .required('isVolunteer status is required'),
+
+    sessionFee: yup
+        .number()
+        .min(0, 'Session fee cannot be negative')
+        .max(10000, 'Session fee cannot exceed 10,000')
+        .required('Session fee is required')
+});
