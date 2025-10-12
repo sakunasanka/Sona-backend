@@ -124,72 +124,52 @@ class AdminPsychiatristController {
   }
 
   // Update psychiatrist status
-  async updatePsychiatristStatus(req: Request, res: Response) {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
+  // Update psychiatrist status
+async updatePsychiatristStatus(req: Request, res: Response) {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-      const { id } = req.params;
-      const { status, rejectionReason } = req.body;
+    const { id } = req.params; // psychiatrist's userId (PK)
+    const { status, rejectionReason } = req.body;
 
-      // Validate that rejection reason is provided when status is 'rejected'
-      if (status === 'rejected' && !rejectionReason) {
-        return res.status(400).json({ message: 'Rejection reason is required when status is rejected' });
-      }
+    // Validate rejection reason for rejected status
+    if (status === 'rejected' && !rejectionReason) {
+      return res
+        .status(400)
+        .json({ message: 'Rejection reason is required when status is rejected' });
+    }
 
-      // Update the psychiatrist status using the model method
-      const updatedPsychiatrist = await Psychiatrist.updatePsychiatristStatus(
-        parseInt(id),
-        status
-      );
+    // Update psychiatrist status using the model
+    const updatedPsychiatrist = await Psychiatrist.updatePsychiatristStatus(
+      parseInt(id),
+      status,
+      rejectionReason
+    );
 
-      if (!updatedPsychiatrist) {
-        return res.status(404).json({ message: 'Psychiatrist not found' });
-      }
+    if (!updatedPsychiatrist) {
+      return res.status(404).json({ message: 'Psychiatrist not found' });
+    }
 
-      // Return all fields from the model
-      const response = {
-        id: updatedPsychiatrist.id,
-        firebaseId: updatedPsychiatrist.firebaseId,
-        name: updatedPsychiatrist.name,
-        email: updatedPsychiatrist.email,
-        avatar: updatedPsychiatrist.avatar,
-        role: updatedPsychiatrist.role,
-        title: updatedPsychiatrist.title,
-        specialities: updatedPsychiatrist.specialities,
-        address: updatedPsychiatrist.address,
-        contact_no: updatedPsychiatrist.contact_no,
-        license_no: updatedPsychiatrist.license_no,
-        idCard: updatedPsychiatrist.idCard,
-        isVolunteer: updatedPsychiatrist.isVolunteer,
-        isAvailable: updatedPsychiatrist.isAvailable,
-        description: updatedPsychiatrist.description,
-        rating: updatedPsychiatrist.rating,
-        sessionFee: updatedPsychiatrist.sessionFee,
-        status: updatedPsychiatrist.status,
-        coverImage: updatedPsychiatrist.coverImage,
-        instagram: updatedPsychiatrist.instagram,
-        linkedin: updatedPsychiatrist.linkedin,
-        x: updatedPsychiatrist.x,
-        website: updatedPsychiatrist.website,
-        languages: updatedPsychiatrist.languages,
-        createdAt: updatedPsychiatrist.createdAt,
-        updatedAt: updatedPsychiatrist.updatedAt,
-        rejectionReason: status === 'rejected' ? rejectionReason : undefined
-      };
+    // ✅ Return updated data (after reload)
+    const response = {
+      ...updatedPsychiatrist.get({ plain: true }),
+      rejectionReason: status === 'rejected' ? rejectionReason : undefined,
+    };
 
-      res.status(200).json(response);
-    } catch (error) {
-      console.error('Error updating psychiatrist status:', error);
-      if (error instanceof Error) {
-        res.status(500).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'An unknown error occurred' });
-      }
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Error updating psychiatrist status:', error);
+    if (error instanceof Error) {
+      res.status(500).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: 'An unknown error occurred' });
     }
   }
+}
+
 
   // Get psychiatrist counts
   async getPsychiatristCounts(req: Request, res: Response) {

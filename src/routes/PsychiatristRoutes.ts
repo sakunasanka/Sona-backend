@@ -4,7 +4,7 @@ import {
   getPsychiatristById,
   updatePsychiatristAvailability,
   getAllPsychiatrists,
-  updatePsychiatristStatus
+  //updatePsychiatristStatus
 } from '../controllers/PsychiatristController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { isAdmin, isAuthenticated, isPsychiatrist } from '../middlewares/auth';
@@ -28,7 +28,7 @@ router.patch('/:id/availability', isAuthenticated, isPsychiatrist, updatePsychia
 router.get('/', isAuthenticated, isAdmin, getAllPsychiatrists);
 
 // Update psychiatrist status (approve/reject)
-router.patch('/:id/status', isAuthenticated, isAdmin, updatePsychiatristStatus);
+//router.patch('/:id/status', isAuthenticated, isAdmin, updatePsychiatristStatus);
 
 // Psychiatrist can view a client's daily moods
 router.get('/clients/:clientId/moods', isAuthenticated, isPsychiatrist, getUserDailyMoods);
