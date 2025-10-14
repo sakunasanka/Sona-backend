@@ -9,6 +9,7 @@ import {
   bookSession,
   getUserSessions,
   getSessionById,
+  getSessionLink,
   setCounselorAvailability,
   setCounselorUnavailability,
   cancelSession,
@@ -37,6 +38,7 @@ router.post('/book', bookSession);
 router.get('/my-sessions', getUserSessions);
 router.get('/remaining', getRemainingStudentSessions);
 router.get('/:id', getSessionById);
+router.get('/:id/link', getSessionLink);
 router.put('/:id/cancel', cancelSession);
 router.post('/availability', setCounselorAvailability);
 router.post('/unavailability', setCounselorUnavailability);
