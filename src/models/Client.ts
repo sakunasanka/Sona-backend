@@ -1,14 +1,28 @@
-import { DataTypes, QueryTypes } from "sequelize";
+import { DataTypes, Model, QueryTypes } from "sequelize";
 import { sequelize } from "../config/db";
 import User from "./User";
 
 class Client extends User {
-  // Client-specific properties
+  public userId!: number; // Explicitly define userId as the primary key
+  public firebaseId!: string;
+  public name!: string;
+  public email!: string;
+  public avatar?: string;
+  public role!: "Client" | "Counselor" | "Admin" | "Psychiatrist" | "MT-Team";
   public isStudent!: boolean;
   public nickName?: string;
+  public concerns?: any[];
 
+  // ✅ Define the association as a static method
+  static associate(models: any) {
+    // Define association with User
+    Client.belongsTo(models.User, {
+      foreignKey: "userId",
+      as: "user",
+    });
+  }
 
-  // Override create to handle both tables
+  // ✅ The rest of your code remains unchanged below...
   static async createClient(userData: {
     firebaseId: string;
     name: string;
@@ -18,53 +32,40 @@ class Client extends User {
     nickName?: string;
   }) {
     const transaction = await sequelize.transaction();
-    
+
     try {
-      // Create user first
-      const user = await User.create({
-        firebaseId: userData.firebaseId,
-        name: userData.name,
-        email: userData.email,
-        avatar: userData.avatar,
-        role: 'Client',
-      }, { transaction });
+      const user = await User.create(
+        {
+          firebaseId: userData.firebaseId,
+          name: userData.name,
+          email: userData.email,
+          avatar: userData.avatar,
+          role: "Client",
+        },
+        { transaction }
+      );
 
-      // Create client record with same id
-     
-
-      // Note. following code gonna be use after fixing issues
-      // await DbHelpers.insert({
-      //   tableName: 'clients',
-      //   columns: ['userId', 'isStudent', 'nickName', 'createdAt', 'updatedAt'],
-      //   values: [user.id, userData.isStudent, userData.nickName, new Date(), new Date()],
-      //   transaction,
-      //   returning: ['id', 'userId', 'isStudent', 'nickName']
-      // });
-
-       //use "" marks since column names are case-insensitive in PostgreSQL
-      await sequelize.query(`
+      await sequelize.query(
+        `
         INSERT INTO clients (
-                "userId", 
-                "isStudent", 
-                "nickName",
-                "createdAt", 
-                "updatedAt"
-            )
+          "userId",
+          "isStudent",
+          "nickName",
+          "createdAt",
+          "updatedAt"
+        )
         VALUES (?, ?, ?, NOW(), NOW())
-      `, {
-        replacements: [
-          user.id,
-          userData.isStudent,
-          userData.nickName,
-        ],
-        transaction
-      });
+        `,
+        {
+          replacements: [user.id, userData.isStudent, userData.nickName],
+          transaction,
+        }
+      );
 
       await transaction.commit();
-      
-      // Return the client instance with all data
+
       const clientInstance = new Client();
-      clientInstance.id = user.id;
+      clientInstance.userId = user.id; // Use userId consistently
       clientInstance.firebaseId = user.firebaseId;
       clientInstance.name = user.name;
       clientInstance.email = user.email;
@@ -78,10 +79,10 @@ class Client extends User {
       throw error;
     }
   }
-
   // Find client with joined data
   static async findClientById(id: number): Promise<Client | null> {
-    const result = await sequelize.query(`
+    const result = await sequelize.query(
+      `
       SELECT 
         u.id, 
         u."firebaseId", 
@@ -99,9 +100,8 @@ class Client extends User {
 
     const data = result[0] as any;
     const client = new Client();
-    
-    // Set all properties
-    client.id = data.id;
+
+    client.userId = data.userId; // Use userId consistently
     client.firebaseId = data.firebaseId;
     client.name = data.name;
     client.email = data.email;
@@ -114,7 +114,8 @@ class Client extends User {
   }
 
   static async findAllClients(): Promise<Client[]> {
-    const results = await sequelize.query(`
+    const results = await sequelize.query(
+      `
       SELECT 
         u.id, 
         u."firebaseId", 
@@ -135,7 +136,7 @@ class Client extends User {
 
     return results.map((data: any) => {
       const client = new Client();
-      client.id = data.id;
+      client.userId = data.userId; // Use userId consistently
       client.firebaseId = data.firebaseId;
       client.name = data.name;
       client.email = data.email;
@@ -146,6 +147,97 @@ class Client extends User {
       return client;
     });
   }
+
+  static async updateClient(id: number, updateData: {
+    name?: string;
+    avatar?: string;
+    nickName?: string;
+    isStudent?: boolean;
+    concerns?: any[];
+  }) {
+    const transaction = await sequelize.transaction();
+
+    try {
+      if (updateData.name || updateData.avatar) {
+        await User.update(
+          {
+            ...(updateData.name && { name: updateData.name }),
+            ...(updateData.avatar && { avatar: updateData.avatar }),
+          },
+          {
+            where: { id },
+            transaction,
+          }
+        );
+      }
+
+      if (
+        updateData.nickName ||
+        updateData.isStudent !== undefined ||
+        updateData.concerns
+      ) {
+        await sequelize.query(
+          `
+          UPDATE clients 
+          SET 
+            ${updateData.nickName !== undefined ? `"nickName" = ?,` : ''}
+            ${updateData.isStudent !== undefined ? `"isStudent" = ?,` : ''}
+            ${updateData.concerns !== undefined ? `"concerns" = ?,` : ''}
+            "updatedAt" = NOW()
+          WHERE "userId" = ?
+          `,
+          {
+            replacements: [
+              ...(updateData.nickName !== undefined
+                ? [updateData.nickName]
+                : []),
+              ...(updateData.isStudent !== undefined
+                ? [updateData.isStudent]
+                : []),
+              ...(updateData.concerns !== undefined
+                ? [updateData.concerns]
+                : []),
+              id,
+            ].filter(Boolean),
+            transaction,
+          }
+        );
+      }
+
+      await transaction.commit();
+      return await this.findClientById(id);
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
 }
+
+Client.init(
+  {
+    userId: {
+      type: DataTypes.INTEGER,
+      primaryKey: true, // Explicitly set userId as the primary key
+    },
+    isStudent: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+    },
+    nickName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    concerns: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize,
+    modelName: "client",
+    tableName: "clients",
+    timestamps: true,
+  }
+);
 
 export default Client;

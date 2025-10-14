@@ -12,7 +12,7 @@ class Session extends Model {
   public price!: number;  // Price of the session
   public notes?: string;  // Any notes from the user
   public status!: 'scheduled' | 'completed' | 'cancelled';
-  public link?: string;
+  public link?: string;  // Session link
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }

@@ -251,6 +251,23 @@ class SessionService {
   }
 
   /**
+   * Get session link
+   */
+  async getSessionLink(sessionId: number, userId: number): Promise<string | null> {
+    const session = await Session.findOne({
+      where: {
+        id: sessionId,
+        [Op.or]: [
+          { userId },
+          { counselorId: userId }
+        ]
+      },
+      attributes: ['link']
+    });
+    return session?.link || null;
+  }
+
+  /**
    * Get specific session details
    */
   async getSessionById(sessionId: number, userId: number): Promise<Session | null> {
@@ -315,10 +332,6 @@ class SessionService {
       }
     } as Session;
   }
-
-  /**
-   * Cancel a session
-   */
   async cancelSession(sessionId: number, userId: number): Promise<Session> {
     const session = await Session.findOne({
       where: {

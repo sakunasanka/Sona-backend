@@ -3,6 +3,8 @@ import Psychiatrist from '../models/Psychiatrist';
 import PsychiatristTimeSlot from '../models/PsychiatristTimeSlot';
 import PsychiatristSession from '../models/PsychiatristSession';
 import User from '../models/User';
+import { sequelize } from '../config/db';
+import { QueryTypes } from 'sequelize';
 
 export interface PsychiatristResponse {
   id: number;
@@ -341,18 +343,47 @@ export class PsychiatristService {
     try {
       const sessions = await PsychiatristSession.getPsychiatristSessions(psychiatristId);
       
-      return sessions.map(session => ({
+      // Get userIds from sessions
+      const userIds = sessions.map((s: any) => s.userId);
+
+      // Query isStudent status for all users in clients table
+      let clientRows: any[] = [];
+      if (userIds.length > 0) {
+        clientRows = await sequelize.query(
+          `SELECT "userId", "isStudent" FROM clients WHERE "userId" IN (:userIds)`,
+          {
+            replacements: { userIds },
+            type: QueryTypes.SELECT
+          }
+        );
+      }
+
+      // Map userId to isStudent
+      const isStudentMap = new Map<number, boolean>();
+      for (const row of clientRows as any[]) {
+        isStudentMap.set(row.userId, row.isStudent === true);
+      }
+
+      return sessions.map((session: any) => ({
         id: session.id,
         userId: session.userId,
-        userName: (session as any).userName,
-        userEmail: (session as any).userEmail,
+        psychiatristId: session.psychiatristId,
+        timeSlotId: session.timeSlotId,
         date: session.date,
         timeSlot: session.timeSlot,
         duration: session.duration,
         price: session.price,
         concerns: session.concerns,
         status: session.status,
-        createdAt: session.createdAt
+        createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
+        user: {
+          id: session.userId,
+          name: session.userName,
+          email: session.userEmail,
+          role: 'Client' // Assuming psychiatrist sessions are with clients
+        },
+        isStudent: isStudentMap.get(session.userId) || false
       }));
     } catch (error) {
       throw new DatabaseError(`Failed to fetch psychiatrist sessions: ` + (error instanceof Error ? error.message : 'Unknown error'));

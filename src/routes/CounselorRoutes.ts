@@ -26,7 +26,7 @@ import {
 } from '../controllers/CounselorController';
 import { getUserDailyMoods } from '../controllers/DailyMoodController';
 import { asyncHandler } from '../utils/asyncHandler';
-import { isAdmin, isAuthenticated, isCounselor } from '../middlewares/auth';
+import { isAdmin, isAuthenticated, isProfessional } from '../middlewares/auth';
 
 const router = express.Router();
 
@@ -36,42 +36,42 @@ router.get('/available', getAllAvailableCounselors);
 
 // Protected routes - Counselor only (put these BEFORE dynamic routes)
 // Counselor dashboard routes
-router.get('/dashboard/stats', isAuthenticated, isCounselor, getDashboardStats);
-router.get('/sessions/recent', isAuthenticated, isCounselor, getRecentSessions);
-router.get('/activity/recent', isAuthenticated, isCounselor, getRecentActivity);
-router.get('/profile', isAuthenticated, isCounselor, getCounselorProfile);
+router.get('/dashboard/stats', isAuthenticated, isProfessional, getDashboardStats);
+router.get('/sessions/recent', isAuthenticated, isProfessional, getRecentSessions);
+router.get('/activity/recent', isAuthenticated, isProfessional, getRecentActivity);
+router.get('/profile', isAuthenticated, isProfessional, getCounselorProfile);
 
 // Counselor profile management routes
-router.get('/profile/detailed', isAuthenticated, isCounselor, getCounselorDetailedProfile);
-router.put('/profile', isAuthenticated, isCounselor, updateCounselorProfile);
-router.get('/volunteer-status', isAuthenticated, isCounselor, getCounselorVolunteerStatus);
-router.put('/volunteer-status', isAuthenticated, isCounselor, updateCounselorVolunteerStatus);
+router.get('/profile/detailed', isAuthenticated, isProfessional, getCounselorDetailedProfile);
+router.put('/profile', isAuthenticated, isProfessional, updateCounselorProfile);
+router.get('/volunteer-status', isAuthenticated, isProfessional, getCounselorVolunteerStatus);
+router.put('/volunteer-status', isAuthenticated, isProfessional, updateCounselorVolunteerStatus);
 
 // Counselor client management routes
-router.get('/clients', isAuthenticated, isCounselor, getCounselorClients);
-router.get('/clients/:clientId', isAuthenticated, isCounselor, getClientDetails);
-router.post('/clients/:clientId/notes', isAuthenticated, isCounselor, createClientNote);
-router.put('/clients/:clientId/notes/:noteId', isAuthenticated, isCounselor, updateClientNote);
-router.delete('/clients/:clientId/notes/:noteId', isAuthenticated, isCounselor, deleteClientNote);
+router.get('/clients', isAuthenticated, isProfessional, getCounselorClients);
+router.get('/clients/:clientId', isAuthenticated, isProfessional, getClientDetails);
+router.post('/clients/:clientId/notes', isAuthenticated, isProfessional, createClientNote);
+router.put('/clients/:clientId/notes/:noteId', isAuthenticated, isProfessional, updateClientNote);
+router.delete('/clients/:clientId/notes/:noteId', isAuthenticated, isProfessional, deleteClientNote);
 
 // Concerns management
-router.post('/clients/:clientId/concerns', isAuthenticated, isCounselor, addClientConcern);
-router.delete('/clients/:clientId/concerns', isAuthenticated, isCounselor, removeClientConcern);
+router.post('/clients/:clientId/concerns', isAuthenticated, isProfessional, addClientConcern);
+router.delete('/clients/:clientId/concerns', isAuthenticated, isProfessional, removeClientConcern);
 
 // Counselor earnings routes
-router.get('/earnings/summary', isAuthenticated, isCounselor, getCounselorEarningsSummary);
-router.get('/earnings/monthly', isAuthenticated, isCounselor, getCounselorMonthlyEarnings);
-router.get('/earnings/per-client/:clientId', isAuthenticated, isCounselor, getCounselorEarningsPerClient);
+router.get('/earnings/summary', isAuthenticated, isProfessional, getCounselorEarningsSummary);
+router.get('/earnings/monthly', isAuthenticated, isProfessional, getCounselorMonthlyEarnings);
+router.get('/earnings/per-client/:clientId', isAuthenticated, isProfessional, getCounselorEarningsPerClient);
 
 // Client moods for counselor
-router.get('/clients/:clientId/moods', isAuthenticated, isCounselor, getUserDailyMoods);
+router.get('/clients/:clientId/moods', isAuthenticated, isProfessional, getUserDailyMoods);
 
 // Dynamic routes (put these AFTER static routes to avoid conflicts)
 // Get counselor by ID
 router.get('/:id', getCounselorById);
 
 // Update counselor's own availability
-router.patch('/:id/availability', isAuthenticated, isCounselor, updateCounselorAvailability);
+router.patch('/:id/availability', isAuthenticated, isProfessional, updateCounselorAvailability);
 
 // Admin routes
 // Get all counselors (including pending and rejected)
