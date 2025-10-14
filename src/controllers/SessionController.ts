@@ -301,11 +301,16 @@ export const setCounselorAvailability = asyncHandler(async (req: Request, res: R
       });
     }
     
-    // Parse start and end times (format: "HH:00")
+    // Parse start and end times (format: "HH:00" or "23:59")
     const [startHour] = startTime.split(':').map(Number);
-    const [endHour] = endTime.split(':').map(Number);
+    let [endHour] = endTime.split(':').map(Number);
     
-    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour >= endHour) {
+    // If endTime is "23:59", treat as 24:00 to include up to 23:00
+    if (endTime === "23:59") {
+      endHour = 24;
+    }
+    
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 24 || startHour >= endHour) {
       return res.status(400).json({
         success: false,
         message: 'Invalid time range'
@@ -376,11 +381,16 @@ export const setCounselorUnavailability = asyncHandler(async (req: Request, res:
       });
     }
     
-    // Parse start and end times (format: "HH:00")
+    // Parse start and end times (format: "HH:00" or "23:59")
     const [startHour] = startTime.split(':').map(Number);
-    const [endHour] = endTime.split(':').map(Number);
+    let [endHour] = endTime.split(':').map(Number);
     
-    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour >= endHour) {
+    // If endTime is "23:59", treat as 24:00 to include up to 23:00
+    if (endTime === "23:59") {
+      endHour = 24;
+    }
+    
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 24 || startHour >= endHour) {
       return res.status(400).json({
         success: false,
         message: 'Invalid time range'
