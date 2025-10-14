@@ -15,7 +15,8 @@ import {
   cancelSession,
   getCounselorSessions,
   getRemainingStudentSessions,
-  getCounselorMonthlyAvailability
+  getCounselorMonthlyAvailability,
+  getSessionLink
 } from '../controllers/SessionController';
 import { authenticateToken } from '../middlewares/auth';
 
@@ -43,5 +44,7 @@ router.put('/:id/cancel', cancelSession);
 router.post('/availability', setCounselorAvailability);
 router.post('/unavailability', setCounselorUnavailability);
 router.get('/counselor/:id', getCounselorSessions);
+
+router.get('/getSessionLink/:id', getSessionLink);
 
 export default router;
