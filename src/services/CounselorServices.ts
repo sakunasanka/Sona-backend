@@ -37,32 +37,64 @@ export class CounselorService {
    */
   static async getAllAvailableCounselors(): Promise<CounselorResponse[]> {
     try {
-      const counselors = await Counselor.findAllAvailableCounselors();
-      return counselors.map(counselor => ({
-        id: counselor.id,
-        firebaseId: counselor.firebaseId,
-        name: counselor.name,
-        email: counselor.email,
-        avatar: counselor.avatar,
-        role: counselor.role,
-        title: counselor.title,
-        specialities: counselor.specialities,
-        address: counselor.address,
-        contact_no: counselor.contact_no,
-        license_no: counselor.license_no,
-        idCard: counselor.idCard,
-        isVolunteer: counselor.isVolunteer,
-        isAvailable: counselor.isAvailable,
-        description: counselor.description,
-        rating: counselor.rating,
-        sessionFee: counselor.sessionFee,
-        status: counselor.status,
-        coverImage: counselor.coverImage,
-        instagram: counselor.instagram,
-        linkedin: counselor.linkedin,
-        x: counselor.x,
-        website: counselor.website,
-        languages: counselor.languages
+      const results = await sequelize.query(`
+        SELECT 
+          u.id, 
+          u."firebaseId", 
+          u."name", 
+          u."email", 
+          u."avatar", 
+          u."role", 
+          c."title", 
+          c."specialities", 
+          c."address", 
+          c."contact_no", 
+          c."licenseNo" as "license_no", 
+          c."idCard",
+          c."isVolunteer", 
+          c."isAvailable", 
+          c."description", 
+          c."rating", 
+          c."sessionFee",
+          c."status",
+          c."coverImage", 
+          c."instagram", 
+          c."linkedin", 
+          c."x", 
+          c."website",
+          c."languages"
+        FROM users u
+        JOIN counselors c ON u.id = c."userId"
+        WHERE u."role" = 'Counselor' AND c."isAvailable" = true AND c."status" = 'approved'
+      `, {
+        type: QueryTypes.SELECT
+      });
+
+      return results.map((data: any) => ({
+        id: data.id,
+        firebaseId: data.firebaseId,
+        name: data.name,
+        email: data.email,
+        avatar: data.avatar,
+        role: data.role,
+        title: data.title,
+        specialities: data.specialities,
+        address: data.address,
+        contact_no: data.contact_no,
+        license_no: data.license_no,
+        idCard: data.idCard,
+        isVolunteer: data.isVolunteer,
+        isAvailable: data.isAvailable,
+        description: data.description,
+        rating: data.rating,
+        sessionFee: data.sessionFee,
+        status: data.status,
+        coverImage: data.coverImage,
+        instagram: data.instagram,
+        linkedin: data.linkedin,
+        x: data.x,
+        website: data.website,
+        languages: data.languages
       }));
     } catch (error) {
       console.error('Error fetching available counselors:', error);
@@ -78,37 +110,70 @@ export class CounselorService {
       throw new ValidationError('Counselor ID is required and must be a positive number');
     }
 
-    const counselor = await Counselor.findCounselorById(id);
-    
-    if (!counselor) {
+    const results = await sequelize.query(`
+      SELECT 
+        u.id, 
+        u."firebaseId", 
+        u."name", 
+        u."email", 
+        u."avatar", 
+        u."role", 
+        c."title", 
+        c."specialities", 
+        c."address", 
+        c."contact_no", 
+        c."licenseNo" as "license_no", 
+        c."idCard",
+        c."isVolunteer", 
+        c."isAvailable", 
+        c."description", 
+        c."rating", 
+        c."sessionFee",
+        c."status",
+        c."coverImage", 
+        c."instagram", 
+        c."linkedin", 
+        c."x", 
+        c."website",
+        c."languages"
+      FROM users u
+      JOIN counselors c ON u.id = c."userId"
+      WHERE u.id = ? AND u."role" = 'Counselor'
+    `, {
+      replacements: [id],
+      type: QueryTypes.SELECT
+    });
+
+    if (results.length === 0) {
       throw new ItemNotFoundError('Counselor not found with the provided ID');
     }
-    
+
+    const data = results[0] as any;
     return {
-      id: counselor.id,
-      firebaseId: counselor.firebaseId,
-      name: counselor.name,
-      email: counselor.email,
-      avatar: counselor.avatar,
-      role: counselor.role,
-      title: counselor.title,
-      specialities: counselor.specialities,
-      address: counselor.address,
-      contact_no: counselor.contact_no,
-      license_no: counselor.license_no,
-      idCard: counselor.idCard,
-      isVolunteer: counselor.isVolunteer,
-      isAvailable: counselor.isAvailable,
-      description: counselor.description,
-      rating: counselor.rating,
-      sessionFee: counselor.sessionFee,
-      status: counselor.status,
-      coverImage: counselor.coverImage,
-      instagram: counselor.instagram,
-      linkedin: counselor.linkedin,
-      x: counselor.x,
-      website: counselor.website,
-      languages: counselor.languages
+      id: data.id,
+      firebaseId: data.firebaseId,
+      name: data.name,
+      email: data.email,
+      avatar: data.avatar,
+      role: data.role,
+      title: data.title,
+      specialities: data.specialities,
+      address: data.address,
+      contact_no: data.contact_no,
+      license_no: data.license_no,
+      idCard: data.idCard,
+      isVolunteer: data.isVolunteer,
+      isAvailable: data.isAvailable,
+      description: data.description,
+      rating: data.rating,
+      sessionFee: data.sessionFee,
+      status: data.status,
+      coverImage: data.coverImage,
+      instagram: data.instagram,
+      linkedin: data.linkedin,
+      x: data.x,
+      website: data.website,
+      languages: data.languages
     };
   }
 

@@ -339,46 +339,6 @@ export const getSessionById = asyncHandler(async (req: Request, res: Response) =
 });
 
 /**
- * @desc    Get session link
- * @route   GET /api/sessions/:id/link
- * @access  Private
- */
-export const getSessionLink = asyncHandler(async (req: Request, res: Response) => {
-  try {
-    const userId = req.user!.dbUser.id;
-    const { id } = req.params;
-    
-    const link = await sessionService.getSessionLink(Number(id), userId);
-    
-    if (link === null) {
-      return res.status(404).json({
-        success: false,
-        message: 'Session not found or access denied'
-      });
-    }
-    
-    // If link doesn't start with https://, prepend the base URL
-    const fullLink = link.startsWith('https://') ? link : `https://sona.lk/${link}`;
-    
-    res.status(200).json({
-      success: true,
-      data: { link: fullLink }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error instanceof Error ? error.message : 'Error fetching session link'
-    });
-  }
-});
-
-/**
- * @desc    Cancel a session
- * @route   PUT /api/sessions/:id/cancel
- * @access  Private
- */
-
-/**
  * @desc    Set counselor availability for a date range
  * @route   POST /api/sessions/availability
  * @access  Private (counselor only)

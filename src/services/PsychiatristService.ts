@@ -98,7 +98,13 @@ export class PsychiatristService {
         sessionFee: p.sessionFee,
         status: p.status,
         createdAt: p.createdAt,
-        updatedAt: p.updatedAt
+        updatedAt: p.updatedAt,
+        coverImage: p.coverImage,
+        instagram: p.instagram,
+        linkedin: p.linkedin,
+        x: p.x,
+        website: p.website,
+        languages: p.languages
       }));
 
       return {
@@ -141,7 +147,13 @@ export class PsychiatristService {
         sessionFee: psychiatrist.sessionFee,
         status: psychiatrist.status,
         createdAt: psychiatrist.createdAt,
-        updatedAt: psychiatrist.updatedAt
+        updatedAt: psychiatrist.updatedAt,
+        coverImage: psychiatrist.coverImage,
+        instagram: psychiatrist.instagram,
+        linkedin: psychiatrist.linkedin,
+        x: psychiatrist.x,
+        website: psychiatrist.website,
+        languages: psychiatrist.languages
       };
     } catch (error) {
       if (error instanceof ItemNotFoundError) {
@@ -479,7 +491,13 @@ export class PsychiatristService {
         sessionFee: p.sessionFee,
         status: p.status,
         createdAt: p.createdAt,
-        updatedAt: p.updatedAt
+        updatedAt: p.updatedAt,
+        coverImage: p.coverImage,
+        instagram: p.instagram,
+        linkedin: p.linkedin,
+        x: p.x,
+        website: p.website,
+        languages: p.languages
       }));
 
       return {
@@ -522,7 +540,13 @@ export class PsychiatristService {
         sessionFee: psychiatrist.sessionFee,
         status: psychiatrist.status,
         createdAt: psychiatrist.createdAt,
-        updatedAt: psychiatrist.updatedAt
+        updatedAt: psychiatrist.updatedAt,
+        coverImage: psychiatrist.coverImage,
+        instagram: psychiatrist.instagram,
+        linkedin: psychiatrist.linkedin,
+        x: psychiatrist.x,
+        website: psychiatrist.website,
+        languages: psychiatrist.languages
       };
     } catch (error) {
       if (error instanceof ItemNotFoundError) {
@@ -563,7 +587,13 @@ export class PsychiatristService {
         sessionFee: psychiatrist.sessionFee,
         status: psychiatrist.status,
         createdAt: psychiatrist.createdAt,
-        updatedAt: psychiatrist.updatedAt
+        updatedAt: psychiatrist.updatedAt,
+        coverImage: psychiatrist.coverImage,
+        instagram: psychiatrist.instagram,
+        linkedin: psychiatrist.linkedin,
+        x: psychiatrist.x,
+        website: psychiatrist.website,
+        languages: psychiatrist.languages
       };
     } catch (error) {
       if (error instanceof ItemNotFoundError) {
