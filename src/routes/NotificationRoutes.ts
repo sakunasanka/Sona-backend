@@ -29,13 +29,6 @@ router.put('/:notificationId/read', NotificationController.markAsRead);
 router.put('/mark-all-read', NotificationController.markAllAsRead);
 
 /**
- * @route DELETE /api/notifications/:notificationId
- * @desc Delete a notification
- * @access Private
- */
-router.delete('/:notificationId', NotificationController.deleteNotification);
-
-/**
  * @route GET /api/notifications/unread-count
  * @desc Get unread notification count
  * @access Private
