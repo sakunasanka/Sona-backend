@@ -9,7 +9,6 @@ import {
   bookSession,
   getUserSessions,
   getSessionById,
-  getSessionLink,
   setCounselorAvailability,
   setCounselorUnavailability,
   cancelSession,
