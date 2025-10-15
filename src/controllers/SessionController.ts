@@ -584,25 +584,21 @@ export const getCounselorSessions = asyncHandler(async (req: Request, res: Respo
       });
     }
     
-    let sessions;
-    
-    if (user.role === 'Counselor') {
-      // Get counselor sessions
-      sessions = await sessionService.getCounselorSessions(userId);
-    } else if (user.role === 'Psychiatrist') {
-      // Get psychiatrist sessions
-      sessions = await PsychiatristService.getPsychiatristSessions(userId);
+    // Both counselors and psychiatrists use the same sessions table
+    if (user.role === 'Counselor' || user.role === 'Psychiatrist') {
+      // Get professional sessions (works for both counselors and psychiatrists)
+      const sessions = await sessionService.getCounselorSessions(userId);
+      
+      res.status(200).json({
+        success: true,
+        data: sessions
+      });
     } else {
       return res.status(403).json({
         success: false,
         message: 'Access denied: Only counselors and psychiatrists can view their sessions'
       });
     }
-    
-    res.status(200).json({
-      success: true,
-      data: sessions
-    });
   } catch (error) {
     res.status(500).json({
       success: false,

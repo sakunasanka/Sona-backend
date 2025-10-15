@@ -1,10 +1,12 @@
 import { ValidationError, ItemNotFoundError, DatabaseError } from '../utils/errors';
 import Psychiatrist from '../models/Psychiatrist';
+import TimeSlot from '../models/TimeSlot';
 import PsychiatristTimeSlot from '../models/PsychiatristTimeSlot';
 import PsychiatristSession from '../models/PsychiatristSession';
+import Session from '../models/Session';
 import User from '../models/User';
 import { sequelize } from '../config/db';
-import { QueryTypes } from 'sequelize';
+import { QueryTypes, Op } from 'sequelize';
 
 export interface PsychiatristResponse {
   id: number;
@@ -209,7 +211,15 @@ export class PsychiatristService {
         throw new ItemNotFoundError('Psychiatrist not found');
       }
 
-      const slots = await PsychiatristTimeSlot.getAvailableSlots(psychiatristId, date);
+      const slots = await TimeSlot.findAll({
+        where: {
+          counselorId: psychiatristId,
+          date: date,
+          isAvailable: true,
+          isBooked: false
+        },
+        order: [['time', 'ASC']]
+      });
       
       const availability: TimeSlotResponse[] = slots.map(slot => ({
         id: `slot_${slot.id}`,
@@ -260,20 +270,21 @@ export class PsychiatristService {
       }
 
       // Find the specific time slot
-      const availableSlots = await PsychiatristTimeSlot.getAvailableSlots(
-        bookingData.psychiatristId, 
-        bookingData.date
-      );
+      const availableSlots = await TimeSlot.findAll({
+        where: {
+          counselorId: bookingData.psychiatristId,
+          date: bookingData.date,
+          time: bookingData.timeSlot,
+          isAvailable: true,
+          isBooked: false
+        }
+      });
 
-      const selectedSlot = availableSlots.find(slot => 
-        slot.time === bookingData.timeSlot && 
-        slot.isAvailable && 
-        !slot.isBooked
-      );
-
-      if (!selectedSlot) {
+      if (availableSlots.length === 0) {
         throw new ValidationError('Selected time slot is not available');
       }
+
+      const selectedSlot = availableSlots[0];
 
       // Check for student pricing (if user is a student, apply discount)
       let finalPrice = bookingData.price;
@@ -287,31 +298,32 @@ export class PsychiatristService {
       }
 
       // Book the time slot first
-      await PsychiatristTimeSlot.bookTimeSlot(selectedSlot.id);
+      selectedSlot.isBooked = true;
+      await selectedSlot.save();
 
-      // Create the session
-      const session = await PsychiatristSession.createSession({
+      // Create the session using the unified Session model
+      const session = await Session.create({
         userId,
-        psychiatristId: bookingData.psychiatristId,
-        timeSlotId: selectedSlot.id,
+        counselorId: bookingData.psychiatristId, // Use counselorId field for both counselors and psychiatrists
         date: bookingData.date,
         timeSlot: bookingData.timeSlot,
         duration: bookingData.duration,
         price: finalPrice,
-        concerns: bookingData.concerns
+        notes: bookingData.concerns,
+        status: 'confirmed'
       });
 
       return {
         bookingId: `booking_${session.id}`,
         sessionId: `session_${session.id}`,
-        psychiatristId: session.psychiatristId.toString(),
+        psychiatristId: bookingData.psychiatristId.toString(),
         patientId: session.userId.toString(),
         date: session.date.toString(),
         timeSlot: session.timeSlot,
         duration: session.duration,
         price: session.price,
         status: session.status,
-        concerns: session.concerns,
+        concerns: session.notes,
         createdAt: session.createdAt
       };
 
@@ -328,18 +340,28 @@ export class PsychiatristService {
    */
   static async getUserSessions(userId: number): Promise<any[]> {
     try {
-      const sessions = await PsychiatristSession.getUserSessions(userId);
+      const sessions = await Session.findAll({
+        where: { userId },
+        include: [
+          {
+            model: User,
+            as: 'counselor',
+            attributes: ['id', 'name', 'avatar', 'role']
+          }
+        ],
+        order: [['date', 'DESC'], ['timeSlot', 'DESC']]
+      });
       
       return sessions.map(session => ({
         id: session.id,
-        psychiatristId: session.psychiatristId,
-        psychiatristName: (session as any).psychiatristName,
-        psychiatristTitle: (session as any).psychiatristTitle,
+        counselorId: session.counselorId,
+        counselorName: (session as any).counselor?.name,
+        counselorTitle: (session as any).counselor?.role === 'Psychiatrist' ? 'Psychiatrist' : 'Counselor',
         date: session.date,
         timeSlot: session.timeSlot,
         duration: session.duration,
         price: session.price,
-        concerns: session.concerns,
+        concerns: session.notes,
         status: session.status,
         createdAt: session.createdAt
       }));
@@ -353,8 +375,18 @@ export class PsychiatristService {
    */
   static async getPsychiatristSessions(psychiatristId: number): Promise<any[]> {
     try {
-      const sessions = await PsychiatristSession.getPsychiatristSessions(psychiatristId);
-      
+      const sessions = await Session.findAll({
+        where: { counselorId: psychiatristId },
+        include: [
+          {
+            model: User,
+            as: 'user',
+            attributes: ['id', 'name', 'avatar', 'role']
+          }
+        ],
+        order: [['date', 'DESC'], ['timeSlot', 'DESC']]
+      });
+
       // Get userIds from sessions
       const userIds = sessions.map((s: any) => s.userId);
 
@@ -379,21 +411,21 @@ export class PsychiatristService {
       return sessions.map((session: any) => ({
         id: session.id,
         userId: session.userId,
-        psychiatristId: session.psychiatristId,
-        timeSlotId: session.timeSlotId,
+        counselorId: session.counselorId,
+        timeSlotId: null, // Not used in unified model
         date: session.date,
         timeSlot: session.timeSlot,
         duration: session.duration,
         price: session.price,
-        concerns: session.concerns,
+        concerns: session.notes,
         status: session.status,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
         user: {
           id: session.userId,
-          name: session.userName,
-          email: session.userEmail,
-          role: 'Client' // Assuming psychiatrist sessions are with clients
+          name: session.user?.name,
+          email: session.user?.email || '',
+          role: session.user?.role || 'Client'
         },
         isStudent: isStudentMap.get(session.userId) || false
       }));
@@ -407,11 +439,15 @@ export class PsychiatristService {
    */
   static async cancelSession(sessionId: number, cancelledBy: 'user' | 'psychiatrist'): Promise<any> {
     try {
-      const session = await PsychiatristSession.cancelSession(sessionId, cancelledBy);
+      const session = await Session.findByPk(sessionId);
       
       if (!session) {
         throw new ItemNotFoundError('Session not found');
       }
+
+      // Update session status
+      session.status = 'cancelled';
+      await session.save();
 
       return {
         id: session.id,
@@ -441,7 +477,15 @@ export class PsychiatristService {
         throw new ItemNotFoundError('Psychiatrist not found');
       }
 
-      await PsychiatristTimeSlot.setAvailability(psychiatristId, date, isAvailable);
+      await TimeSlot.update(
+        { isAvailable },
+        {
+          where: {
+            counselorId: psychiatristId,
+            date: date
+          }
+        }
+      );
     } catch (error) {
       if (error instanceof ItemNotFoundError) {
         throw error;
@@ -455,7 +499,19 @@ export class PsychiatristService {
    */
   static async getUpcomingSessionsCount(userId: number): Promise<number> {
     try {
-      return await PsychiatristSession.getUpcomingSessionsCount(userId);
+      const currentDate = new Date().toISOString().split('T')[0];
+      
+      const count = await Session.count({
+        where: {
+          userId,
+          date: {
+            [Op.gte]: currentDate
+          },
+          status: ['scheduled', 'confirmed']
+        }
+      });
+
+      return count;
     } catch (error) {
       throw new DatabaseError(`Failed to get upcoming sessions count: ` + (error instanceof Error ? error.message : 'Unknown error'));
     }
