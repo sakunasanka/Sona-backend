@@ -637,3 +637,22 @@ export const getSessionLink = asyncHandler(async (req: Request, res: Response) =
       })
     }
 });
+
+//get users booked sesisons from today onwards
+export const getBooked = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user!.dbUser.id;
+
+  try {
+    const sessions = await sessionService.getBookedSessions(userId);
+
+    res.status(200).json({
+      success: true,
+      data: sessions
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error fetching booked sessions'
+    });
+  }
+})
