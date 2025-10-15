@@ -339,46 +339,6 @@ export const getSessionById = asyncHandler(async (req: Request, res: Response) =
 });
 
 /**
- * @desc    Get session link
- * @route   GET /api/sessions/:id/link
- * @access  Private
- */
-export const getSessionLink = asyncHandler(async (req: Request, res: Response) => {
-  try {
-    const userId = req.user!.dbUser.id;
-    const { id } = req.params;
-    
-    const link = await sessionService.getSessionLink(Number(id), userId);
-    
-    if (link === null) {
-      return res.status(404).json({
-        success: false,
-        message: 'Session not found or access denied'
-      });
-    }
-    
-    // If link doesn't start with https://, prepend the base URL
-    const fullLink = link.startsWith('https://') ? link : `https://sona.lk/${link}`;
-    
-    res.status(200).json({
-      success: true,
-      data: { link: fullLink }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error instanceof Error ? error.message : 'Error fetching session link'
-    });
-  }
-});
-
-/**
- * @desc    Cancel a session
- * @route   PUT /api/sessions/:id/cancel
- * @access  Private
- */
-
-/**
  * @desc    Set counselor availability for a date range
  * @route   POST /api/sessions/availability
  * @access  Private (counselor only)
@@ -410,11 +370,16 @@ export const setCounselorAvailability = asyncHandler(async (req: Request, res: R
       });
     }
     
-    // Parse start and end times (format: "HH:00")
+    // Parse start and end times (format: "HH:00" or "23:59")
     const [startHour] = startTime.split(':').map(Number);
-    const [endHour] = endTime.split(':').map(Number);
+    let [endHour] = endTime.split(':').map(Number);
     
-    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour >= endHour) {
+    // If endTime is "23:59", treat as 24:00 to include up to 23:00
+    if (endTime === "23:59") {
+      endHour = 24;
+    }
+    
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 24 || startHour >= endHour) {
       return res.status(400).json({
         success: false,
         message: 'Invalid time range'
@@ -485,11 +450,16 @@ export const setCounselorUnavailability = asyncHandler(async (req: Request, res:
       });
     }
     
-    // Parse start and end times (format: "HH:00")
+    // Parse start and end times (format: "HH:00" or "23:59")
     const [startHour] = startTime.split(':').map(Number);
-    const [endHour] = endTime.split(':').map(Number);
+    let [endHour] = endTime.split(':').map(Number);
     
-    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour >= endHour) {
+    // If endTime is "23:59", treat as 24:00 to include up to 23:00
+    if (endTime === "23:59") {
+      endHour = 24;
+    }
+    
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 24 || startHour >= endHour) {
       return res.status(400).json({
         success: false,
         message: 'Invalid time range'
@@ -626,4 +596,44 @@ export const getRemainingStudentSessions = asyncHandler(async (req: Request, res
       message: error instanceof Error ? error.message : 'Error fetching remaining sessions'
     });
   }
+});
+
+export const getSessionLink = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const userId = req.user!.dbUser.id;
+
+    console.log('session id: ', id);
+
+    if(!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Session ID is required'
+      })
+    }
+
+    try {
+      const session = await sessionService.getSessionById(Number(id), userId);
+
+      if(!session) {
+        return res.status(404).json({
+          success: false,
+          message: 'Session not found'
+        })
+      }
+
+      const sessionLink = await sessionService.generateSessionLink(session.id, userId);
+      
+      res.status(200).json({
+        success: true,
+        data: {
+          sessionLink
+        }
+      });
+      
+    }catch(e ) {
+      return res.status(500).json({
+        success: false,
+        message: e instanceof Error ? e.message : 'Error fetching session'
+      })
+    }
 });

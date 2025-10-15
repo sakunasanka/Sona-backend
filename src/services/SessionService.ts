@@ -6,6 +6,7 @@ import Client from '../models/Client';
 import TimeSlot from '../models/TimeSlot';
 import PaymentMethod from '../models/PaymentMethod';
 import { sequelize } from '../config/db'; // Fixed import for sequelize
+import jwt from 'jsonwebtoken';
 
 export interface BookSessionParams {
   userId: number;
@@ -22,6 +23,8 @@ export interface TimeSlotData {
 }
 
 class SessionService {
+  private static readonly JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
+  private static readonly JITSI_SECRET = process.env.JITSI_APP_SECTRET || 'Jitsi_default';
 
   /**
    * Get all counselors
@@ -205,6 +208,12 @@ class SessionService {
         throw new Error('Free sessions are only available for students.');
       }
     }
+
+    //generate meeting link
+    //for now randomw value using date and time
+    const domainname = process.env.DOMAIN_NAME || 'sona.org.lk';
+    const saferoom = Buffer.from(`${date}-${timeSlot}-${userId}`).toString('base64').replace(/=/g, '');
+    const roomName = `${saferoom}`;
     
     // Create the session booking
     const session = await Session.create({
@@ -214,7 +223,8 @@ class SessionService {
       timeSlot,
       duration: duration || 50, // Default to 50 minutes if not provided
       price: finalPrice,
-      status: 'scheduled'
+      status: 'scheduled',
+      link: roomName
     });
     
     // Mark the time slot as booked
@@ -276,7 +286,7 @@ class SessionService {
         cu.role as counselor_role,
         cu.id as counselor_id,
         co.title as counselor_title,
-        co.specialties as counselor_specialties,
+        co.specialities as counselor_specialities,
         co.rating as counselor_rating
       FROM sessions s
       JOIN users u ON s."userId" = u.id
@@ -562,7 +572,7 @@ class SessionService {
     nextResetDate: string;
     totalSessionsThisPeriod: number;
     isStudent: boolean;
-  }> {
+    }> {
     // First check if the user is a student
     const user = await User.findByPk(userId);
     if (!user) {
@@ -643,6 +653,87 @@ class SessionService {
       totalSessionsThisPeriod,
       isStudent: true
     };
+  }
+
+  //below function will add json token to session link
+  async generateSessionLink(sessionId: number, userId: number): Promise<string> {
+    const session = await Session.findByPk(sessionId);
+    const user = await User.findByPk(userId);
+    let context ={}
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (!session?.link){
+      throw new Error('Session not found or link not available');
+    }
+
+    if(user.role === 'Client'){
+      const client = await Client.findByPk(userId);
+
+      if (!client) {
+        throw new Error('Client profile not found');
+      }
+
+      const { nickName, email } =client;
+
+      context = {
+        user: {
+          id: userId.toString(),
+          name: nickName || user.name,
+          email: email || 'sample@example.com',
+          affiliation: 'member'
+        }
+      }
+    }else if(user.role === 'Counselor'){
+      const counselor = await Counselor.findByPk(userId);
+
+      if (!counselor) {
+        throw new Error('Counselor profile not found');
+      }
+
+      const { name, email } = user;
+
+      console.log(name);
+      
+      context = {
+          user: {
+            id: userId.toString(),
+            name: name || user.name,
+            email: email,
+            affiliation: 'owner'
+        }
+      }
+    }
+
+    const roomName = session!.link || '';
+
+    return `https://sona.org.lk/${roomName}?jwt=${this.generateToken(sessionId, userId, context, roomName)}`;
+  }
+
+  private generateToken(roomId: number, userId: number, context: any, roomName: string): string {
+    const payload = {
+      aud: '123456', //need to be changed for better app id
+      iss: '123456', //need to be changed for better app id
+      sub: 'sona.org.lk',
+      room: roomName,
+      exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hour expiration
+      
+      context: {
+        user: {
+          id: userId.toString(),
+          name: context.user.name,
+          email: context.user.email,
+          affiliation: context.user.affiliation
+        }
+      },
+      moderator: context.user.affiliation === 'owner' ? true : false
+    }
+
+    return jwt.sign(payload, SessionService.JITSI_SECRET, 
+      { algorithm: 'HS256' }
+    )
   }
 }
 
