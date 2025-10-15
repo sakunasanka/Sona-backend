@@ -252,7 +252,7 @@ export const getTimeSlots = async (req: Request, res: Response): Promise<void> =
  */
 export const bookPsychiatristSession = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
+    const userId = req.user?.dbUser.id;
     
     if (!userId) {
       res.status(401).json(apiResponse.error(
@@ -337,7 +337,7 @@ export const bookPsychiatristSession = async (req: Request, res: Response): Prom
  */
 export const getUserPsychiatristSessions = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
+    const userId = req.user?.dbUser.id;
     
     if (!userId) {
       res.status(401).json(apiResponse.error(
@@ -370,8 +370,8 @@ export const getUserPsychiatristSessions = async (req: Request, res: Response): 
  */
 export const getPsychiatristSessions = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
-    const userRole = (req as any).user?.dbUser?.userType;
+    const userId = req.user?.dbUser.id;
+    const userRole = req.user?.dbUser.userType;
     const { id } = req.params;
     const psychiatristId = parseInt(id);
 
@@ -423,8 +423,8 @@ export const getPsychiatristSessions = async (req: Request, res: Response): Prom
  */
 export const cancelPsychiatristSession = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
-    const userRole = (req as any).user?.dbUser?.userType;
+    const userId = req.user?.dbUser.id;
+    const userRole = req.user?.dbUser.userType;
     const { id } = req.params;
     const sessionId = parseInt(id);
 
@@ -478,7 +478,7 @@ export const cancelPsychiatristSession = async (req: Request, res: Response): Pr
  */
 export const getUpcomingSessionsCount = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
+    const userId = req.user?.dbUser.id;
     
     if (!userId) {
       res.status(401).json(apiResponse.error(

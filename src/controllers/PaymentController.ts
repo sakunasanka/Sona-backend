@@ -15,7 +15,14 @@ export const generatePaymentLink = async (req: Request, res: Response): Promise<
         throw new ValidationError('Amount and session type are required');
     }
 
-    const fixedAmount = amount.toFixed(2); // Ensure amount is a fixed decimal value
+    // Ensure amount is a number before calling toFixed
+    const numericAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount);
+    
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+        throw new ValidationError('Amount must be a valid positive number');
+    }
+
+    const fixedAmount = numericAmount.toFixed(2); // Ensure amount is a fixed decimal value
     console.log(`Generating payment link for user ${userId} with amount ${fixedAmount} LKR`);
     const orderId = `order_${userId}`;
     const currency = "LKR";
@@ -41,7 +48,10 @@ export const processPayment = async (req: Request, res: Response): Promise<void>
         throw new ValidationError('Session details must include amount, counselorId, date, time, and duration');
     }
 
-    if (typeof sessionDetails.amount !== 'number' || sessionDetails.amount <= 0) {
+    // Ensure amount is a number
+    const numericAmount = typeof sessionDetails.amount === 'string' ? parseFloat(sessionDetails.amount) : Number(sessionDetails.amount);
+
+    if (isNaN(numericAmount) || numericAmount <= 0) {
         throw new ValidationError('Session amount must be a positive number');
     }
 
@@ -50,7 +60,7 @@ export const processPayment = async (req: Request, res: Response): Promise<void>
         userId: req.user!.dbUser.id, // Get user ID from authenticated request
         transactionId: orderId,
         paymentGateway: 'payhere',
-        amount: sessionDetails.amount,
+        amount: numericAmount,
         currency: 'LKR',
         status: 'pending',
         paymentDate: getCurrentDatePlus0530(),
@@ -80,7 +90,10 @@ export const initiatePlatformFeePayment = async (req: Request, res: Response): P
         throw new ValidationError('Order ID, user hash, and amount are required');
     }
 
-    if (typeof amount !== 'number' || amount <= 0) {
+    // Ensure amount is a number
+    const numericAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount);
+
+    if (isNaN(numericAmount) || numericAmount <= 0) {
         throw new ValidationError('Amount must be a positive number');
     }
 
@@ -88,14 +101,14 @@ export const initiatePlatformFeePayment = async (req: Request, res: Response): P
     const paymentResult = await PaymentServices.addPlatformFeeTransaction(
         req.user!.dbUser.id,
         orderId,
-        amount
+        numericAmount
     );
 
     ApiResponseUtil.success(res, {
         transactionId: paymentResult.transactionId,
         paymentUrl: `https://sandbox.payhere.lk/pay/${orderId}`,
         orderId,
-        amount,
+        amount: numericAmount,
         description: description || 'Platform access fee'
     }, 'Platform fee payment initiated successfully');
 }
