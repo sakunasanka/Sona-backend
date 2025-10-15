@@ -11,7 +11,7 @@ class Session extends Model {
   public duration!: number;  // Duration in minutes
   public price!: number;  // Price of the session
   public notes?: string;  // Any notes from the user
-  public status!: 'scheduled' | 'completed' | 'cancelled';
+  public status!: 'scheduled' | 'completed' | 'cancelled' | 'ongoing';
   public link?: string;  // Session link
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -62,7 +62,7 @@ Session.init(
       allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM('scheduled', 'completed', 'cancelled'),
+      type: DataTypes.ENUM('scheduled', 'completed', 'cancelled', 'ongoing'),
       defaultValue: 'scheduled',
     },
     link: {
