@@ -15,8 +15,7 @@ import {
   cancelSession,
   getCounselorSessions,
   getRemainingStudentSessions,
-  getCounselorMonthlyAvailability,
-  getSessionLink
+  getCounselorMonthlyAvailability
 } from '../controllers/SessionController';
 import { authenticateToken } from '../middlewares/auth';
 
