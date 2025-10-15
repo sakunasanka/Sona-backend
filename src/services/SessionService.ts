@@ -2,6 +2,7 @@ import { Op, QueryTypes } from 'sequelize';
 import Session from '../models/Session';
 import User from '../models/User';
 import Counselor from '../models/Counselor';
+import Psychiatrist from '../models/Psychiatrist';
 import Client from '../models/Client';
 import TimeSlot from '../models/TimeSlot';
 import PaymentMethod from '../models/PaymentMethod';
@@ -58,10 +59,12 @@ class SessionService {
    * Get available time slots for a counselor on a specific date
    */
   async getAvailableTimeSlots(counselorId: number, date: string): Promise<TimeSlot[]> {
-    // First check if the counselor exists
+    // First check if the counselor or psychiatrist exists
     const counselor = await Counselor.findByPk(counselorId);
-    if (!counselor) {
-      throw new Error('Counselor not found');
+    const psychiatrist = await Psychiatrist.findPsychiatristById(counselorId);
+    
+    if (!counselor && !psychiatrist) {
+      throw new Error('Professional not found');
     }
     
     // Get all time slots for this counselor on this date

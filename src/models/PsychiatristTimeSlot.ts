@@ -5,16 +5,16 @@ import { DatabaseError } from '../utils/errors';
 
 class PsychiatristTimeSlot extends Model {
   public id!: number;
-  public psychiatristId!: number;  // Psychiatrist who has this time slot
+  public counselorId!: number;  // Professional who has this time slot (counselor or psychiatrist)
   public date!: Date;  // Date of the time slot
   public time!: string;  // Time of the slot (e.g. "10:00")
   public isBooked!: boolean;  // Whether the slot is booked
-  public isAvailable!: boolean;  // Whether the psychiatrist is available for this slot
+  public isAvailable!: boolean;  // Whether the professional is available for this slot
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
-  // Create time slots for a psychiatrist
-  static async createTimeSlots(psychiatristId: number, slots: {
+  // Create time slots for a professional
+  static async createTimeSlots(counselorId: number, slots: {
     date: string;
     time: string;
   }[]): Promise<PsychiatristTimeSlot[]> {
@@ -25,8 +25,8 @@ class PsychiatristTimeSlot extends Model {
       
       for (const slot of slots) {
         const result = await sequelize.query(`
-          INSERT INTO psychiatrist_time_slots (
-            "psychiatristId", 
+          INSERT INTO time_slots (
+            "counselorId", 
             date, 
             "time", 
             "isAvailable",
@@ -38,7 +38,7 @@ class PsychiatristTimeSlot extends Model {
           RETURNING *
         `, {
           bind: [
-            psychiatristId,
+            counselorId,
             slot.date,
             slot.time,
             true,
@@ -63,16 +63,16 @@ class PsychiatristTimeSlot extends Model {
   }
 
   // Get available time slots for a specific date
-  static async getAvailableSlots(psychiatristId: number, date: string): Promise<PsychiatristTimeSlot[]> {
+  static async getAvailableSlots(counselorId: number, date: string): Promise<PsychiatristTimeSlot[]> {
     const results = await sequelize.query(`
-      SELECT * FROM psychiatrist_time_slots
-      WHERE "psychiatristId" = $1 
+      SELECT * FROM time_slots
+      WHERE "counselorId" = $1 
         AND date = $2 
         AND "isAvailable" = true 
         AND "isBooked" = false
       ORDER BY "time" ASC
     `, {
-      bind: [psychiatristId, date],
+      bind: [counselorId, date],
       type: QueryTypes.SELECT
     });
 
@@ -84,20 +84,20 @@ class PsychiatristTimeSlot extends Model {
   }
 
   // Get monthly availability overview
-  static async getMonthlyAvailability(psychiatristId: number, year: number, month: number): Promise<Record<string, any>> {
+  static async getMonthlyAvailability(counselorId: number, year: number, month: number): Promise<Record<string, any>> {
     const results = await sequelize.query(`
       SELECT 
         date,
         COUNT(*) as "totalSlots",
         COUNT(CASE WHEN "isAvailable" = true AND "isBooked" = false THEN 1 END) as "availableSlots"
-      FROM psychiatrist_time_slots
-      WHERE "psychiatristId" = $1 
+      FROM time_slots
+      WHERE "counselorId" = $1 
         AND EXTRACT(YEAR FROM date) = $2 
         AND EXTRACT(MONTH FROM date) = $3
       GROUP BY date
       ORDER BY date ASC
     `, {
-      bind: [psychiatristId, year, month],
+      bind: [counselorId, year, month],
       type: QueryTypes.SELECT
     });
 
@@ -122,7 +122,7 @@ class PsychiatristTimeSlot extends Model {
     try {
       // Check if slot is still available
       const checkResult = await sequelize.query(`
-        SELECT * FROM psychiatrist_time_slots
+        SELECT * FROM time_slots
         WHERE id = $1 AND "isAvailable" = true AND "isBooked" = false
         FOR UPDATE
       `, {
@@ -138,7 +138,7 @@ class PsychiatristTimeSlot extends Model {
 
       // Book the slot
       await sequelize.query(`
-        UPDATE psychiatrist_time_slots
+        UPDATE time_slots
         SET "isBooked" = true, "updatedAt" = NOW()
         WHERE id = $1
       `, {
@@ -151,7 +151,7 @@ class PsychiatristTimeSlot extends Model {
 
       // Return updated slot
       const result = await sequelize.query(`
-        SELECT * FROM psychiatrist_time_slots WHERE id = $1
+        SELECT * FROM time_slots WHERE id = $1
       `, {
         bind: [id],
         type: QueryTypes.SELECT
@@ -170,7 +170,7 @@ class PsychiatristTimeSlot extends Model {
   static async cancelBooking(id: number): Promise<PsychiatristTimeSlot | null> {
     try {
       await sequelize.query(`
-        UPDATE psychiatrist_time_slots
+        UPDATE time_slots
         SET "isBooked" = false, "updatedAt" = NOW()
         WHERE id = $1
       `, {
@@ -179,7 +179,7 @@ class PsychiatristTimeSlot extends Model {
       });
 
       const result = await sequelize.query(`
-        SELECT * FROM psychiatrist_time_slots WHERE id = $1
+        SELECT * FROM time_slots WHERE id = $1
       `, {
         bind: [id],
         type: QueryTypes.SELECT
@@ -194,14 +194,14 @@ class PsychiatristTimeSlot extends Model {
   }
 
   // Set availability for existing slots
-  static async setAvailability(psychiatristId: number, date: string, isAvailable: boolean): Promise<void> {
+  static async setAvailability(counselorId: number, date: string, isAvailable: boolean): Promise<void> {
     try {
       await sequelize.query(`
-        UPDATE psychiatrist_time_slots
+        UPDATE time_slots
         SET "isAvailable" = $1, "updatedAt" = NOW()
-        WHERE "psychiatristId" = $2 AND date = $3
+        WHERE "counselorId" = $2 AND date = $3
       `, {
-        bind: [isAvailable, psychiatristId, date],
+        bind: [isAvailable, counselorId, date],
         type: QueryTypes.UPDATE
       });
     } catch (error) {
@@ -212,7 +212,7 @@ class PsychiatristTimeSlot extends Model {
   // Get slot by ID
   static async findSlotById(id: number): Promise<PsychiatristTimeSlot | null> {
     const result = await sequelize.query(`
-      SELECT * FROM psychiatrist_time_slots WHERE id = $1
+      SELECT * FROM time_slots WHERE id = $1
     `, {
       bind: [id],
       type: QueryTypes.SELECT
@@ -233,7 +233,7 @@ PsychiatristTimeSlot.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    psychiatristId: {
+    counselorId: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
@@ -261,15 +261,15 @@ PsychiatristTimeSlot.init(
   {
     sequelize,
     modelName: 'psychiatristTimeSlot',
-    tableName: 'psychiatrist_time_slots',
+    tableName: 'time_slots',
     indexes: [
       {
-        fields: ['psychiatristId', 'date'],
-        name: 'idx_psychiatrist_date'
+        fields: ['counselorId', 'date'],
+        name: 'idx_counselor_date'
       },
       {
-        fields: ['psychiatristId', 'date', 'time'],
-        name: 'idx_psychiatrist_datetime'
+        fields: ['counselorId', 'date', 'time'],
+        name: 'idx_counselor_datetime'
       }
     ]
   }

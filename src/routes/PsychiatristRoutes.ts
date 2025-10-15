@@ -4,7 +4,8 @@ import {
   getPsychiatristById,
   updatePsychiatristAvailability,
   getAllPsychiatrists,
-  updatePsychiatristStatus
+  updatePsychiatristStatus,
+  updatePsychiatristProfile
 } from '../controllers/PsychiatristController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { isAdmin, isAuthenticated, isProfessional } from '../middlewares/auth';
@@ -22,6 +23,9 @@ router.get('/:id', getPsychiatristById);
 // Protected routes - Psychiatrist only
 // Update psychiatrist's own availability
 router.patch('/:id/availability', isAuthenticated, isProfessional, updatePsychiatristAvailability);
+
+// Update psychiatrist's own profile
+router.put('/profile', isAuthenticated, isProfessional, updatePsychiatristProfile);
 
 // Admin routes
 // Get all psychiatrists (including pending and rejected)
