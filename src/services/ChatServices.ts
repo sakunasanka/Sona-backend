@@ -15,9 +15,12 @@ export class ChatServices {
         message: string;
         messageType: 'text' | 'image';
     }): Promise<any> {
-        const canAccess = await ChatRoom.isUserInRoom(data.roomId, data.senderId);
+        //1 is global chat
+        if(data.roomId != 1){
+            const canAccess = await ChatRoom.isUserInRoom(data.roomId, data.senderId);
         if(!canAccess) {
             throw new AuthenticationError('You do not have access to this chat room');
+        }
         }
 
         // Create the message
