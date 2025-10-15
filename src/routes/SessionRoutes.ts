@@ -9,12 +9,15 @@ import {
   bookSession,
   getUserSessions,
   getSessionById,
+  getSessionLink,
   setCounselorAvailability,
   setCounselorUnavailability,
   cancelSession,
   getCounselorSessions,
   getRemainingStudentSessions,
-  getCounselorMonthlyAvailability
+  getCounselorMonthlyAvailability,
+  getSessionLink,
+  getBooked
 } from '../controllers/SessionController';
 import { authenticateToken } from '../middlewares/auth';
 
@@ -36,10 +39,14 @@ router.use(authenticateToken);
 router.post('/book', bookSession);
 router.get('/my-sessions', getUserSessions);
 router.get('/remaining', getRemainingStudentSessions);
+router.get('/bookedSessions', getBooked);
 router.get('/:id', getSessionById);
+router.get('/:id/link', getSessionLink);
 router.put('/:id/cancel', cancelSession);
 router.post('/availability', setCounselorAvailability);
 router.post('/unavailability', setCounselorUnavailability);
 router.get('/counselor/:id', getCounselorSessions);
+
+router.get('/getSessionLink/:id', getSessionLink);
 
 export default router;

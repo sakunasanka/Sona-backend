@@ -1,5 +1,6 @@
 import { ValidationError, ItemNotFoundError, DatabaseError } from '../utils/errors';
 import Counselor from '../models/Counselor';
+import Psychiatrist from '../models/Psychiatrist';
 import { QueryTypes } from 'sequelize';
 import { sequelize } from '../config/db';
 
@@ -36,32 +37,64 @@ export class CounselorService {
    */
   static async getAllAvailableCounselors(): Promise<CounselorResponse[]> {
     try {
-      const counselors = await Counselor.findAllAvailableCounselors();
-      return counselors.map(counselor => ({
-        id: counselor.id,
-        firebaseId: counselor.firebaseId,
-        name: counselor.name,
-        email: counselor.email,
-        avatar: counselor.avatar,
-        role: counselor.role,
-        title: counselor.title,
-        specialities: counselor.specialities,
-        address: counselor.address,
-        contact_no: counselor.contact_no,
-        license_no: counselor.license_no,
-        idCard: counselor.idCard,
-        isVolunteer: counselor.isVolunteer,
-        isAvailable: counselor.isAvailable,
-        description: counselor.description,
-        rating: counselor.rating,
-        sessionFee: counselor.sessionFee,
-        status: counselor.status,
-        coverImage: counselor.coverImage,
-        instagram: counselor.instagram,
-        linkedin: counselor.linkedin,
-        x: counselor.x,
-        website: counselor.website,
-        languages: counselor.languages
+      const results = await sequelize.query(`
+        SELECT 
+          u.id, 
+          u."firebaseId", 
+          u."name", 
+          u."email", 
+          u."avatar", 
+          u."role", 
+          c."title", 
+          c."specialities", 
+          c."address", 
+          c."contact_no", 
+          c."licenseNo" as "license_no", 
+          c."idCard",
+          c."isVolunteer", 
+          c."isAvailable", 
+          c."description", 
+          c."rating", 
+          c."sessionFee",
+          c."status",
+          c."coverImage", 
+          c."instagram", 
+          c."linkedin", 
+          c."x", 
+          c."website",
+          c."languages"
+        FROM users u
+        JOIN counselors c ON u.id = c."userId"
+        WHERE u."role" = 'Counselor' AND c."isAvailable" = true AND c."status" = 'approved'
+      `, {
+        type: QueryTypes.SELECT
+      });
+
+      return results.map((data: any) => ({
+        id: data.id,
+        firebaseId: data.firebaseId,
+        name: data.name,
+        email: data.email,
+        avatar: data.avatar,
+        role: data.role,
+        title: data.title,
+        specialities: data.specialities,
+        address: data.address,
+        contact_no: data.contact_no,
+        license_no: data.license_no,
+        idCard: data.idCard,
+        isVolunteer: data.isVolunteer,
+        isAvailable: data.isAvailable,
+        description: data.description,
+        rating: data.rating,
+        sessionFee: data.sessionFee,
+        status: data.status,
+        coverImage: data.coverImage,
+        instagram: data.instagram,
+        linkedin: data.linkedin,
+        x: data.x,
+        website: data.website,
+        languages: data.languages
       }));
     } catch (error) {
       console.error('Error fetching available counselors:', error);
@@ -77,37 +110,70 @@ export class CounselorService {
       throw new ValidationError('Counselor ID is required and must be a positive number');
     }
 
-    const counselor = await Counselor.findCounselorById(id);
-    
-    if (!counselor) {
+    const results = await sequelize.query(`
+      SELECT 
+        u.id, 
+        u."firebaseId", 
+        u."name", 
+        u."email", 
+        u."avatar", 
+        u."role", 
+        c."title", 
+        c."specialities", 
+        c."address", 
+        c."contact_no", 
+        c."licenseNo" as "license_no", 
+        c."idCard",
+        c."isVolunteer", 
+        c."isAvailable", 
+        c."description", 
+        c."rating", 
+        c."sessionFee",
+        c."status",
+        c."coverImage", 
+        c."instagram", 
+        c."linkedin", 
+        c."x", 
+        c."website",
+        c."languages"
+      FROM users u
+      JOIN counselors c ON u.id = c."userId"
+      WHERE u.id = ? AND u."role" = 'Counselor'
+    `, {
+      replacements: [id],
+      type: QueryTypes.SELECT
+    });
+
+    if (results.length === 0) {
       throw new ItemNotFoundError('Counselor not found with the provided ID');
     }
-    
+
+    const data = results[0] as any;
     return {
-      id: counselor.id,
-      firebaseId: counselor.firebaseId,
-      name: counselor.name,
-      email: counselor.email,
-      avatar: counselor.avatar,
-      role: counselor.role,
-      title: counselor.title,
-      specialities: counselor.specialities,
-      address: counselor.address,
-      contact_no: counselor.contact_no,
-      license_no: counselor.license_no,
-      idCard: counselor.idCard,
-      isVolunteer: counselor.isVolunteer,
-      isAvailable: counselor.isAvailable,
-      description: counselor.description,
-      rating: counselor.rating,
-      sessionFee: counselor.sessionFee,
-      status: counselor.status,
-      coverImage: counselor.coverImage,
-      instagram: counselor.instagram,
-      linkedin: counselor.linkedin,
-      x: counselor.x,
-      website: counselor.website,
-      languages: counselor.languages
+      id: data.id,
+      firebaseId: data.firebaseId,
+      name: data.name,
+      email: data.email,
+      avatar: data.avatar,
+      role: data.role,
+      title: data.title,
+      specialities: data.specialities,
+      address: data.address,
+      contact_no: data.contact_no,
+      license_no: data.license_no,
+      idCard: data.idCard,
+      isVolunteer: data.isVolunteer,
+      isAvailable: data.isAvailable,
+      description: data.description,
+      rating: data.rating,
+      sessionFee: data.sessionFee,
+      status: data.status,
+      coverImage: data.coverImage,
+      instagram: data.instagram,
+      linkedin: data.linkedin,
+      x: data.x,
+      website: data.website,
+      languages: data.languages
     };
   }
 
@@ -358,39 +424,54 @@ export class CounselorService {
    */
   static async getCounselorProfile(counselorId: number) {
     try {
+      // First get the user's role
+      const userResult = await sequelize.query(`
+        SELECT role FROM users WHERE id = ?
+      `, {
+        replacements: [counselorId],
+        type: QueryTypes.SELECT
+      });
+
+      if (userResult.length === 0) {
+        throw new ItemNotFoundError('User not found');
+      }
+
+      const userRole = (userResult[0] as any).role;
+      const tableName = userRole === 'Psychiatrist' ? 'psychiatrists' : 'counselors';
+
       const profile = await sequelize.query(`
-        SELECT 
+        SELECT
           u.id,
           u.name,
           u.email,
           u.avatar,
-          c.title,
-          c.specialities,
-          c.description,
-          c.rating,
-          c."isAvailable",
-          c.address,
-          c.contact_no as phone,
-          c."sessionFee"
+          p.title,
+          p.specialities,
+          p.description,
+          p.rating,
+          p."isAvailable",
+          p.address,
+          p.contact_no as phone,
+          p."sessionFee"
         FROM users u
-        JOIN counselors c ON u.id = c."userId"
-        WHERE u.id = ? AND u.role = 'Counselor'
+        JOIN ${tableName} p ON u.id = p."userId"
+        WHERE u.id = ?
       `, {
         replacements: [counselorId],
         type: QueryTypes.SELECT
       });
 
       if (profile.length === 0) {
-        throw new ItemNotFoundError('Counselor profile not found');
+        throw new ItemNotFoundError('Profile not found');
       }
 
-      const counselorData = profile[0] as any;
+      const profileData = profile[0] as any;
 
       return {
         success: true,
         message: "Profile retrieved successfully",
         data: {
-          ...counselorData,
+          ...profileData,
           profileImage: " "
         }
       };
@@ -398,8 +479,8 @@ export class CounselorService {
       if (error instanceof ItemNotFoundError) {
         throw error;
       }
-      console.error('Error fetching counselor profile:', error);
-      throw new DatabaseError('Failed to fetch counselor profile');
+      console.error('Error fetching profile:', error);
+      throw new DatabaseError('Failed to fetch profile');
     }
   }
 
@@ -408,31 +489,46 @@ export class CounselorService {
    */
   static async getCounselorDetailedProfile(counselorId: number) {
     try {
+      // First get the user's role
+      const userResult = await sequelize.query(`
+        SELECT role FROM users WHERE id = ?
+      `, {
+        replacements: [counselorId],
+        type: QueryTypes.SELECT
+      });
+
+      if (userResult.length === 0) {
+        throw new ItemNotFoundError('User not found');
+      }
+
+      const userRole = (userResult[0] as any).role;
+      const tableName = userRole === 'Psychiatrist' ? 'psychiatrists' : 'counselors';
+
       const profile = await sequelize.query(`
-        SELECT 
+        SELECT
           u.id,
           u.name,
           u.email,
           u.avatar,
-          c.title,
-          c.specialities as specializations,
-          c.description as bio,
-          c.rating,
-          c."isAvailable",
-          c."isVolunteer",
-          c.address,
-          c.contact_no as phone,
-          c."sessionFee",
-          c."createdAt" as "joinDate",
-          c."updatedAt" as "lastActiveAt",
-          c."coverImage",
-          c.instagram,
-          c.linkedin,
-          c.x,
-          c.website,
-          c.languages
+          p.title,
+          p.specialities as specializations,
+          p.description as bio,
+          p.rating,
+          p."isAvailable",
+          p."isVolunteer",
+          p.address,
+          p.contact_no as phone,
+          p."sessionFee",
+          p."createdAt" as "joinDate",
+          p."updatedAt" as "lastActiveAt",
+          p."coverImage",
+          p.instagram,
+          p.linkedin,
+          p.x,
+          p.website,
+          p.languages
         FROM users u
-        JOIN counselors c ON u.id = c."userId"
+        JOIN ${tableName} p ON u.id = p."userId"
         WHERE u.id = ?
       `, {
         replacements: [counselorId],
@@ -440,10 +536,10 @@ export class CounselorService {
       });
 
       if (profile.length === 0) {
-        throw new ItemNotFoundError('Counselor profile not found');
+        throw new ItemNotFoundError('Profile not found');
       }
 
-      const counselorData = profile[0] as any;
+      const profileData = profile[0] as any;
 
       // Get credentials (education qualifications)
       const credentials = await sequelize.query(`
@@ -493,38 +589,44 @@ export class CounselorService {
       const totalClients = (clientsStats[0] as any).total || 0;
 
       // Parse name into first and last name
-      const fullName = counselorData.name || '';
+      const fullName = profileData.name || '';
       const nameParts = fullName.split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
 
       return {
-        id: counselorData.id,
+        id: profileData.id,
         firstName,
         lastName,
-        profileImage: counselorData.avatar || '/assets/images/default-avatar.png',
-        coverImage: counselorData.coverImage || '/assets/images/counsellor-banner.jpg',
-        bio: counselorData.bio || 'Passionate mental health counselor dedicated to helping individuals achieve their wellness goals.',
-        location: counselorData.address || 'Colombo, Sri Lanka',
-        website: counselorData.website || null,
-        email: counselorData.email,
-        phone: counselorData.phone || '(071) 123-4567',
-        joinDate: new Date(counselorData.joinDate).toISOString(),
-        specializations: Array.isArray(counselorData.specializations) 
-          ? counselorData.specializations 
-          : (counselorData.specializations ? [counselorData.specializations] : ["Anxiety Disorders", "Depression", "Trauma Therapy"]),
-        languages: counselorData.languages || ['English', 'Sinhala', 'Tamil'],
-        experience: new Date().getFullYear() - new Date(counselorData.joinDate).getFullYear() || 8,
-        rating: parseFloat(counselorData.rating) || 4.9,
+        profileImage: profileData.avatar || '/assets/images/default-avatar.png',
+        coverImage: profileData.coverImage || '/assets/images/counsellor-banner.jpg',
+        bio: profileData.bio || 'Passionate mental health counselor dedicated to helping individuals achieve their wellness goals.',
+        location: profileData.address || 'Colombo, Sri Lanka',
+        website: profileData.website || null,
+        email: profileData.email,
+        phone: profileData.phone || '(071) 123-4567',
+        joinDate: new Date(profileData.joinDate).toISOString(),
+        specializations: Array.isArray(profileData.specializations) 
+          ? profileData.specializations 
+          : (typeof profileData.specializations === 'string' 
+            ? (profileData.specializations.startsWith('[') ? JSON.parse(profileData.specializations) : [profileData.specializations])
+            : (profileData.specializations ? [profileData.specializations] : ["Anxiety Disorders", "Depression", "Trauma Therapy"])),
+        languages: Array.isArray(profileData.languages) 
+          ? profileData.languages 
+          : (typeof profileData.languages === 'string' 
+            ? (profileData.languages.startsWith('[') ? JSON.parse(profileData.languages) : [profileData.languages])
+            : (profileData.languages ? [profileData.languages] : ['English', 'Sinhala', 'Tamil'])),
+        experience: new Date().getFullYear() - new Date(profileData.joinDate).getFullYear() || 8,
+        rating: parseFloat(profileData.rating) || 4.9,
         totalReviews: 127, // Can be enhanced with reviews table
         totalSessions: parseInt(totalSessions),
         totalClients: parseInt(totalClients),
-        status: counselorData.isAvailable ? 'available' : 'unavailable',
-        lastActiveAt: new Date(counselorData.lastActiveAt).toISOString(),
+        status: profileData.isAvailable ? 'available' : 'unavailable',
+        lastActiveAt: new Date(profileData.lastActiveAt).toISOString(),
         socialLinks: {
-          instagram: counselorData.instagram || null,
-          linkedin: counselorData.linkedin || null,
-          x: counselorData.x || null
+          instagram: profileData.instagram || null,
+          linkedin: profileData.linkedin || null,
+          x: profileData.x || null
         },
         credentials: credentials.map((cred: any) => ({
           id: cred.id,
@@ -558,6 +660,22 @@ export class CounselorService {
       const transaction = await sequelize.transaction();
 
       try {
+        // First get the user's role to determine which table to update
+        const userResult = await sequelize.query(`
+          SELECT role FROM users WHERE id = ?
+        `, {
+          replacements: [counselorId],
+          type: QueryTypes.SELECT,
+          transaction
+        });
+
+        if (userResult.length === 0) {
+          throw new ItemNotFoundError('User not found');
+        }
+
+        const userRole = (userResult[0] as any).role;
+        const tableName = userRole === 'Psychiatrist' ? 'psychiatrists' : 'counselors';
+
         // Update user table (map profileImage -> users.avatar)
         if (
           updateData.firstName !== undefined ||
@@ -584,16 +702,16 @@ export class CounselorService {
           });
         }
 
-        // Update counselor table
-        const counselorFields = [
+        // Update professional table (counselors or psychiatrists)
+        const professionalFields = [
           'bio', 'specializations', 'phone', 'location', 'coverImage', 'instagram', 'linkedin', 'x', 'website', 'languages'
         ];
         
-        const hasUpdateFields = counselorFields.some(field => updateData[field] !== undefined);
+        const hasUpdateFields = professionalFields.some(field => updateData[field] !== undefined);
         
         if (hasUpdateFields) {
           await sequelize.query(`
-            UPDATE counselors 
+            UPDATE ${tableName} 
             SET description = COALESCE(?, description),
                 specialities = COALESCE(?, specialities),
                 contact_no = COALESCE(?, contact_no),
@@ -634,8 +752,8 @@ export class CounselorService {
         throw error;
       }
     } catch (error) {
-      console.error('Error updating counselor profile:', error);
-      throw new DatabaseError('Failed to update counselor profile');
+      console.error('Error updating profile:', error);
+      throw new DatabaseError('Failed to update profile');
     }
   }
 
@@ -644,7 +762,7 @@ export class CounselorService {
    */
   static async updateCounselorVolunteerStatus(counselorId: number, isVolunteer: boolean, sessionFee: number): Promise<CounselorResponse> {
     if (!counselorId || typeof counselorId !== 'number' || counselorId <= 0) {
-      throw new ValidationError('Counselor ID is required and must be a positive number');
+      throw new ValidationError('Professional ID is required and must be a positive number');
     }
 
     if (typeof isVolunteer !== 'boolean') {
@@ -656,16 +774,33 @@ export class CounselorService {
     }
 
     try {
-      // First, find the counselor to ensure they exist
-      const counselor = await Counselor.findCounselorById(counselorId);
+      // First get the user's role to determine which table to update
+      const userResult = await sequelize.query(`
+        SELECT role FROM users WHERE id = ?
+      `, {
+        replacements: [counselorId],
+        type: QueryTypes.SELECT
+      });
 
-      if (!counselor) {
-        throw new ItemNotFoundError('Counselor not found with the provided ID');
+      if (userResult.length === 0) {
+        throw new ItemNotFoundError('User not found');
+      }
+
+      const userRole = (userResult[0] as any).role;
+      const tableName = userRole === 'Psychiatrist' ? 'psychiatrists' : 'counselors';
+
+      // Find the professional to ensure they exist
+      const professional = userRole === 'Psychiatrist' 
+        ? await Psychiatrist.findPsychiatristById(counselorId)
+        : await Counselor.findCounselorById(counselorId);
+
+      if (!professional) {
+        throw new ItemNotFoundError('Professional not found with the provided ID');
       }
 
       // Update volunteer status and session fee in the database
       await sequelize.query(`
-        UPDATE counselors
+        UPDATE ${tableName}
         SET "isVolunteer" = $1, "sessionFee" = $2, "updatedAt" = NOW()
         WHERE "userId" = $3
       `, {
@@ -673,41 +808,41 @@ export class CounselorService {
         type: QueryTypes.UPDATE
       });
 
-      // Update the counselor object
-      counselor.isVolunteer = isVolunteer;
-      counselor.sessionFee = sessionFee;
+      // Update the professional object
+      professional.isVolunteer = isVolunteer;
+      professional.sessionFee = sessionFee;
 
       return {
-        id: counselor.id,
-        firebaseId: counselor.firebaseId,
-        name: counselor.name,
-        email: counselor.email,
-        avatar: counselor.avatar,
-        role: counselor.role,
-        title: counselor.title,
-        specialities: counselor.specialities,
-        address: counselor.address,
-        contact_no: counselor.contact_no,
-        license_no: counselor.license_no,
-        idCard: counselor.idCard,
+        id: professional.id,
+        firebaseId: professional.firebaseId,
+        name: professional.name,
+        email: professional.email,
+        avatar: professional.avatar,
+        role: professional.role,
+        title: professional.title,
+        specialities: professional.specialities,
+        address: professional.address,
+        contact_no: professional.contact_no,
+        license_no: professional.license_no,
+        idCard: professional.idCard,
         isVolunteer: isVolunteer,
-        isAvailable: counselor.isAvailable,
-        description: counselor.description,
-        rating: counselor.rating,
+        isAvailable: professional.isAvailable,
+        description: professional.description,
+        rating: professional.rating,
         sessionFee: sessionFee,
-        status: counselor.status,
-        coverImage: counselor.coverImage,
-        instagram: counselor.instagram,
-        linkedin: counselor.linkedin,
-        x: counselor.x,
-        website: counselor.website,
-        languages: counselor.languages
+        status: professional.status,
+        coverImage: professional.coverImage,
+        instagram: professional.instagram,
+        linkedin: professional.linkedin,
+        x: professional.x,
+        website: professional.website,
+        languages: professional.languages
       };
     } catch (error) {
       if (error instanceof ItemNotFoundError || error instanceof ValidationError) {
         throw error;
       }
-      throw new DatabaseError('Failed to update counselor volunteer status and session fee');
+      throw new DatabaseError('Failed to update professional volunteer status and session fee');
     }
   }
 
