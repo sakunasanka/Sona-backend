@@ -735,6 +735,35 @@ class SessionService {
       { algorithm: 'HS256' }
     )
   }
+
+  async getBookedSessions(userId: number): Promise<Session[] | string> {
+    try {
+      const sessions = await Session.findAll({
+      where: { 
+        userId,
+        date: {
+          [Op.gte]: new Date().toISOString().split('T')[0] // Only future sessions
+        } 
+      },
+      include: [
+        {
+          model: User,
+          as: 'counselor',
+          attributes: ['id', 'name', 'avatar']
+        }
+      ],
+      order: [['date', 'ASC'], ['timeSlot', 'ASC']]
+    });
+
+      if(!sessions.length) {
+        return 'No booked sessions found';
+      }
+      return sessions;
+
+    }catch (error) {
+      return 'Error fetching booked sessions';
+    }
+  }
 }
 
 export default new SessionService();
