@@ -152,9 +152,8 @@ export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Resp
       // Get counselor time slots
       timeSlots = await sessionService.getAvailableTimeSlots(userId, date);
     } else if (user.role === 'Psychiatrist') {
-      // Get psychiatrist time slots
-      const result = await PsychiatristService.getDateAvailability(userId, date);
-      timeSlots = result.availability;
+      // Get psychiatrist time slots (using unified service)
+      timeSlots = await sessionService.getAvailableTimeSlots(userId, date);
     } else {
       return res.status(404).json({
         success: false,
@@ -183,11 +182,11 @@ export const getPsychiatristAvailableTimeSlots = asyncHandler(async (req: Reques
   try {
     const { psychiatristId, date } = req.params;
     
-    const result = await PsychiatristService.getDateAvailability(Number(psychiatristId), date);
+    const timeSlots = await sessionService.getAvailableTimeSlots(Number(psychiatristId), date);
     
     res.status(200).json({
       success: true,
-      data: result.availability
+      data: timeSlots
     });
   } catch (error) {
     res.status(error instanceof Error && error.message.includes('not found') ? 404 : 500).json({
@@ -224,8 +223,8 @@ export const getCounselorMonthlyAvailability = asyncHandler(async (req: Request,
       // Get counselor monthly availability
       result = await sessionService.getCounselorMonthlyAvailability(userId, y, m);
     } else if (user.role === 'Psychiatrist') {
-      // Get psychiatrist monthly availability
-      result = await PsychiatristService.getMonthlyAvailability(userId, y, m);
+      // Get psychiatrist monthly availability (using unified service)
+      result = await sessionService.getCounselorMonthlyAvailability(userId, y, m);
     } else {
       return res.status(404).json({
         success: false,
@@ -364,6 +363,7 @@ export const getSessionById = asyncHandler(async (req: Request, res: Response) =
     });
   }
 });
+
 
 /**
  * @desc    Set counselor availability for a date range

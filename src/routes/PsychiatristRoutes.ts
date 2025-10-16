@@ -6,7 +6,8 @@ import {
   getAllPsychiatrists,
   updatePsychiatristStatus,
   uploadPrescription,
-  getPrescriptionsByPsychiatrist
+  getPrescriptionsByPsychiatrist,
+  updatePsychiatristProfile
 } from '../controllers/PsychiatristController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { isAdmin, isAuthenticated, isProfessional } from '../middlewares/auth';
@@ -24,6 +25,9 @@ router.post('/prescription', isAuthenticated, isProfessional, uploadPrescription
 
 // Get all prescriptions by psychiatrist for a specific client (Psychiatrist only)
 router.get('/prescriptions/:clientId', isAuthenticated, isProfessional, getPrescriptionsByPsychiatrist);
+
+// Update psychiatrist's own profile
+router.put('/profile', isAuthenticated, isProfessional, updatePsychiatristProfile);
 
 // Admin routes
 // Get all psychiatrists (including pending and rejected)

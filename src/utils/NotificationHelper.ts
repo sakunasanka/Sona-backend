@@ -17,8 +17,8 @@ export class NotificationHelper {
         userId: clientId,
         type: NotificationType.SUCCESS,
         title: 'Session Booked Successfully',
-        message: `Your counseling session with ${counselorName} has been confirmed for ${sessionDate} at ${sessionTime}.`,
-        relatedURL: '/sessions/upcoming'
+        message: `Your counseling session with Dr. ${counselorName} has been confirmed for ${sessionDate} at ${sessionTime}.`,
+        relatedURL: '/(hidden)/session/upcomingSessions'
       });
     } catch (error) {
       console.error('Failed to send session booked notification:', error);
