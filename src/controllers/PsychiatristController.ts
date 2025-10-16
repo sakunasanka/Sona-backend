@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
 import { PsychiatristService } from '../services/PsychiatristService';
+import SessionService from '../services/SessionService';
+import { CounselorService } from '../services/CounselorServices';
 import { ValidationError, ItemNotFoundError } from '../utils/errors';
+import { validateData, updateCounselorProfileSchema } from '../schema/ValidationSchema';
+import { asyncHandler } from '../utils/asyncHandler';
 
 // Helper for consistent API responses
 const apiResponse = {
@@ -117,7 +121,7 @@ export const getMonthlyAvailability = async (req: Request, res: Response): Promi
       return;
     }
 
-    const availability = await PsychiatristService.getMonthlyAvailability(
+    const availability = await SessionService.getCounselorMonthlyAvailability(
       psychiatristId,
       yearNum,
       monthNum
@@ -252,7 +256,7 @@ export const getTimeSlots = async (req: Request, res: Response): Promise<void> =
  */
 export const bookPsychiatristSession = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
+    const userId = req.user?.dbUser.id;
     
     if (!userId) {
       res.status(401).json(apiResponse.error(
@@ -337,7 +341,7 @@ export const bookPsychiatristSession = async (req: Request, res: Response): Prom
  */
 export const getUserPsychiatristSessions = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
+    const userId = req.user?.dbUser.id;
     
     if (!userId) {
       res.status(401).json(apiResponse.error(
@@ -370,8 +374,8 @@ export const getUserPsychiatristSessions = async (req: Request, res: Response): 
  */
 export const getPsychiatristSessions = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
-    const userRole = (req as any).user?.dbUser?.userType;
+    const userId = req.user?.dbUser.id;
+    const userRole = req.user?.dbUser.userType;
     const { id } = req.params;
     const psychiatristId = parseInt(id);
 
@@ -423,8 +427,8 @@ export const getPsychiatristSessions = async (req: Request, res: Response): Prom
  */
 export const cancelPsychiatristSession = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
-    const userRole = (req as any).user?.dbUser?.userType;
+    const userId = req.user?.dbUser.id;
+    const userRole = req.user?.dbUser.userType;
     const { id } = req.params;
     const sessionId = parseInt(id);
 
@@ -478,7 +482,7 @@ export const cancelPsychiatristSession = async (req: Request, res: Response): Pr
  */
 export const getUpcomingSessionsCount = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
+    const userId = req.user?.dbUser.id;
     
     if (!userId) {
       res.status(401).json(apiResponse.error(
@@ -627,3 +631,31 @@ export const updatePsychiatristStatus = async (req: Request, res: Response): Pro
     ));
   }
 };
+
+/**
+ * @desc    Update psychiatrist profile
+ * @route   PUT /api/psychiatrists/profile
+ * @access  Private (Psychiatrist only)
+ */
+export const updatePsychiatristProfile = asyncHandler(async (req: Request, res: Response) => {
+  const psychiatristId = req.user?.dbUser.id;
+
+  if (!psychiatristId) {
+    res.status(401).json({
+      success: false,
+      message: 'Unauthorized',
+      error: 'User authentication required'
+    });
+    return;
+  }
+
+  const validatedData = await validateData(updateCounselorProfileSchema, req.body);
+
+  const updatedProfile = await CounselorService.updateCounselorProfile(psychiatristId, validatedData);
+
+  res.status(200).json({
+    success: true,
+    message: 'Profile updated successfully',
+    data: updatedProfile
+  });
+});

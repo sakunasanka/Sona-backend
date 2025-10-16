@@ -2,6 +2,7 @@ import { Op, QueryTypes } from 'sequelize';
 import Session from '../models/Session';
 import User from '../models/User';
 import Counselor from '../models/Counselor';
+import Psychiatrist from '../models/Psychiatrist';
 import Client from '../models/Client';
 import TimeSlot from '../models/TimeSlot';
 import PaymentMethod from '../models/PaymentMethod';
@@ -58,10 +59,12 @@ class SessionService {
    * Get available time slots for a counselor on a specific date
    */
   async getAvailableTimeSlots(counselorId: number, date: string): Promise<TimeSlot[]> {
-    // First check if the counselor exists
+    // First check if the counselor or psychiatrist exists
     const counselor = await Counselor.findByPk(counselorId);
-    if (!counselor) {
-      throw new Error('Counselor not found');
+    const psychiatrist = await Psychiatrist.findPsychiatristById(counselorId);
+    
+    if (!counselor && !psychiatrist) {
+      throw new Error('Professional not found');
     }
     
     // Get all time slots for this counselor on this date
@@ -160,10 +163,12 @@ class SessionService {
       price
     } = params;
 
-    // Check if counselor exists
+    // Check if counselor or psychiatrist exists
     const counselor = await Counselor.findByPk(counselorId);
-    if (!counselor) {
-      throw new Error('Counselor not found');
+    const psychiatrist = await Psychiatrist.findPsychiatristById(counselorId);
+    
+    if (!counselor && !psychiatrist) {
+      throw new Error('Professional not found');
     }
     
     // Check if time slot is available
@@ -285,14 +290,15 @@ class SessionService {
         cu.avatar as counselor_avatar,
         cu.role as counselor_role,
         cu.id as counselor_id,
-        co.title as counselor_title,
-        co.specialities as counselor_specialities,
-        co.rating as counselor_rating
+        COALESCE(co.title, p.title) as counselor_title,
+        COALESCE(co.specialities, p.specialities) as counselor_specialities,
+        COALESCE(co.rating, p.rating) as counselor_rating
       FROM sessions s
       JOIN users u ON s."userId" = u.id
       LEFT JOIN clients c ON u.id = c."userId"
       JOIN users cu ON s."counselorId" = cu.id
       LEFT JOIN counselors co ON cu.id = co."userId"
+      LEFT JOIN psychiatrists p ON cu.id = p."userId"
       WHERE s.id = :sessionId
       AND (s."userId" = :userId OR s."counselorId" = :userId)
     `;
@@ -686,11 +692,12 @@ class SessionService {
           affiliation: 'member'
         }
       }
-    }else if(user.role === 'Counselor'){
+    }else if(user.role === 'Counselor' || user.role === 'Psychiatrist'){
       const counselor = await Counselor.findByPk(userId);
+      const psychiatrist = await Psychiatrist.findPsychiatristById(userId);
 
-      if (!counselor) {
-        throw new Error('Counselor profile not found');
+      if (!counselor && !psychiatrist) {
+        throw new Error('Professional profile not found');
       }
 
       const { name, email } = user;
