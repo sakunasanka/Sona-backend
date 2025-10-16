@@ -338,6 +338,7 @@ export const getSessionById = asyncHandler(async (req: Request, res: Response) =
   }
 });
 
+
 /**
  * @desc    Set counselor availability for a date range
  * @route   POST /api/sessions/availability
