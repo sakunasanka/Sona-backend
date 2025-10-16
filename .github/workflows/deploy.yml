@@ -36,7 +36,7 @@ jobs:
             echo "Creating Firebase service account file..."
             # Note: The path must match what's in your firebase.ts import
             # For '../../sona-client...json' from 'src/config/', this path is correct.
-            echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' > sona-client-firebase-adminsdk-fbsvc-e59af42c32.json
+            printf "%s" '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' > sona-client-firebase-adminsdk-fbsvc-e59af42c32.json
             
             echo "Installing all dependencies for build..."
             # Install ALL dependencies (including devDependencies for build)
