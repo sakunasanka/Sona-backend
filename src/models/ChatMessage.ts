@@ -60,8 +60,16 @@ class ChatMessage extends Model<ChatMessageAttributes> implements ChatMessageAtt
                 cm."senderId",
                 cm.message,
                 cm."messageType",
-                cm."createdAt"
+                cm."createdAt",
+                CASE
+                    WHEN u."role" = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+                    ELSE u.name
+                END as "senderName",
+                u.avatar as "senderAvatar",
+                u."role" as "senderType"
             FROM chat_messages cm
+            JOIN users u ON cm."senderId" = u.id
+            LEFT JOIN clients c ON u.id = c."userId" AND u."role" = 'Client'
             WHERE cm."roomId" = ?
             ORDER BY cm."createdAt" DESC
             LIMIT ? OFFSET ?
@@ -91,11 +99,15 @@ class ChatMessage extends Model<ChatMessageAttributes> implements ChatMessageAtt
                 cm.message,
                 cm."messageType",
                 cm."createdAt",
-                u.name as senderName,
+                CASE
+                    WHEN u."role" = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+                    ELSE u.name
+                END as senderName,
                 u.avatar as senderAvatar,
-                u."userType" as senderType
+                u."role" as senderType
             FROM "chat_messages" cm
             JOIN users u ON cm."senderId" = u.id
+            LEFT JOIN clients c ON u.id = c."userId" AND u."role" = 'Client'
             LEFT JOIN user_last_read ulr ON ulr."userId" = ? 
             AND ulr."roomId" = cm."roomId"
             WHERE cm."roomId" = ?
@@ -148,11 +160,15 @@ class ChatMessage extends Model<ChatMessageAttributes> implements ChatMessageAtt
                 cm.message,
                 cm."messageType",
                 cm."createdAt",
-                u.name as "senderName",
+                CASE
+                    WHEN u."role" = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+                    ELSE u.name
+                END as "senderName",
                 u.avatar as "senderAvatar",
-                u."userType" as "senderType"
+                u."role" as "senderType"
             FROM "chat_messages" cm
             JOIN users u ON cm."senderId" = u.id
+            LEFT JOIN clients c ON u.id = c."userId" AND u."role" = 'Client'
             WHERE cm.id = ?
         `, {
             replacements: [messageId],

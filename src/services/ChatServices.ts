@@ -15,9 +15,12 @@ export class ChatServices {
         message: string;
         messageType: 'text' | 'image';
     }): Promise<any> {
-        const canAccess = await ChatRoom.isUserInRoom(data.roomId, data.senderId);
+        //1 is global chat
+        if(data.roomId != 1){
+            const canAccess = await ChatRoom.isUserInRoom(data.roomId, data.senderId);
         if(!canAccess) {
             throw new AuthenticationError('You do not have access to this chat room');
+        }
         }
 
         // Create the message
@@ -57,7 +60,10 @@ export class ChatServices {
         // Get updated unread count for the user
         const unreadCount = await ChatMessage.getUnreadCount(roomId, userId);
 
-        // Get user details for the read receipt
+        // Get user display name for the read receipt (nickname for clients)
+        const displayName = await UserService.getUserDisplayName(userId);
+
+        // Get user details for avatar
         const user = await UserService.getUserDetails(userId);
         if (!user) {
             throw new AuthenticationError('User not found');
@@ -69,7 +75,7 @@ export class ChatServices {
             messageId: messageId,
             readBy: {
                 id: userId,
-                name: user?.name || 'Unknown User',
+                name: displayName,
                 avatar: user?.avatar || null
             },
             unreadCount: unreadCount,
@@ -113,5 +119,14 @@ export class ChatServices {
 
     static async isUserInRoom(roomId: number, userId: number): Promise<boolean> {
         return await ChatRoom.isUserInRoom(roomId, userId);
+    }
+
+    static async getChatRoomFromCounselorId(counselorId: number, clientId: number): Promise<ChatRoom | null> {
+        return await ChatRoom.findOne({
+            where: {
+                counselorId,
+                clientId
+            }
+        });
     }
 }

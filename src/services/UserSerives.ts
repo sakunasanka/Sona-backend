@@ -5,12 +5,13 @@ import { ItemNotFoundError, ValidationError, AuthenticationError, ConflictError,
 import { createUserSchema, validateData, signInSchema, emailSchema, updateProfileSchema } from '../schema/ValidationSchema';
 import Client from "../models/Client";
 import Counselor from "../models/Counselor";
+import Psychiatrist from "../models/Psychiatrist";
 
 export interface CreateUserData {
     email: string;
     password: string;
     name: string;
-    userType: 'Client' | 'Counselor' | 'Admin';
+    userType: 'Client' | 'Counselor' | 'Admin' | 'Psychiatrist';
     avatar?: string;
     createdAt?: Date;
     updatedAt?: Date;
@@ -37,6 +38,28 @@ export interface CreateCounselorData extends CreateUserData {
     sessionFee?: number;
 }
 
+export interface CreatePsychiatristData extends CreateUserData {
+    userType: 'Psychiatrist';
+    title: string;
+    specialities: string[];
+    address: string;
+    contact_no: string;
+    license_no: string;
+    idCard: string;
+    isVolunteer?: boolean;
+    isAvailable?: boolean;
+    description?: string;
+    rating?: number;
+    sessionFee?: number;
+    status?: string;
+    coverImage?: string;
+    instagram?: string;
+    linkedin?: string;
+    x?: string;
+    website?: string;
+    languages?: string[];
+}
+
 export interface SignInData {
     email: string;
     password: string;
@@ -48,7 +71,7 @@ export interface UserResponse {
     name: string;
     email: string;
     avatar?: string;
-    userType: 'Client' | 'Counselor';
+    userType: 'Client' | 'Counselor' | 'Admin' | 'Psychiatrist';
     createdAt: Date;
     updatedAt: Date;
 }
@@ -73,8 +96,29 @@ export interface CounselorResponse extends UserResponse {
     sessionFee?: number;
 }
 
+export interface PsychiatristResponse extends UserResponse {
+    title: string;
+    specialities: string[];
+    address: string;
+    contact_no: string;
+    license_no: string;
+    idCard: string;
+    isVolunteer?: boolean;
+    isAvailable?: boolean;
+    description?: string;
+    rating?: number;
+    sessionFee?: number;
+    status?: string;
+    coverImage?: string;
+    instagram?: string;
+    linkedin?: string;
+    x?: string;
+    website?: string;
+    languages?: string[];
+}
+
 export class UserService {
-    static async createUser(userData: CreateUserData | CreateClientData | CreateCounselorData) {
+    static async createUser(userData: CreateUserData | CreateClientData | CreateCounselorData | CreatePsychiatristData) {
         // Validate input data`
         const validatedData = await validateData<CreateUserData>(createUserSchema, userData);
         let firebaseUser: any = null;
@@ -114,7 +158,7 @@ export class UserService {
                 dbUser = await Counselor.createCounselor({
                     firebaseId: firebaseUser.uid,
                     name: counselorData.name,
-                    email: counselorData.email,
+                    email: validatedData.email,
                     avatar: counselorData.avatar,
                     title: counselorData.title,
                     specialities: counselorData.specialities,
@@ -128,19 +172,46 @@ export class UserService {
                     rating: counselorData.rating,
                     sessionFee: counselorData.sessionFee
                 })
-            } else if(validatedData.userType === 'Admin') {
+            }
+
+            else if(validatedData.userType === 'Admin') {
                 dbUser = await User.create({
                     firebaseId: firebaseUser.uid,
-                    name: validatedData.name,
+                    name: userData.name,
                     email: validatedData.email,
                     avatar: validatedData.avatar,
                     role: 'Admin'
                 });
             }
 
-            // Return the created user
-            if (!dbUser) {
-                throw new ExternalServiceError('Failed to create user in the database');
+            else if(validatedData.userType === 'Psychiatrist') {
+                const psychiatristData = userData as CreatePsychiatristData;
+
+                console.log('Creating psychiatrist with data:', psychiatristData);
+                dbUser = await Psychiatrist.createPsychiatrist({
+                    firebaseId: firebaseUser.uid,
+                    name: psychiatristData.name,
+                    email: validatedData.email,
+                    avatar: psychiatristData.avatar,
+                    title: psychiatristData.title,
+                    specialities: psychiatristData.specialities,
+                    address: psychiatristData.address,
+                    contact_no: psychiatristData.contact_no,
+                    license_no: psychiatristData.license_no,
+                    idCard: psychiatristData.idCard,
+                    isVolunteer: psychiatristData.isVolunteer,
+                    isAvailable: psychiatristData.isAvailable,
+                    description: psychiatristData.description,
+                    rating: psychiatristData.rating,
+                    sessionFee: psychiatristData.sessionFee,
+                    status: psychiatristData.status,
+                    coverImage: psychiatristData.coverImage,
+                    instagram: psychiatristData.instagram,
+                    linkedin: psychiatristData.linkedin,
+                    x: psychiatristData.x,
+                    website: psychiatristData.website,
+                    languages: psychiatristData.languages
+                });
             }
 
             if (dbUser) {
@@ -315,5 +386,28 @@ export class UserService {
         }
 
         return user.toJSON() as UserResponse;
+    }
+
+    static async getUserDisplayName(userId: number): Promise<string> {
+        if (!userId || typeof userId !== 'number' || userId <= 0) {
+            throw new ValidationError('User ID is required and must be a positive number');
+        }
+
+        const user = await User.findByPk(userId);
+
+        if (!user) {
+            throw new ItemNotFoundError('User not found with the provided ID');
+        }
+
+        // For clients, check if they have a nickname
+        if (user.role === 'Client') {
+            const client = await Client.findClientById(userId);
+            if (client && client.nickName) {
+                return client.nickName;
+            }
+        }
+
+        // Return the user's name as default
+        return user.name;
     }
 }

@@ -2,10 +2,12 @@ import { Op, QueryTypes } from 'sequelize';
 import Session from '../models/Session';
 import User from '../models/User';
 import Counselor from '../models/Counselor';
+import Psychiatrist from '../models/Psychiatrist';
 import Client from '../models/Client';
 import TimeSlot from '../models/TimeSlot';
 import PaymentMethod from '../models/PaymentMethod';
 import { sequelize } from '../config/db'; // Fixed import for sequelize
+import jwt from 'jsonwebtoken';
 
 export interface BookSessionParams {
   userId: number;
@@ -22,6 +24,8 @@ export interface TimeSlotData {
 }
 
 class SessionService {
+  private static readonly JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
+  private static readonly JITSI_SECRET = process.env.JITSI_APP_SECTRET || 'Jitsi_default';
 
   /**
    * Get all counselors
@@ -55,10 +59,12 @@ class SessionService {
    * Get available time slots for a counselor on a specific date
    */
   async getAvailableTimeSlots(counselorId: number, date: string): Promise<TimeSlot[]> {
-    // First check if the counselor exists
+    // First check if the counselor or psychiatrist exists
     const counselor = await Counselor.findByPk(counselorId);
-    if (!counselor) {
-      throw new Error('Counselor not found');
+    const psychiatrist = await Psychiatrist.findPsychiatristById(counselorId);
+    
+    if (!counselor && !psychiatrist) {
+      throw new Error('Professional not found');
     }
     
     // Get all time slots for this counselor on this date
@@ -157,10 +163,12 @@ class SessionService {
       price
     } = params;
 
-    // Check if counselor exists
+    // Check if counselor or psychiatrist exists
     const counselor = await Counselor.findByPk(counselorId);
-    if (!counselor) {
-      throw new Error('Counselor not found');
+    const psychiatrist = await Psychiatrist.findPsychiatristById(counselorId);
+    
+    if (!counselor && !psychiatrist) {
+      throw new Error('Professional not found');
     }
     
     // Check if time slot is available
@@ -205,6 +213,12 @@ class SessionService {
         throw new Error('Free sessions are only available for students.');
       }
     }
+
+    //generate meeting link
+    //for now randomw value using date and time
+    const domainname = process.env.DOMAIN_NAME || 'sona.org.lk';
+    const saferoom = Buffer.from(`${date}-${timeSlot}-${userId}`).toString('base64').replace(/=/g, '');
+    const roomName = `${saferoom}`;
     
     // Create the session booking
     const session = await Session.create({
@@ -214,7 +228,8 @@ class SessionService {
       timeSlot,
       duration: duration || 50, // Default to 50 minutes if not provided
       price: finalPrice,
-      status: 'scheduled'
+      status: 'scheduled',
+      link: roomName
     });
     
     // Mark the time slot as booked
@@ -241,41 +256,88 @@ class SessionService {
   }
 
   /**
-   * Get specific session details
+   * Get session link
    */
-  async getSessionById(sessionId: number, userId: number): Promise<Session | null> {
-    return Session.findOne({
+  async getSessionLink(sessionId: number, userId: number): Promise<string | null> {
+    const session = await Session.findOne({
       where: {
         id: sessionId,
         [Op.or]: [
           { userId },
-          { counselorId: userId } // Allow both user and counselor to view session
+          { counselorId: userId }
         ]
       },
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['id', 'name', 'avatar']
-        },
-        {
-          model: User,
-          as: 'counselor',
-          attributes: ['id', 'name', 'avatar'],
-          include: [
-            {
-              model: Counselor,
-              attributes: ['title', 'specialties', 'rating']
-            }
-          ]
-        }
-      ]
+      attributes: ['link']
     });
+    return session?.link || null;
   }
 
   /**
-   * Cancel a session
+   * Get specific session details
    */
+  async getSessionById(sessionId: number, userId: number): Promise<Session | null> {
+    const sessionQuery = `
+      SELECT
+        s.*,
+        CASE
+          WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+          ELSE u.name
+        END as user_name,
+        u.avatar as user_avatar,
+        u.role as user_role,
+        u.id as user_id,
+        cu.name as counselor_name,
+        cu.avatar as counselor_avatar,
+        cu.role as counselor_role,
+        cu.id as counselor_id,
+        COALESCE(co.title, p.title) as counselor_title,
+        COALESCE(co.specialities, p.specialities) as counselor_specialities,
+        COALESCE(co.rating, p.rating) as counselor_rating
+      FROM sessions s
+      JOIN users u ON s."userId" = u.id
+      LEFT JOIN clients c ON u.id = c."userId"
+      JOIN users cu ON s."counselorId" = cu.id
+      LEFT JOIN counselors co ON cu.id = co."userId"
+      LEFT JOIN psychiatrists p ON cu.id = p."userId"
+      WHERE s.id = :sessionId
+      AND (s."userId" = :userId OR s."counselorId" = :userId)
+    `;
+
+    const result = await sequelize.query(sessionQuery, {
+      replacements: { sessionId, userId },
+      type: QueryTypes.SELECT,
+      model: Session,
+      mapToModel: true
+    });
+
+    if (result.length === 0) {
+      return null;
+    }
+
+    const session = result[0] as any;
+
+    // Construct the proper nested structure
+    return {
+      ...session.toJSON(),
+      user: {
+        id: session.get('user_id'),
+        name: session.get('user_name'),
+        avatar: session.get('user_avatar'),
+        role: session.get('user_role')
+      },
+      counselor: {
+        id: session.get('counselor_id'),
+        name: session.get('counselor_name'),
+        avatar: session.get('counselor_avatar'),
+        role: session.get('counselor_role'),
+        Counselor: {
+          title: session.get('counselor_title'),
+          specialties: session.get('counselor_specialties'),
+          rating: session.get('counselor_rating')
+        }
+      }
+    } as Session;
+  }
   async cancelSession(sessionId: number, userId: number): Promise<Session> {
     const session = await Session.findOne({
       where: {
@@ -361,17 +423,23 @@ class SessionService {
     const updatedSlots: TimeSlot[] = [];
     
     for (const { date, time } of slots) {
-      const slot = await TimeSlot.findOne({
+      const [slot, created] = await TimeSlot.findOrCreate({
         where: {
           counselorId,
           date,
-          time,
-          isBooked: false // Can't make booked slots unavailable
+          time
+        },
+        defaults: {
+          isAvailable: false,
+          isBooked: false
         }
       });
       
-      if (slot) {
-        await slot.update({ isAvailable: false });
+      // Only update if not booked (can't make booked slots unavailable)
+      if (!slot.isBooked) {
+        if (!created) {
+          await slot.update({ isAvailable: false });
+        }
         updatedSlots.push(slot);
       }
     }
@@ -380,23 +448,98 @@ class SessionService {
   }
 
   /**
+   * Get counselor monthly availability (grouped by date)
+   */
+  async getCounselorMonthlyAvailability(
+    counselorId: number,
+    year: number,
+    month: number
+  ): Promise<{
+    counselorId: number;
+    year: number;
+    month: number;
+    availability: Array<{ date: string; slots: Array<{ id: number; time: string; isAvailable: boolean; isBooked: boolean }> }>;
+  }> {
+    // Validate inputs
+    if (!counselorId || !year || !month || month < 1 || month > 12) {
+      throw new Error('Invalid counselorId, year or month');
+    }
+
+    // Compute month range
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    const endDate = new Date(Date.UTC(year, month, 0)); // last day of month
+    const start = startDate.toISOString().split('T')[0];
+    const end = endDate.toISOString().split('T')[0];
+
+    // Fetch all time slots within range
+    const slots = await TimeSlot.findAll({
+      where: {
+        counselorId,
+        date: { [Op.between]: [start, end] }
+      },
+      order: [['date', 'ASC'], ['time', 'ASC']]
+    });
+
+    // Group by date
+    const grouped = new Map<string, Array<{ id: number; time: string; isAvailable: boolean; isBooked: boolean }>>();
+    for (const s of slots) {
+      const date = (s as any).date as string;
+      if (!grouped.has(date)) grouped.set(date, []);
+      grouped.get(date)!.push({
+        id: (s as any).id,
+        time: (s as any).time,
+        isAvailable: (s as any).isAvailable,
+        isBooked: (s as any).isBooked
+      });
+    }
+
+    const availability = Array.from(grouped.entries()).map(([date, daySlots]) => ({
+      date,
+      slots: daySlots
+    }));
+
+    return {
+      counselorId,
+      year,
+      month,
+      availability
+    };
+  }
+
+  /**
    * Get counselor's sessions
    */
   async getCounselorSessions(counselorId: number): Promise<(Session & { isStudent?: boolean })[]> {
-    const sessions = await Session.findAll({
-      where: { counselorId },
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['id', 'name', 'avatar']
-        }
-      ],
-      order: [['date', 'ASC'], ['timeSlot', 'ASC']]
+    const sessionsQuery = `
+      SELECT 
+        s.*,
+        CASE
+          WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+          ELSE u.name
+        END as user_name,
+        u.avatar as user_avatar,
+        u.role as user_role,
+        u.id as user_id,
+        CASE
+          WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+          ELSE u.name
+        END as client_display_name
+      FROM sessions s
+      JOIN users u ON s."userId" = u.id
+      LEFT JOIN clients c ON u.id = c."userId"
+      WHERE s."counselorId" = :counselorId
+      ORDER BY s.date ASC, s."timeSlot" ASC
+    `;
+
+    const sessions = await sequelize.query(sessionsQuery, {
+      replacements: { counselorId },
+      type: QueryTypes.SELECT,
+      model: Session,
+      mapToModel: true
     });
 
     // Get userIds from sessions
-    const userIds = sessions.map(s => s.userId);
+    const userIds = sessions.map((s: any) => s.userId);
 
     // Query isStudent status for all users in clients table
     const clientRows = await sequelize.query(
@@ -414,8 +557,14 @@ class SessionService {
     }
 
     // Attach isStudent to each session
-    return sessions.map(session => ({
+    return sessions.map((session: any) => ({
       ...session.toJSON(),
+      user: {
+        id: session.get('user_id'),
+        name: session.get('user_name'),
+        avatar: session.get('user_avatar'),
+        role: session.get('user_role')
+      },
       isStudent: isStudentMap.get(session.userId) || false
     })) as (Session & { isStudent?: boolean })[];
   }
@@ -429,7 +578,7 @@ class SessionService {
     nextResetDate: string;
     totalSessionsThisPeriod: number;
     isStudent: boolean;
-  }> {
+    }> {
     // First check if the user is a student
     const user = await User.findByPk(userId);
     if (!user) {
@@ -510,6 +659,117 @@ class SessionService {
       totalSessionsThisPeriod,
       isStudent: true
     };
+  }
+
+  //below function will add json token to session link
+  async generateSessionLink(sessionId: number, userId: number): Promise<string> {
+    const session = await Session.findByPk(sessionId);
+    const user = await User.findByPk(userId);
+    let context ={}
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (!session?.link){
+      throw new Error('Session not found or link not available');
+    }
+
+    if(user.role === 'Client'){
+      const client = await Client.findByPk(userId);
+
+      if (!client) {
+        throw new Error('Client profile not found');
+      }
+
+      const { nickName, email } =client;
+
+      context = {
+        user: {
+          id: userId.toString(),
+          name: nickName || user.name,
+          email: email || 'sample@example.com',
+          affiliation: 'member'
+        }
+      }
+    }else if(user.role === 'Counselor' || user.role === 'Psychiatrist'){
+      const counselor = await Counselor.findByPk(userId);
+      const psychiatrist = await Psychiatrist.findPsychiatristById(userId);
+
+      if (!counselor && !psychiatrist) {
+        throw new Error('Professional profile not found');
+      }
+
+      const { name, email } = user;
+
+      console.log(name);
+      
+      context = {
+          user: {
+            id: userId.toString(),
+            name: name || user.name,
+            email: email,
+            affiliation: 'owner'
+        }
+      }
+    }
+
+    const roomName = session!.link || '';
+
+    return `https://sona.org.lk/${roomName}?jwt=${this.generateToken(sessionId, userId, context, roomName)}`;
+  }
+
+  private generateToken(roomId: number, userId: number, context: any, roomName: string): string {
+    const payload = {
+      aud: '123456', //need to be changed for better app id
+      iss: '123456', //need to be changed for better app id
+      sub: 'sona.org.lk',
+      room: roomName,
+      exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hour expiration
+      
+      context: {
+        user: {
+          id: userId.toString(),
+          name: context.user.name,
+          email: context.user.email,
+          affiliation: context.user.affiliation
+        }
+      },
+      moderator: context.user.affiliation === 'owner' ? true : false
+    }
+
+    return jwt.sign(payload, SessionService.JITSI_SECRET, 
+      { algorithm: 'HS256' }
+    )
+  }
+
+  async getBookedSessions(userId: number): Promise<Session[] | string> {
+    try {
+      const sessions = await Session.findAll({
+      where: { 
+        userId,
+        date: {
+          [Op.gte]: new Date().toISOString().split('T')[0] // Only future sessions
+        } 
+      },
+      include: [
+        {
+          model: User,
+          as: 'counselor',
+          attributes: ['id', 'name', 'avatar']
+        }
+      ],
+      order: [['date', 'ASC'], ['timeSlot', 'ASC']]
+    });
+
+      if(!sessions.length) {
+        return 'No booked sessions found';
+      }
+      return sessions;
+
+    }catch (error) {
+      return 'Error fetching booked sessions';
+    }
   }
 }
 

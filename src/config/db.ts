@@ -1,5 +1,5 @@
-import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
+import { Sequelize } from 'sequelize';
 
 dotenv.config();
 
@@ -17,9 +17,19 @@ const sequelize = new Sequelize(
         require: true,
         rejectUnauthorized: false // Use this if you're connecting to a cloud database with SSL
       }
+    },
+    // Database timezone is set to 'Asia/Colombo' at DB level
+    // Don't override with Sequelize timezone to avoid conflicts
+    define: {
+      timestamps: true,
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt'
     }
   }
 );
+
+// Database timezone is now set to 'Asia/Colombo' at the database level
+// Sequelize is configured to handle timezone conversion properly
 
 const connectDB = async () => {
   try {
@@ -31,4 +41,4 @@ const connectDB = async () => {
   }
 };
 
-export { sequelize, connectDB };
+export { connectDB, sequelize };

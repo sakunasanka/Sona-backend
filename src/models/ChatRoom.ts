@@ -84,7 +84,11 @@ static async getUserChatRooms(userId: number): Promise<any[]> {
     try {
         console.log('Getting chat rooms for userId:', userId);
         
-        const rooms = await sequelize.query(`
+        // Get user data to determine role
+        const userData = await User.findByPk(userId);
+        const isCounselor = userData?.role === 'Counselor';
+        
+        const rooms = await sequelize.query<any>(`
             SELECT 
                 cr.id,
                 cr.name,
@@ -95,34 +99,75 @@ static async getUserChatRooms(userId: number): Promise<any[]> {
                 CASE 
                     WHEN cr.type = 'global' THEN 'Global Chat'
                     WHEN cr."counselorId" = $1 THEN (
-                        SELECT name FROM users WHERE id = cr."clientId"
+                        SELECT 
+                            CASE 
+                                WHEN u.role = 'Client' AND c."nickName" IS NOT NULL THEN c."nickName"
+                                ELSE u.name
+                            END
+                        FROM users u
+                        LEFT JOIN clients c ON u.id = c."userId" AND u.role = 'Client'
+                        WHERE u.id = cr."clientId"
                     )
                     ELSE (
                         SELECT name FROM users WHERE id = cr."counselorId"
                     )
-                END as "counselorName",
+                END as "otherUserName",
+                CASE 
+                    WHEN cr.type = 'global' THEN NULL
+                    WHEN cr."counselorId" = $2 THEN (
+                        SELECT avatar FROM users WHERE id = cr."clientId"
+                    )
+                    ELSE (
+                        SELECT avatar FROM users WHERE id = cr."counselorId"
+                    )
+                END as "otherUserAvatar",
                 (SELECT message FROM "chat_messages" WHERE "roomId" = cr.id ORDER BY "createdAt" DESC LIMIT 1) as last_message,
                 (SELECT "createdAt" FROM "chat_messages" WHERE "roomId" = cr.id ORDER BY "createdAt" DESC LIMIT 1) as last_message_time,
                 COALESCE((
                     SELECT COUNT(*)
                     FROM "chat_messages" cm
-                    LEFT JOIN "user_last_read" ulr ON ulr."userId" = $2 AND ulr."roomId" = cr.id
+                    LEFT JOIN "user_last_read" ulr ON ulr."userId" = $3 AND ulr."roomId" = cr.id
                     WHERE cm."roomId" = cr.id 
-                    AND cm."senderId" != $3
+                    AND cm."senderId" != $4
                     AND (ulr."lastMessageId" IS NULL OR cm.id > ulr."lastMessageId")
                 ), 0) as unread_count
             FROM "chat_rooms" cr
-            WHERE cr.type = 'global' 
-            OR cr."counselorId" = $4
-            OR cr."clientId" = $5
+            WHERE ${isCounselor ? "cr.type = 'direct' AND" : "cr.type = 'global' OR"} 
+            (cr."counselorId" = $5 OR cr."clientId" = $6)
             ORDER BY last_message_time DESC NULLS LAST
         `, {
-            bind: [userId, userId, userId, userId, userId], // Use bind with $1, $2, etc.
+            bind: [userId, userId, userId, userId, userId, userId],
             type: QueryTypes.SELECT
+        }) as any[];
+
+        // Transform the response based on user role
+        const transformedRooms = rooms.map(room => {
+            const result: any = {
+                id: room.id,
+                name: room.name,
+                type: room.type,
+                counselorId: room.counselorId,
+                clientId: room.clientId,
+                createdAt: room.createdAt,
+                last_message: room.last_message,
+                last_message_time: room.last_message_time,
+                unread_count: room.unread_count
+            };
+
+            // For counselors, use "clientName", for clients use "counselorName"
+            if (isCounselor) {
+                result.clientName = room.otherUserName;
+                result.clientAvatar = room.otherUserAvatar;
+            } else {
+                result.counselorName = room.otherUserName;
+                result.counselorAvatar = room.otherUserAvatar;
+            }
+
+            return result;
         });
 
-        console.log(`Found ${rooms.length} rooms for user ${userId}`);
-        return rooms;
+        console.log(`Found ${transformedRooms.length} rooms for user ${userId}`);
+        return transformedRooms;
     } catch (error) {
         console.error('Error in getUserChatRooms:', error);
         throw new DatabaseError(error instanceof Error ? error.message : 'Unknown error');

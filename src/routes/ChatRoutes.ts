@@ -8,7 +8,8 @@ import {
     markAsRead,
     getUnreadCount,
     getRoomDetails,
-    getRoomUnreadMessages
+    getRoomUnreadMessages,
+    getChatRoomFromCounselorId
 } from '../controllers/ChatController';
 import { authenticateToken } from '../middlewares/auth';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -21,6 +22,7 @@ router.use(authenticateToken);
 // Chat room routes
 router.post('/rooms/direct', asyncHandler(createDirectChat));
 //use middleare between route and controller
+router.get('/rooms/getRoomFromCounselorId/:counselorId', asyncHandler(getChatRoomFromCounselorId));
 router.get('/rooms', asyncHandler(getUserRooms));
 router.get('/rooms/:roomId', asyncHandler(getRoomDetails));
 

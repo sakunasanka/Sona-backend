@@ -38,7 +38,7 @@ Like.init(
   {
     sequelize,
     modelName: 'like',
-    tableName: 'likes',
+    tableName: 'post_likes',
     indexes: [
       {
         unique: true,

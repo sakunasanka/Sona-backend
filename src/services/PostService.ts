@@ -2,6 +2,7 @@ import Post from '../models/Post';
 import User from '../models/User';
 import Like from '../models/Like';
 import { Op } from 'sequelize';
+import Client from '../models/Client';
 
 export interface PostData {
   id: string;
@@ -13,12 +14,15 @@ export interface PostData {
   timeAgo: string;
   content: string;
   hashtags: string[];
+  image?: string;
   stats: {
     views: number;
     likes: number;
     comments: number;
   };
   backgroundColor: string;
+  status: string;
+  isAnonymous: boolean;
   liked: boolean;
 }
 
@@ -33,15 +37,36 @@ export interface CreatePostData {
   content: string;
   hashtags?: string[];
   backgroundColor?: string;
+  image?: string;
+  isAnonymous?: boolean;
 }
 
 export interface UpdatePostData {
   content?: string;
   hashtags?: string[];
   backgroundColor?: string;
+  image?: string;
+  isAnonymous?: boolean;
 }
 
 class PostService {
+  /**
+   * Helper function to get display name for post author
+   */
+  private async getPostAuthorName(user: any, isAnonymous: boolean): Promise<string> {
+    if (isAnonymous) {
+      return 'Anonymous';
+    }
+
+    if (user?.role === 'Client') {
+      const client = await Client.findClientById(user.id);
+      if (client && client.nickName) {
+        return client.nickName;
+      }
+    }
+
+    return user?.name || 'Unknown User';
+  }
   /**
    * Get all posts with pagination and sorting
    */
@@ -77,20 +102,140 @@ class PostService {
       id: post.id,
       author: {
         name: post.user?.name || 'Unknown User',
-        avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: post.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(post.createdAt),
       content: post.content,
       hashtags: post.hashtags,
+      image: post.image,
       stats: {
         views: post.views,
         likes: post.likes,
         comments: post.comments,
       },
       backgroundColor: post.backgroundColor,
+      status: post.status || 'pending',
+      isAnonymous: post.isAnonymous,
       liked: false, // Will be updated based on user authentication
     }));
+
+    return {
+      posts: postsWithUserData,
+      totalPosts: posts.count,
+      currentPage: Number(page),
+      totalPages: Math.ceil(posts.count / Number(limit)),
+    };
+  }
+
+  /**
+   * Get all posts without pagination (unlimited)
+   */
+  async getAllPosts(sort: 'recent' | 'popular' = 'recent'): Promise<PostData[]> {
+    let orderBy: any = [['createdAt', 'DESC']];
+
+    if (sort === 'popular') {
+      orderBy = [['likes', 'DESC'], ['createdAt', 'DESC']];
+    }
+
+    const posts = await Post.findAll({
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'avatar', 'role'],
+        },
+      ],
+      order: orderBy,
+    });
+
+    const postPromises = posts.map(async (post) => ({
+      id: post.id,
+      author: {
+        name: await this.getPostAuthorName(post.user, post.isAnonymous),
+        avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
+        role: post.user?.role || 'User',
+      },
+      timeAgo: this.getTimeAgo(post.createdAt),
+      content: post.content,
+      hashtags: post.hashtags,
+      image: post.image,
+      stats: {
+        views: post.views,
+        likes: post.likes,
+        comments: post.comments,
+      },
+      backgroundColor: post.backgroundColor,
+      status: post.status || 'pending',
+      isAnonymous: post.isAnonymous,
+      liked: false,
+    }));
+
+    return await Promise.all(postPromises);
+  }
+
+  /**
+   * Get user's own posts
+   */
+  async getMyPosts(userId: number, filters: PostFilters = {}): Promise<{
+    posts: PostData[];
+    totalPosts: number;
+    currentPage: number;
+    totalPages: number;
+  }> {
+    const { sort = 'recent', page = 1, limit = 10 } = filters;
+    const offset = (page - 1) * limit;
+
+    let orderBy: any = [['createdAt', 'DESC']]; // Default: recent posts
+
+    if (sort === 'popular') {
+      orderBy = [['likes', 'DESC'], ['createdAt', 'DESC']];
+    }
+
+    const posts = await Post.findAndCountAll({
+      where: { userId },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'avatar', 'role'],
+        },
+      ],
+      order: orderBy,
+      limit: Number(limit),
+      offset: offset,
+    });
+
+    // Get user's liked posts
+    const likes = await Like.findAll({
+      where: { userId },
+      attributes: ['postId'],
+    });
+    const userLikes = likes.map((like) => like.postId);
+
+    const postPromises = posts.rows.map(async (post) => ({
+      id: post.id,
+      author: {
+        name: await this.getPostAuthorName(post.user, post.isAnonymous),
+        avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
+        role: post.user?.role || 'User',
+      },
+      timeAgo: this.getTimeAgo(post.createdAt),
+      content: post.content,
+      hashtags: post.hashtags,
+      image: post.image,
+      stats: {
+        views: post.views,
+        likes: post.likes,
+        comments: post.comments,
+      },
+      backgroundColor: post.backgroundColor,
+      status: post.status || 'pending',
+      isAnonymous: post.isAnonymous,
+      liked: userLikes.includes(post.id),
+    }));
+
+    const postsWithUserData = await Promise.all(postPromises);
 
     return {
       posts: postsWithUserData,
@@ -141,24 +286,29 @@ class PostService {
       userLikes = likes.map((like) => like.postId);
     }
 
-    const postsWithUserData = posts.rows.map((post) => ({
+    const postPromises = posts.rows.map(async (post) => ({
       id: post.id,
       author: {
-        name: post.user?.name || 'Unknown User',
-        avatar: post.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        name: await this.getPostAuthorName(post.user, post.isAnonymous),
+        avatar: post.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: post.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(post.createdAt),
       content: post.content,
       hashtags: post.hashtags,
+      image: post.image,
       stats: {
         views: post.views,
         likes: post.likes,
         comments: post.comments,
       },
       backgroundColor: post.backgroundColor,
+      status: post.status || 'pending',
+      isAnonymous: post.isAnonymous,
       liked: userLikes.includes(post.id),
     }));
+
+    const postsWithUserData = await Promise.all(postPromises);
 
     return {
       posts: postsWithUserData,
@@ -172,13 +322,16 @@ class PostService {
    * Create a new post
    */
   async createPost(data: CreatePostData): Promise<PostData> {
-    const { userId, content, hashtags = [], backgroundColor = '#FFFFFF' } = data;
+    const { userId, content, hashtags = [], backgroundColor = '#FFFFFF', image, isAnonymous = false } = data;
 
     const post = await Post.create({
       userId,
       content: content.trim(),
       hashtags,
       backgroundColor,
+      image,
+      isAnonymous,
+      status: 'pending',
     });
 
     const postWithUser = await Post.findByPk(post.id, {
@@ -198,21 +351,24 @@ class PostService {
     return {
       id: postWithUser.id,
       author: {
-        name: postWithUser.user?.name || 'Unknown User',
+        name: await this.getPostAuthorName(postWithUser.user, postWithUser.isAnonymous),
         avatar:
           postWithUser.user?.avatar ||
-          'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+          'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: postWithUser.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(postWithUser.createdAt),
       content: postWithUser.content,
       hashtags: postWithUser.hashtags,
+      image: postWithUser.image,
       stats: {
         views: postWithUser.views,
         likes: postWithUser.likes,
         comments: postWithUser.comments,
       },
       backgroundColor: postWithUser.backgroundColor,
+      status: postWithUser.status || 'pending',
+      isAnonymous: postWithUser.isAnonymous,
       liked: false,
     };
   }
@@ -220,11 +376,16 @@ class PostService {
   /**
    * Update an existing post
    */
-  async updatePost(postId: string, data: UpdatePostData): Promise<PostData> {
+  async updatePost(postId: string, data: UpdatePostData, userId?: number): Promise<PostData> {
     // Find the post
     const post = await Post.findByPk(postId);
     if (!post) {
       throw new Error('Post not found');
+    }
+
+    // Verify ownership if userId is provided
+    if (userId && post.userId !== userId) {
+      throw new Error('Unauthorized: You can only update your own posts');
     }
 
     // Update the post
@@ -232,6 +393,9 @@ class PostService {
       content: data.content?.trim() || post.content,
       hashtags: data.hashtags || post.hashtags,
       backgroundColor: data.backgroundColor || post.backgroundColor,
+      image: data.image !== undefined ? data.image : post.image,
+      isAnonymous: data.isAnonymous !== undefined ? data.isAnonymous : post.isAnonymous,
+      status: 'edited',
     });
 
     // Fetch the updated post with user data
@@ -252,19 +416,22 @@ class PostService {
     return {
       id: updatedPost.id,
       author: {
-        name: updatedPost.user?.name || 'Unknown User',
-        avatar: updatedPost.user?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
+        name: await this.getPostAuthorName(updatedPost.user, updatedPost.isAnonymous),
+        avatar: updatedPost.user?.avatar || 'https://images.icon-icons.com/1378/PNG/512/avatardefault_92824.png',
         role: updatedPost.user?.role || 'User',
       },
       timeAgo: this.getTimeAgo(updatedPost.createdAt),
       content: updatedPost.content,
       hashtags: updatedPost.hashtags,
+      image: updatedPost.image,
       stats: {
         views: updatedPost.views,
         likes: updatedPost.likes,
         comments: updatedPost.comments,
       },
       backgroundColor: updatedPost.backgroundColor,
+      status: updatedPost.status || 'edited',
+      isAnonymous: updatedPost.isAnonymous,
       liked: false,
     };
   }
@@ -272,11 +439,16 @@ class PostService {
   /**
    * Delete a post
    */
-  async deletePost(postId: string): Promise<void> {
+  async deletePost(postId: string, userId?: number): Promise<void> {
     // Find the post
     const post = await Post.findByPk(postId);
     if (!post) {
       throw new Error('Post not found');
+    }
+
+    // Verify ownership if userId is provided
+    if (userId && post.userId !== userId) {
+      throw new Error('Unauthorized: You can only delete your own posts');
     }
 
     // Delete associated likes first
@@ -305,21 +477,58 @@ class PostService {
       // Unlike the post
       await existingLike.destroy();
       await post.decrement('likes');
-      
-      return {
-        liked: false,
-        likes: post.likes - 1,
-      };
+      await post.reload();
+      return { liked: false, likes: post.likes };
     } else {
       // Like the post
       await Like.create({ userId, postId });
       await post.increment('likes');
-      
-      return {
-        liked: true,
-        likes: post.likes + 1,
-      };
+      await post.reload();
+      return { liked: true, likes: post.likes };
     }
+  }
+
+  /**
+   * Like a post (idempotent)
+   */
+  async likePost(postId: string, userId: number): Promise<{ liked: boolean; likes: number }> {
+    const post = await Post.findByPk(postId);
+    if (!post) {
+      throw new Error('Post not found');
+    }
+
+    const existingLike = await Like.findOne({ where: { userId, postId } });
+    if (existingLike) {
+      // Ensure we return the current count
+      await post.reload();
+      return { liked: true, likes: post.likes };
+    }
+
+    await Like.create({ userId, postId });
+    await post.increment('likes');
+    await post.reload();
+    return { liked: true, likes: post.likes };
+  }
+
+  /**
+   * Dislike (unlike) a post (idempotent)
+   */
+  async dislikePost(postId: string, userId: number): Promise<{ liked: boolean; likes: number }> {
+    const post = await Post.findByPk(postId);
+    if (!post) {
+      throw new Error('Post not found');
+    }
+
+    const existingLike = await Like.findOne({ where: { userId, postId } });
+    if (!existingLike) {
+      await post.reload();
+      return { liked: false, likes: post.likes };
+    }
+
+    await existingLike.destroy();
+    await post.decrement('likes');
+    await post.reload();
+    return { liked: false, likes: post.likes };
   }
 
   /**
@@ -332,10 +541,21 @@ class PostService {
     }
 
     await post.increment('views');
+    await post.reload();
+    return { views: post.views };
+  }
 
-    return {
-      views: post.views + 1,
-    };
+  /**
+   * Get like status for a post for a specific user
+   */
+  async getLikeStatus(postId: string, userId: number): Promise<{ liked: boolean; likes: number; views: number }> {
+    const post = await Post.findByPk(postId);
+    if (!post) {
+      throw new Error('Post not found');
+    }
+
+    const existingLike = await Like.findOne({ where: { userId, postId } });
+    return { liked: !!existingLike, likes: post.likes, views: post.views };
   }
 
   /**

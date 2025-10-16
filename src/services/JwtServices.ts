@@ -48,7 +48,7 @@ export class JwtServices {
                 //user details
                 id: user.id,
                 name: user.name,
-                userType: user.userType,
+                userType: (user as any).role,
                 avatar: user.avatar,
 
                 //jwt claims
@@ -63,7 +63,13 @@ export class JwtServices {
 
             return {
                 token,
-                user,
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    userType: (user as any).role,
+                    avatar: user.avatar,
+                },
                 expiresIn: 7 * 24 * 60 * 60 // 7 days in seconds
             };
         } catch (error) {
@@ -119,7 +125,7 @@ export class JwtServices {
               email: user.email,
               id: user.id,
               name: user.name,
-              userType: user.userType,
+              userType: (user as any).role,
               avatar: user.avatar,
               iss: JwtServices.ISSUER,
               sub: user.id.toString(),

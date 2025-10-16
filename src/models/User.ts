@@ -31,7 +31,13 @@ class User extends Model {
     return await User.findByPk(userId, {
       attributes: ['id', 'firebaseId', 'name', 'email', 'avatar', 'role'],
     });
-  } 
+  }
+  
+  public static async getUserDetails(userId: number): Promise<User | null> {
+    return await User.findByPk(userId, {
+      attributes: ['id', 'firebaseId', 'name', 'email', 'avatar', 'role'],
+    });
+  }
 }
 
 
@@ -61,7 +67,7 @@ User.init(
       allowNull: true,
     },
     role: {
-      type: DataTypes.ENUM('Client', 'Counsellor' , 'Admin', 'Psychiatrist', 'MT-Team'),
+      type: DataTypes.ENUM('Client', 'Counselor' , 'Admin', 'Psychiatrist', 'MT-Team'),
       allowNull: false,
     },
   },
