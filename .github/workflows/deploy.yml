@@ -26,10 +26,16 @@ jobs:
               git clone https://github.com/sakunasanka/Sona-backend.git .
             else
               echo "Forcefully pulling latest changes..."
+              echo "making a copy of ecosystem file"
+              echo "💡 Backing up ecosystem.config.js to /tmp/..."
+              cp ecosystem.config.js /tmp/ecosystem.config.js
               # THIS IS THE KEY FIX: Discard all local changes and pull the new version
               git fetch origin
               git reset --hard origin/release 
               git clean -fd
+
+              echo "Restoring ecosystem.config.js from backup..."
+              cp /tmp/ecosystem.config.js .
             fi
 
             echo "Creating Firebase service account file..."
