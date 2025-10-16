@@ -44,7 +44,9 @@ jobs:
             echo "Building TypeScript project..."
             # Build the TypeScript code into JavaScript
             npm run build
-            
+
+            echo "Current directory:"
+            pwd
             echo "Restarting application with PM2..."
             # Start or restart the app with PM2
             # Note: The ecosystem file should now point to the built JS file
