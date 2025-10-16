@@ -35,7 +35,7 @@ export class NotificationHelper {
         type: NotificationType.INFO,
         title: 'New Session Request',
         message: `You have a new counseling session request from ${clientName} for ${sessionDate} at ${sessionTime}.`,
-        relatedURL: '/sessions/upcoming'
+        relatedURL: '/sessions'
       });
     } catch (error) {
       console.error('Failed to send session booked notification to counselor:', error);
@@ -52,7 +52,7 @@ export class NotificationHelper {
         type: NotificationType.INFO,
         title: 'New Session Request',
         message: `You have a new psychiatry session request from ${clientName} for ${sessionDate} at ${sessionTime}.`,
-        relatedURL: '/sessions/upcoming'
+        relatedURL: '/sessions'
       });
     } catch (error) {
       console.error('Failed to send session booked notification to psychiatrist:', error);
@@ -103,7 +103,7 @@ export class NotificationHelper {
         type: NotificationType.INFO,
         title: 'Session Reminder',
         message: `Reminder: You have a session with ${professionalName} tomorrow at ${sessionTime}.`,
-        relatedURL: '/sessions/upcoming'
+        relatedURL: '/sessions'
       });
     } catch (error) {
       console.error('Failed to send session reminder notification:', error);
