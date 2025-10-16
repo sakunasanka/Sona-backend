@@ -5,6 +5,8 @@ import {
   updatePsychiatristAvailability,
   getAllPsychiatrists,
   updatePsychiatristStatus,
+  uploadPrescription,
+  getPrescriptionsByPsychiatrist,
   updatePsychiatristProfile
 } from '../controllers/PsychiatristController';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -17,12 +19,12 @@ const router = express.Router();
 // Get all available and approved psychiatrists
 router.get('/available', getAvailablePsychiatrists);
 
-// Get psychiatrist by ID
-router.get('/:id', getPsychiatristById);
+// Specific routes must come BEFORE parameterized routes
+// Upload prescription (Psychiatrist only)
+router.post('/prescription', isAuthenticated, isProfessional, uploadPrescription);
 
-// Protected routes - Psychiatrist only
-// Update psychiatrist's own availability
-router.patch('/:id/availability', isAuthenticated, isProfessional, updatePsychiatristAvailability);
+// Get all prescriptions by psychiatrist for a specific client (Psychiatrist only)
+router.get('/prescriptions/:clientId', isAuthenticated, isProfessional, getPrescriptionsByPsychiatrist);
 
 // Update psychiatrist's own profile
 router.put('/profile', isAuthenticated, isProfessional, updatePsychiatristProfile);
@@ -30,6 +32,13 @@ router.put('/profile', isAuthenticated, isProfessional, updatePsychiatristProfil
 // Admin routes
 // Get all psychiatrists (including pending and rejected)
 router.get('/', isAuthenticated, isAdmin, getAllPsychiatrists);
+
+// Get psychiatrist by ID (this must come AFTER specific routes)
+router.get('/:id', getPsychiatristById);
+
+// Protected routes - Psychiatrist only
+// Update psychiatrist's own availability
+router.patch('/:id/availability', isAuthenticated, isProfessional, updatePsychiatristAvailability);
 
 // Update psychiatrist status (approve/reject)
 router.patch('/:id/status', isAuthenticated, isAdmin, updatePsychiatristStatus);

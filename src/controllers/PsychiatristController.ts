@@ -3,6 +3,7 @@ import { PsychiatristService } from '../services/PsychiatristService';
 import SessionService from '../services/SessionService';
 import { CounselorService } from '../services/CounselorServices';
 import { ValidationError, ItemNotFoundError } from '../utils/errors';
+import Prescription from '../models/Prescription';
 import { validateData, updateCounselorProfileSchema } from '../schema/ValidationSchema';
 import { asyncHandler } from '../utils/asyncHandler';
 
@@ -627,6 +628,139 @@ export const updatePsychiatristStatus = async (req: Request, res: Response): Pro
 
     res.status(500).json(apiResponse.error(
       'Failed to update status',
+      error instanceof Error ? error.message : 'Unknown error'
+    ));
+  }
+};
+
+/**
+ * @desc    Upload a prescription
+ * @route   POST /api/psychiatrists/prescription
+ * @access  Private (Psychiatrist only)
+ */
+export const uploadPrescription = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?.dbUser?.id;
+    const userRole = (req as any).user?.dbUser?.userType;
+
+    if (!userId) {
+      res.status(401).json(apiResponse.error(
+        'Unauthorized',
+        'User authentication required'
+      ));
+      return;
+    }
+
+    if (userRole !== 'Psychiatrist') {
+      res.status(403).json(apiResponse.error(
+        'Forbidden',
+        'Only psychiatrists can upload prescriptions'
+      ));
+      return;
+    }
+
+    const { clientId, description, prescription } = req.body;
+
+    if (!clientId || !prescription) {
+      res.status(400).json(apiResponse.error(
+        'Missing required fields',
+        'Client ID and prescription URL are required'
+      ));
+      return;
+    }
+
+    // Create the prescription
+    const newPrescription = await Prescription.create({
+      psychiatristId: userId,
+      clientId: parseInt(clientId),
+      description,
+      prescription
+    });
+
+    res.status(201).json(apiResponse.success(
+      'Prescription uploaded successfully',
+      {
+        id: newPrescription.id,
+        psychiatristId: newPrescription.psychiatristId,
+        clientId: newPrescription.clientId,
+        description: newPrescription.description,
+        prescription: newPrescription.prescription,
+        createdAt: newPrescription.createdAt
+      }
+    ));
+  } catch (error) {
+    console.error('Error uploading prescription:', error);
+    res.status(500).json(apiResponse.error(
+      'Failed to upload prescription',
+      error instanceof Error ? error.message : 'Unknown error'
+    ));
+  }
+};
+
+/**
+ * @desc    Get all prescriptions by psychiatrist for a specific client
+ * @route   GET /api/psychiatrists/prescriptions/:clientId
+ * @access  Private (Psychiatrist only)
+ */
+export const getPrescriptionsByPsychiatrist = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?.dbUser?.id;
+    const userRole = (req as any).user?.dbUser?.userType;
+    const { clientId } = req.params;
+
+    if (!userId) {
+      res.status(401).json(apiResponse.error(
+        'Unauthorized',
+        'User authentication required'
+      ));
+      return;
+    }
+
+    if (userRole !== 'Psychiatrist') {
+      res.status(403).json(apiResponse.error(
+        'Forbidden',
+        'Only psychiatrists can view their prescriptions'
+      ));
+      return;
+    }
+
+    const clientIdNum = parseInt(clientId);
+    if (isNaN(clientIdNum)) {
+      res.status(400).json(apiResponse.error(
+        'Invalid client ID',
+        'Client ID must be a valid number'
+      ));
+      return;
+    }
+
+    // Get all prescriptions by this psychiatrist for the specific client
+    const prescriptions = await Prescription.findAll({
+      where: { 
+        psychiatristId: userId,
+        clientId: clientIdNum
+      },
+      order: [['createdAt', 'DESC']],
+      include: [
+        {
+          model: require('../models/User').default,
+          as: 'client',
+          attributes: ['id', 'name', 'email']
+        }
+      ]
+    });
+
+    res.status(200).json(apiResponse.success(
+      'Prescriptions fetched successfully',
+      {
+        prescriptions,
+        count: prescriptions.length,
+        clientId: clientIdNum
+      }
+    ));
+  } catch (error) {
+    console.error('Error fetching prescriptions:', error);
+    res.status(500).json(apiResponse.error(
+      'Failed to fetch prescriptions',
       error instanceof Error ? error.message : 'Unknown error'
     ));
   }
