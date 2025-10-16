@@ -1,10 +1,10 @@
 # .github/workflows/deploy.yml
-name: Deploy Backend
+name: Build and Deploy Backend
 
 on:
   push:
     branches:
-      - Release # Or your default branch
+      - Release # Changed from 'Release' to 'release' for consistency
 
 jobs:
   deploy:
@@ -17,13 +17,31 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            # Navigate to the application directory
             cd /var/www/sona.org.lk/backend
-            # If it's the first time, clone the repo. Otherwise, pull changes.
+
+            # Check if it's the first deployment
             if [ ! -d ".git" ]; then
-              git clone https://github.com/sakunasanka/Sona-backend.git
+              echo "Cloning repository for the first time..."
+              # Clone into the current directory (note the dot at the end)
+              git clone https://github.com/sakunasanka/Sona-backend.git .
             else
+              echo "Pulling latest changes..."
+              # Reset any local changes to prevent pull conflicts
+              git reset --hard HEAD
+              git clean -fd
               git pull
             fi
-            npm install --production
+            
+            echo "Installing all dependencies for build..."
+            # Install ALL dependencies (including devDependencies for build)
+            npm install
+            
+            echo "Building TypeScript project..."
+            # Build the TypeScript code into JavaScript
+            npm run build
+            
+            echo "Restarting application with PM2..."
             # Start or restart the app with PM2
-            pm2 startOrRestart ecosystem.config.js --env production
+            # Note: The ecosystem file should now point to the built JS file
+            pm2 startOrRestart ecosystem.conf.js --env production
