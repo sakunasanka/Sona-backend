@@ -23,14 +23,13 @@ jobs:
             # Check if it's the first deployment
             if [ ! -d ".git" ]; then
               echo "Cloning repository for the first time..."
-              # Clone into the current directory (note the dot at the end)
               git clone https://github.com/sakunasanka/Sona-backend.git .
             else
-              echo "Pulling latest changes..."
-              # Reset any local changes to prevent pull conflicts
-              git reset --hard HEAD
+              echo "Forcefully pulling latest changes..."
+              # THIS IS THE KEY FIX: Discard all local changes and pull the new version
+              git fetch origin
+              git reset --hard origin/release 
               git clean -fd
-              git pull
             fi
 
             echo "Creating Firebase service account file..."
