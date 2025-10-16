@@ -1,10 +1,8 @@
 import dotenv from 'dotenv';
 import { Sequelize } from 'sequelize';
-import { Pool } from 'pg';
 
 dotenv.config();
 
-// Sequelize instance for ORM operations
 const sequelize = new Sequelize(
   process.env.DB_NAME!,
   process.env.DB_USER!,
@@ -15,11 +13,13 @@ const sequelize = new Sequelize(
     dialect: 'postgres',
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
     dialectOptions: {
-      ssl: process.env.NODE_ENV === 'production' ? {
+      ssl: {
         require: true,
-        rejectUnauthorized: false
-      } : false
+        rejectUnauthorized: false // Use this if you're connecting to a cloud database with SSL
+      }
     },
+    // Database timezone is set to 'Asia/Colombo' at DB level
+    // Don't override with Sequelize timezone to avoid conflicts
     define: {
       timestamps: true,
       createdAt: 'createdAt',
@@ -28,35 +28,17 @@ const sequelize = new Sequelize(
   }
 );
 
-// PostgreSQL Pool for raw queries (better for analytics)
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  ssl: process.env.NODE_ENV === 'production' ? {
-    rejectUnauthorized: false
-  } : false,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+// Database timezone is now set to 'Asia/Colombo' at the database level
+// Sequelize is configured to handle timezone conversion properly
 
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
-    console.log('PostgreSQL Sequelize Connected...');
-    
-    // Test pool connection
-    const client = await pool.connect();
-    console.log('PostgreSQL Pool Connected...');
-    client.release();
+    console.log('PostgreSQL Connected...');
   } catch (error) {
     console.error('Unable to connect to PostgreSQL:', error);
     process.exit(1);
   }
 };
 
-export { connectDB, sequelize, pool };
-export default pool;
+export { connectDB, sequelize };
