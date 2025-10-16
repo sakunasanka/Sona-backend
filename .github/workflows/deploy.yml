@@ -4,7 +4,7 @@ name: Deploy Backend
 on:
   push:
     branches:
-      -Release # Or your default branch
+      - Release # Or your default branch
 
 jobs:
   deploy:
