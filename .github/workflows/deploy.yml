@@ -48,4 +48,4 @@ jobs:
             echo "Restarting application with PM2..."
             # Start or restart the app with PM2
             # Note: The ecosystem file should now point to the built JS file
-            pm2 startOrRestart ecosystem.conf.js --env production
+            pm2 startOrRestart ecosystem.config.js --env production
