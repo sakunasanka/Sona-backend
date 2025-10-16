@@ -709,14 +709,14 @@ class SessionService {
 
     const roomName = session!.link || '';
 
-    return `https://sona.org.lk/${roomName}?jwt=${this.generateToken(sessionId, userId, context, roomName)}`;
+    return `https://meet.sona.org.lk/${roomName}?jwt=${this.generateToken(sessionId, userId, context, roomName)}`;
   }
 
   private generateToken(roomId: number, userId: number, context: any, roomName: string): string {
     const payload = {
       aud: '123456', //need to be changed for better app id
       iss: '123456', //need to be changed for better app id
-      sub: 'sona.org.lk',
+      sub: 'meet.sona.org.lk',
       room: roomName,
       exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hour expiration
       
