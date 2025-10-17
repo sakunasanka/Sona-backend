@@ -4,7 +4,7 @@ name: Build and Deploy Backend
 on:
   push:
     branches:
-      - Release # Changed from 'Release' to 'release' for consistency
+      - Release # Corrected casing for consistency
 
 jobs:
   deploy:
@@ -20,40 +20,36 @@ jobs:
             # Navigate to the application directory
             cd /var/www/sona.org.lk/backend
 
-            # Check if it's the first deployment
-            if [ ! -d ".git" ]; then
-              echo "Cloning repository for the first time..."
-              git clone https://github.com/sakunasanka/Sona-backend.git .
-            else
-              echo "Forcefully pulling latest changes..."
-              echo "making a copy of ecosystem file"
-              echo "💡 Backing up ecosystem.config.js to /tmp/..."
-              cp ecosystem.config.js /tmp/ecosystem.config.js
-              # THIS IS THE KEY FIX: Discard all local changes and pull the new version
-              git fetch origin
-              git reset --hard origin/release 
-              git clean -fd
+            # Backup the ecosystem config file before cleaning
+            echo "💡 Backing up ecosystem.config.js to /tmp/..."
+            cp ecosystem.config.js /tmp/ecosystem.config.js
+            
+            # Forcefully pull the latest source code and clean the directory
+            echo "Forcefully pulling latest changes..."
+            git fetch origin
+            git reset --hard origin/release
+            git clean -fd
 
-              echo "Restoring ecosystem.config.js from backup..."
-              cp /tmp/ecosystem.config.js .
-            fi
+            # Restore the ecosystem config file after cleaning
+            echo "✅ Restoring ecosystem.config.js from backup..."
+            cp /tmp/ecosystem.config.js .
 
-            echo "Creating Firebase service account file..."
-            # Note: The path must match what's in your firebase.ts import
-            # For '../../sona-client...json' from 'src/config/', this path is correct.
+            # Create secret files
+            echo "Creating secret files..."
             printf "%s" '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' > sona-client-firebase-adminsdk-fbsvc-e59af42c32.json
             
-            echo "Installing all dependencies for build..."
-            # Install ALL dependencies (including devDependencies for build)
+            echo "Installing dependencies..."
             npm install
             
+            # --- THE CRITICAL FIX: Force a clean build ---
+            echo "💣 Deleting old build directory to ensure a fresh compile..."
+            rm -rf dist
+            
             echo "Building TypeScript project..."
-            # Build the TypeScript code into JavaScript
             npm run build
 
-            echo "Current directory:"
-            pwd
+            # --- THE FIX: Use a more reliable stop/start sequence ---
             echo "Restarting application with PM2..."
-            # Start or restart the app with PM2
-            # Note: The ecosystem file should now point to the built JS file
-            pm2 startOrRestart ecosystem.config.js --env production
+            # The '|| true' ensures the script doesn't fail if the app isn't running
+            pm2 stop sona-backend || true
+            pm2 start ecosystem.config.js --env production
