@@ -64,6 +64,14 @@ router.get('/daily-sessions', validateDashboardQuery, dashboardController.getDai
 router.get('/monthly-growth', validateDashboardQuery, dashboardController.getMonthlyGrowthData);
 
 /**
+ * @route GET /api/admin/dashboard/monthly-revenue
+ * @desc Get monthly revenue data
+ * @access Admin only
+ * @query months - Number of months to fetch (default: 6)
+ */
+router.get('/monthly-revenue', validateDashboardQuery, dashboardController.getMonthlyRevenueData);
+
+/**
  * @route GET /api/admin/dashboard/session-types
  * @desc Get session distribution by specialty/type
  * @access Admin only
