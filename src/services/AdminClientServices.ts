@@ -1,5 +1,6 @@
 import Client from '../models/Client';
 import Student from '../models/Student';
+import Session from '../models/Session';
 import { QueryTypes } from 'sequelize';
 import { sequelize } from '../config/db';
 
@@ -14,22 +15,16 @@ export interface ClientWithStudentInfo {
   nickName?: string;
   concerns?: any[];
   registeredDate: Date;
-  status: 'active' | 'inactive' | 'suspended';
-  age?: number;
-  location?: string;
-  bio?: string;
   clientType: 'regular' | 'student';
   sessionsCompleted: number;
   totalSpent: number;
   subscriptionType?: string;
   studentPackage?: {
     applied: boolean;
-    status: 'pending' | 'approved' | 'rejected';
+    status?: 'pending' | 'approved' | 'rejected';
     appliedDate?: string;
     school?: string;
-    studentId?: string;
-    graduationYear?: string;
-    verificationDocument?: string;
+    clientID?: string;
     rejectionReason?: string;
   };
 }
@@ -44,10 +39,10 @@ export interface ClientFilters {
 
 class AdminClientServices {
   async getAllClients(filters: ClientFilters = {}): Promise<ClientWithStudentInfo[]> {
-    const { search, status, clientType, page = 1, limit = 50 } = filters;
+    const { search, page = 1, limit = 50 } = filters;
     const offset = (page - 1) * limit;
 
-    let whereConditions = ['u.role = \'Client\''];
+    const whereConditions = ["u.role = 'Client'"];
     const replacements: any[] = [];
 
     if (search) {
@@ -55,7 +50,8 @@ class AdminClientServices {
       replacements.push(`%${search}%`, `%${search}%`);
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause =
+      whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
     const query = `
       SELECT 
@@ -65,26 +61,29 @@ class AdminClientServices {
         u."email", 
         u."avatar", 
         u."role", 
-        u."createdAt" as "registeredDate",
+        u."createdAt" AS "registeredDate",
         c."nickName", 
         c."isStudent",
         c."concerns",
-        'active' as status,
-        30 as age,
-        'Unknown Location' as location,
-        'No bio available' as bio,
-        CASE 
-          WHEN c."isStudent" = true THEN 'student' 
-          ELSE 'regular' 
-        END as "clientType",
-        0 as "sessionsCompleted",
-        0 as "totalSpent",
-        CASE 
-          WHEN c."isStudent" = true THEN 'student' 
-          ELSE 'regular' 
-        END as "subscriptionType"
+        s."applicationStatus" AS "status",
+        s."university" AS "school",
+        s."clientID",
+        s."rejectionReason",
+        s."createdAt" AS "appliedDate",
+        COALESCE(sess."sessionsCompleted", 0) AS "sessionsCompleted",
+        COALESCE(sess."totalSpent", 0) AS "totalSpent"
       FROM users u
       JOIN clients c ON u.id = c."userId"
+      LEFT JOIN students s ON c."userId" = s."clientID"
+      LEFT JOIN (
+        SELECT 
+          "userId",
+          COUNT(*) AS "sessionsCompleted",
+          SUM("price") AS "totalSpent"
+        FROM sessions
+        WHERE "status" = 'completed'
+        GROUP BY "userId"
+      ) sess ON u.id = sess."userId"
       ${whereClause}
       ORDER BY u."createdAt" DESC
       LIMIT ? OFFSET ?
@@ -92,121 +91,161 @@ class AdminClientServices {
 
     const clients = await sequelize.query(query, {
       replacements: [...replacements, limit, offset],
-      type: QueryTypes.SELECT
+      type: QueryTypes.SELECT,
     });
 
-    // Attach student package info safely
-    const clientsWithStudentInfo = await Promise.all(
-      clients.map(async (client: any) => {
-        const studentInfo = await Student.findByClientId(client.id);
+    return clients.map((client: any) => {
+      const isStudent =
+        client.isStudent === true && client.status === 'approved';
 
-        return {
-          ...client,
-          studentPackage: studentInfo ? {
+      const hasApplied = !!client.status;
+
+      const studentPackage = hasApplied
+        ? {
             applied: true,
-            status: studentInfo.applicationStatus,
-            appliedDate: studentInfo.createdAt.toISOString().split('T')[0],
-            school: studentInfo.university,
-            studentId: studentInfo.studentIDCopy,
-            graduationYear: undefined,
-            verificationDocument: undefined,
-            rejectionReason: studentInfo.rejectionReason || undefined
-          } : {
-            applied: client.isStudent,
-            status: 'pending'
+            status: client.status,
+            appliedDate: client.appliedDate,
+            school: client.school,
+            clientID: client.clientID,
+            rejectionReason: client.rejectionReason,
           }
-        };
-      })
-    );
+        : { applied: false };
 
-    return clientsWithStudentInfo;
+      return {
+        id: client.id,
+        firebaseId: client.firebaseId,
+        name: client.name,
+        email: client.email,
+        avatar: client.avatar,
+        role: client.role,
+        isStudent,
+        nickName: client.nickName,
+        concerns: client.concerns,
+        registeredDate: client.registeredDate,
+        clientType: isStudent ? 'student' : 'regular',
+        sessionsCompleted: Number(client.sessionsCompleted) || 0,
+        totalSpent: Number(client.totalSpent) || 0,
+        subscriptionType: isStudent ? 'student' : 'regular',
+        studentPackage,
+      };
+    });
   }
 
   async getClientById(id: number): Promise<ClientWithStudentInfo | null> {
-    const client = await Client.findClientById(id);
-    if (!client) return null;
+    const query = `
+      SELECT 
+        u.id, 
+        u."firebaseId", 
+        u."name", 
+        u."email", 
+        u."avatar", 
+        u."role", 
+        u."createdAt" AS "registeredDate",
+        c."nickName", 
+        c."isStudent",
+        c."concerns",
+        s."applicationStatus" AS "status",
+        s."university" AS "school",
+        s."clientID",
+        s."rejectionReason",
+        s."createdAt" AS "appliedDate",
+        COALESCE(sess."sessionsCompleted", 0) AS "sessionsCompleted",
+        COALESCE(sess."totalSpent", 0) AS "totalSpent"
+      FROM users u
+      JOIN clients c ON u.id = c."userId"
+      LEFT JOIN students s ON c."userId" = s."clientID"
+      LEFT JOIN (
+        SELECT 
+          "userId",
+          COUNT(*) AS "sessionsCompleted",
+          SUM("price") AS "totalSpent"
+        FROM sessions
+        WHERE "status" = 'completed'
+        GROUP BY "userId"
+      ) sess ON u.id = sess."userId"
+      WHERE u.id = ?
+    `;
 
-    const studentInfo = await Student.findByClientId(id);
+    const result = await sequelize.query(query, {
+      replacements: [id],
+      type: QueryTypes.SELECT,
+    });
+
+    if (result.length === 0) return null;
+
+    const client = result[0] as any;
+    const isStudent =
+      client.isStudent === true && client.status === 'approved';
+
+    const hasApplied = !!client.status;
+
+    const studentPackage = hasApplied
+      ? {
+          applied: true,
+          status: client.status,
+          appliedDate: client.appliedDate,
+          school: client.school,
+          clientID: client.clientID,
+          rejectionReason: client.rejectionReason,
+        }
+      : { applied: false };
 
     return {
-      id: client.userId,
+      id: client.id,
       firebaseId: client.firebaseId,
       name: client.name,
       email: client.email,
       avatar: client.avatar,
       role: client.role,
-      isStudent: client.isStudent,
+      isStudent,
       nickName: client.nickName,
       concerns: client.concerns,
-      registeredDate: client.createdAt,
-      status: 'active',
-      age: 30,
-      location: 'Unknown Location',
-      bio: 'No bio available',
-      clientType: client.isStudent ? 'student' : 'regular',
-      sessionsCompleted: 0,
-      totalSpent: 0,
-      subscriptionType: client.isStudent ? 'student' : 'regular',
-      studentPackage: studentInfo ? {
-        applied: true,
-        status: studentInfo.applicationStatus,
-        appliedDate: studentInfo.createdAt.toISOString().split('T')[0],
-        school: studentInfo.university,
-        studentId: studentInfo.studentIDCopy,
-        graduationYear: undefined,
-        verificationDocument: undefined,
-        rejectionReason: studentInfo.rejectionReason || undefined
-      } : {
-        applied: client.isStudent,
-        status: 'pending'
-      }
+      registeredDate: client.registeredDate,
+      clientType: isStudent ? 'student' : 'regular',
+      sessionsCompleted: Number(client.sessionsCompleted) || 0,
+      totalSpent: Number(client.totalSpent) || 0,
+      subscriptionType: isStudent ? 'student' : 'regular',
+      studentPackage,
     };
   }
 
-  async updateClientStatus(id: number, status: 'active' | 'inactive' | 'suspended'): Promise<boolean> {
-    try {
-      return true; // Placeholder
-    } catch (error) {
-      console.error('Error updating client status:', error);
-      return false;
-    }
-  }
-
   async getClientStats() {
-    const totalClients = await sequelize.query(`
-      SELECT COUNT(*) as count
+    const totalClients = await sequelize.query(
+      `
+      SELECT COUNT(*) AS count
       FROM users u
       JOIN clients c ON u.id = c."userId"
       WHERE u.role = 'Client'
-    `, { type: QueryTypes.SELECT });
+    `,
+      { type: QueryTypes.SELECT }
+    );
 
-    const activeClients = await sequelize.query(`
-      SELECT COUNT(*) as count
+    const studentClients = await sequelize.query(
+      `
+      SELECT COUNT(*) AS count
       FROM users u
       JOIN clients c ON u.id = c."userId"
-      WHERE u.role = 'Client'
-    `, { type: QueryTypes.SELECT });
+      LEFT JOIN students s ON c."userId" = s."clientID"
+      WHERE u.role = 'Client' AND c."isStudent" = true AND s."applicationStatus" = 'approved'
+    `,
+      { type: QueryTypes.SELECT }
+    );
 
-    const studentClients = await sequelize.query(`
-      SELECT COUNT(*) as count
+    const regularClients = await sequelize.query(
+      `
+      SELECT COUNT(*) AS count
       FROM users u
       JOIN clients c ON u.id = c."userId"
-      WHERE u.role = 'Client' AND c."isStudent" = true
-    `, { type: QueryTypes.SELECT });
-
-    const regularClients = await sequelize.query(`
-      SELECT COUNT(*) as count
-      FROM users u
-      JOIN clients c ON u.id = c."userId"
-      WHERE u.role = 'Client' AND c."isStudent" = false
-    `, { type: QueryTypes.SELECT });
+      LEFT JOIN students s ON c."userId" = s."clientID"
+      WHERE u.role = 'Client' AND (c."isStudent" = false OR s."applicationStatus" != 'approved')
+    `,
+      { type: QueryTypes.SELECT }
+    );
 
     return {
       total: parseInt((totalClients[0] as { count: string }).count),
-      active: parseInt((activeClients[0] as { count: string }).count),
-      inactive: 0,
       students: parseInt((studentClients[0] as { count: string }).count),
-      regular: parseInt((regularClients[0] as { count: string }).count)
+      regular: parseInt((regularClients[0] as { count: string }).count),
     };
   }
 }
