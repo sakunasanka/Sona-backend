@@ -1,19 +1,16 @@
 import express from 'express';
 import * as dashboardController from '../controllers/AdminDashboardController';
-import { authenticateToken, isAdmin } from '../middlewares/auth';
-import { 
-  validateDashboardQuery, 
+import { authenticateToken } from '../middlewares/auth';
+import {
+  validateDashboardQuery,
   validateDateRange,
-  handleValidationErrors 
+  handleValidationErrors
 } from '../middlewares/validation';
 
 const router = express.Router();
 
 // Apply authentication middleware to all dashboard routes
-router.use(authenticateToken);
-router.use(isAdmin);
-
-/**
+router.use(authenticateToken);/**
  * @route GET /api/admin/dashboard/overview
  * @desc Get complete dashboard overview
  * @access Admin only
