@@ -615,9 +615,9 @@ export class PsychiatristService {
   /**
    * Update psychiatrist status (approve/reject)
    */
-  static async updatePsychiatristStatus(id: number, status: string): Promise<PsychiatristResponse> {
-    try {
-      const psychiatrist = await Psychiatrist.updatePsychiatristStatus(id, status);
+  // static async updatePsychiatristStatus(id: number, status: string): Promise<PsychiatristResponse> {
+  //   try {
+  //     const psychiatrist = await Psychiatrist.updatePsychiatristStatus(id, status);
       
       if (!psychiatrist) {
         throw new ItemNotFoundError('Psychiatrist not found');
