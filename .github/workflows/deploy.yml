@@ -27,7 +27,7 @@ jobs:
             # Forcefully pull the latest source code and clean the directory
             echo "Forcefully pulling latest changes..."
             git fetch origin
-            git reset --hard origin/release
+            git reset --hard origin/Release
             git clean -fd
 
             # Restore the ecosystem config file after cleaning
