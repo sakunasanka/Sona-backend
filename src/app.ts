@@ -28,6 +28,7 @@ import phq9Routes from './routes/PHQ9Routes';
 import complaintRoutes from './routes/ComplaintRoutes';
 import studentRoutes from './routes/StudentRoutes';
 import adminDashboardRoutes from './routes/AdminDashboardRoutes';
+import notificationRoutes from './routes/NotificationRoutes';
 import { auth } from 'firebase-admin';
 
 dotenv.config();
@@ -58,6 +59,7 @@ app.get('/', (req, res) => {
       counselors: '/api/counselors',
       psychiatrists: '/api/psychiatrists',
       questionnaire: '/api/questionnaire',
+      notifications: '/api/notifications',
       websocket: 'ws://localhost:5001',
       paymentPage: '/payment-loader',
     },
@@ -85,6 +87,7 @@ app.use('/api/questionnaire/phq9', phq9Routes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/admin/dashboard', adminDashboardRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.use(express.static(path.join(__dirname, '../public')));
 

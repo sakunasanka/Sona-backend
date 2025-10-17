@@ -1,0 +1,29 @@
+# .github/workflows/deploy.yml
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - Release # Or your default branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /var/www/sona.org.lk/backend
+            # If it's the first time, clone the repo. Otherwise, pull changes.
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/sakunasanka/Sona-backend.git
+            else
+              git pull
+            fi
+            npm install --production
+            # Start or restart the app with PM2
+            pm2 startOrRestart ecosystem.config.js --env production

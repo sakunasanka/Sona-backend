@@ -5,6 +5,7 @@ import { ItemNotFoundError, ValidationError, AuthenticationError, ConflictError,
 import { createUserSchema, validateData, signInSchema, emailSchema, updateProfileSchema } from '../schema/ValidationSchema';
 import Client from "../models/Client";
 import Counselor from "../models/Counselor";
+import Psychiatrist from "../models/Psychiatrist";
 
 export interface CreateUserData {
     email: string;
@@ -37,6 +38,28 @@ export interface CreateCounselorData extends CreateUserData {
     sessionFee?: number;
 }
 
+export interface CreatePsychiatristData extends CreateUserData {
+    userType: 'Psychiatrist';
+    title: string;
+    specialities: string[];
+    address: string;
+    contact_no: string;
+    license_no: string;
+    idCard: string;
+    isVolunteer?: boolean;
+    isAvailable?: boolean;
+    description?: string;
+    rating?: number;
+    sessionFee?: number;
+    status?: string;
+    coverImage?: string;
+    instagram?: string;
+    linkedin?: string;
+    x?: string;
+    website?: string;
+    languages?: string[];
+}
+
 export interface SignInData {
     email: string;
     password: string;
@@ -48,7 +71,7 @@ export interface UserResponse {
     name: string;
     email: string;
     avatar?: string;
-    userType: 'Client' | 'Counselor' | 'Admin';
+    userType: 'Client' | 'Counselor' | 'Admin' | 'Psychiatrist';
     createdAt: Date;
     updatedAt: Date;
 }
@@ -73,8 +96,29 @@ export interface CounselorResponse extends UserResponse {
     sessionFee?: number;
 }
 
+export interface PsychiatristResponse extends UserResponse {
+    title: string;
+    specialities: string[];
+    address: string;
+    contact_no: string;
+    license_no: string;
+    idCard: string;
+    isVolunteer?: boolean;
+    isAvailable?: boolean;
+    description?: string;
+    rating?: number;
+    sessionFee?: number;
+    status?: string;
+    coverImage?: string;
+    instagram?: string;
+    linkedin?: string;
+    x?: string;
+    website?: string;
+    languages?: string[];
+}
+
 export class UserService {
-    static async createUser(userData: CreateUserData | CreateClientData | CreateCounselorData) {
+    static async createUser(userData: CreateUserData | CreateClientData | CreateCounselorData | CreatePsychiatristData) {
         // Validate input data`
         const validatedData = await validateData<CreateUserData>(createUserSchema, userData);
         let firebaseUser: any = null;
@@ -137,6 +181,36 @@ export class UserService {
                     email: validatedData.email,
                     avatar: validatedData.avatar,
                     role: 'Admin'
+                });
+            }
+
+            else if(validatedData.userType === 'Psychiatrist') {
+                const psychiatristData = userData as CreatePsychiatristData;
+
+                console.log('Creating psychiatrist with data:', psychiatristData);
+                dbUser = await Psychiatrist.createPsychiatrist({
+                    firebaseId: firebaseUser.uid,
+                    name: psychiatristData.name,
+                    email: validatedData.email,
+                    avatar: psychiatristData.avatar,
+                    title: psychiatristData.title,
+                    specialities: psychiatristData.specialities,
+                    address: psychiatristData.address,
+                    contact_no: psychiatristData.contact_no,
+                    license_no: psychiatristData.license_no,
+                    idCard: psychiatristData.idCard,
+                    isVolunteer: psychiatristData.isVolunteer,
+                    isAvailable: psychiatristData.isAvailable,
+                    description: psychiatristData.description,
+                    rating: psychiatristData.rating,
+                    sessionFee: psychiatristData.sessionFee,
+                    status: psychiatristData.status,
+                    coverImage: psychiatristData.coverImage,
+                    instagram: psychiatristData.instagram,
+                    linkedin: psychiatristData.linkedin,
+                    x: psychiatristData.x,
+                    website: psychiatristData.website,
+                    languages: psychiatristData.languages
                 });
             }
 

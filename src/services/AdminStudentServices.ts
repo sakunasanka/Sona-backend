@@ -11,31 +11,31 @@ export interface StudentApplicationData {
 }
 
 class AdminStudentServices {
-  async applyForStudentPackage(applicationData: StudentApplicationData) {
-    try {
-      const client = await Client.findClientById(applicationData.clientId);
-      if (!client) throw new Error('Client not found');
+//   async applyForStudentPackage(applicationData: StudentApplicationData) {
+//     try {
+//       const client = await Client.findClientById(applicationData.clientId);
+//       if (!client) throw new Error('Client not found');
 
-      const existingApplication = await Student.findByClientId(applicationData.clientId);
-      if (existingApplication) throw new Error('Student application already exists');
+//       const existingApplication = await Student.findByClientId(applicationData.clientId);
+//       if (existingApplication) throw new Error('Student application already exists');
 
-      const studentApplication = await Student.createStudentApplication({
-        clientId: applicationData.clientId,
-        fullName: applicationData.fullName,
-        university: applicationData.university,
-        studentIDCopy: applicationData.studentIDCopy,
-        uniEmail: applicationData.uniEmail,
-        applicationStatus: 'pending',
-        rejectionReason: null
-      });
+//       const studentApplication = await Student.createStudentApplication({
+//         clientId: applicationData.clientId,
+//         fullName: applicationData.fullName,
+//         university: applicationData.university,
+//         studentIDCopy: applicationData.studentIDCopy,
+//         uniEmail: applicationData.uniEmail,
+//         applicationStatus: 'pending',
+//         rejectionReason: null
+//       });
 
-      await Client.updateClient(applicationData.clientId, { isStudent: true });
+//       await Client.updateClient(applicationData.clientId, { isStudent: true });
 
-      return studentApplication;
-    } catch (error) {
-      throw error;
-    }
-  }
+//       return studentApplication;
+//     } catch (error) {
+//       throw error;
+//     }
+//   }
 
   async updateStudentApplicationStatus(
     clientId: number, 
@@ -46,10 +46,20 @@ class AdminStudentServices {
       const studentApplication = await Student.findByClientId(clientId);
       if (!studentApplication) throw new Error('Student application not found');
 
-      const updatedApplication = await Student.updateApplicationStatus(studentApplication.id, status, rejectionReason);
+      const updatedApplication = await Student.updateApplicationStatus(
+        studentApplication.id,
+        status,
+        rejectionReason || undefined // Pass undefined instead of null if rejectionReason is not provided
+      );
+
+      console.log('Rejection Reason in Service:', rejectionReason); // Debug log for rejectionReason
 
       if (status === 'rejected') {
         await Client.updateClient(clientId, { isStudent: false });
+      }
+
+      if (status === 'approved') {
+        await Client.updateClient(clientId, { isStudent: true });
       }
 
       return updatedApplication;
