@@ -69,7 +69,7 @@ function connect() {
     log('🔄 Connecting with authentication token...', 'info');
     
     // ✅ BEST PRACTICE: Pass token during connection establishment
-    socket = io('http://localhost:5001', {
+    socket = io('https://sona.org.lk', {
         auth: {
             token: token  // ✅ This is the standard way
         },

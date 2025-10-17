@@ -587,51 +587,51 @@ export const updatePsychiatristAvailability = async (req: Request, res: Response
  * @route   PATCH /api/psychiatrists/:id/status
  * @access  Private (Admin only)
  */
-export const updatePsychiatristStatus = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-    const psychiatristId = parseInt(id);
+// export const updatePsychiatristStatus = async (req: Request, res: Response): Promise<void> => {
+//   try {
+//     const { id } = req.params;
+//     const { status } = req.body;
+//     const psychiatristId = parseInt(id);
 
-    if (isNaN(psychiatristId)) {
-      res.status(400).json(apiResponse.error(
-        'Invalid psychiatrist ID',
-        'Psychiatrist ID must be a valid number'
-      ));
-      return;
-    }
+//     if (isNaN(psychiatristId)) {
+//       res.status(400).json(apiResponse.error(
+//         'Invalid psychiatrist ID',
+//         'Psychiatrist ID must be a valid number'
+//       ));
+//       return;
+//     }
 
-    if (!status || !['approved', 'rejected', 'pending'].includes(status)) {
-      res.status(400).json(apiResponse.error(
-        'Invalid status',
-        'Status must be one of: approved, rejected, pending'
-      ));
-      return;
-    }
+//     if (!status || !['approved', 'rejected', 'pending'].includes(status)) {
+//       res.status(400).json(apiResponse.error(
+//         'Invalid status',
+//         'Status must be one of: approved, rejected, pending'
+//       ));
+//       return;
+//     }
 
-    const psychiatrist = await PsychiatristService.updatePsychiatristStatus(psychiatristId, status);
+//     const psychiatrist = await PsychiatristService.updatePsychiatristStatus(psychiatristId, status);
     
-    res.status(200).json(apiResponse.success(
-      'Psychiatrist status updated successfully',
-      { psychiatrist }
-    ));
-  } catch (error) {
-    console.error('Error updating psychiatrist status:', error);
+//     res.status(200).json(apiResponse.success(
+//       'Psychiatrist status updated successfully',
+//       { psychiatrist }
+//     ));
+//   } catch (error) {
+//     console.error('Error updating psychiatrist status:', error);
     
-    if (error instanceof ItemNotFoundError) {
-      res.status(404).json(apiResponse.error(
-        'Psychiatrist not found',
-        error.message
-      ));
-      return;
-    }
+//     if (error instanceof ItemNotFoundError) {
+//       res.status(404).json(apiResponse.error(
+//         'Psychiatrist not found',
+//         error.message
+//       ));
+//       return;
+//     }
 
-    res.status(500).json(apiResponse.error(
-      'Failed to update status',
-      error instanceof Error ? error.message : 'Unknown error'
-    ));
-  }
-};
+//     res.status(500).json(apiResponse.error(
+//       'Failed to update status',
+//       error instanceof Error ? error.message : 'Unknown error'
+//     ));
+//   }
+// };
 
 /**
  * @desc    Upload a prescription

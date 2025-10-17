@@ -4,7 +4,6 @@ import {
   getPsychiatristById,
   updatePsychiatristAvailability,
   getAllPsychiatrists,
-  updatePsychiatristStatus,
   uploadPrescription,
   getPrescriptionsByPsychiatrist,
   updatePsychiatristProfile
@@ -41,7 +40,7 @@ router.get('/:id', getPsychiatristById);
 router.patch('/:id/availability', isAuthenticated, isProfessional, updatePsychiatristAvailability);
 
 // Update psychiatrist status (approve/reject)
-router.patch('/:id/status', isAuthenticated, isAdmin, updatePsychiatristStatus);
+//router.patch('/:id/status', isAuthenticated, isAdmin, updatePsychiatristStatus);
 
 // Psychiatrist can view a client's daily moods
 router.get('/clients/:clientId/moods', isAuthenticated, isProfessional, getUserDailyMoods);
