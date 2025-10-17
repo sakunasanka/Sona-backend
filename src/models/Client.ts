@@ -198,7 +198,7 @@ class Client extends User {
                 ? [updateData.concerns]
                 : []),
               id,
-            ].filter(Boolean),
+            ].filter(value => value !== undefined), // Retain false and 0 values
             transaction,
           }
         );

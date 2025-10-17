@@ -7,7 +7,6 @@ class AdminClientController {
     try {
       const filters: ClientFilters = {
         search: req.query.search as string,
-        status: req.query.status as string,
         clientType: req.query.clientType as string,
         page: parseInt(req.query.page as string) || 1,
         limit: parseInt(req.query.limit as string) || 50
@@ -75,39 +74,7 @@ class AdminClientController {
     }
   }
 
-  async updateClientStatus(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
 
-      if (!['active', 'inactive', 'suspended'].includes(status)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid status'
-        });
-      }
-
-      const success = await clientService.updateClientStatus(parseInt(id), status);
-
-      if (!success) {
-        return res.status(404).json({
-          success: false,
-          message: 'Client not found or update failed'
-        });
-      }
-
-      res.json({
-        success: true,
-        message: 'Client status updated successfully'
-      });
-    } catch (error) {
-      console.error('Error updating client status:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error'
-      });
-    }
-  }
 
   async approveStudentPackage(req: Request, res: Response) {
     try {
@@ -139,6 +106,8 @@ class AdminClientController {
           message: 'Rejection reason is required'
         });
       }
+
+      console.log('Rejection Reason:', rejectionReason); // Debug log for rejectionReason
 
       await studentService.updateStudentApplicationStatus(
         parseInt(clientId), 

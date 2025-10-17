@@ -18,21 +18,24 @@ router.get(
   psychiatristController.getPsychiatristById
 );
 
-// Update psychiatrist status
+
+// Update psychiatrist status 
 router.put(
   '/:id/status',
   authenticateToken,
   [
     check('status')
-      .isIn(['pending', 'approved', 'rejected', 'unset'])
+      .isIn(['pending', 'approved', 'rejected'])
       .withMessage('Invalid status value'),
     check('rejectionReason')
-      .if((value, { req }) => req.body.status === 'Rejected')
+      .if((value, { req }) => req.body.status === 'rejected')
       .notEmpty()
-      .withMessage('Rejection reason is required when status is Rejected')
+      .withMessage('Rejection reason is required when status is rejected')
   ],
   psychiatristController.updatePsychiatristStatus
 );
+
+
 
 // Get psychiatrist counts
 router.get(

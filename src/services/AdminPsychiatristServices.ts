@@ -31,15 +31,26 @@ export const getAllPsychiatrists = async (
   const psychiatrists = await Psychiatrist.findAll({
     attributes: [
       'userId',
-      'specialization',
+      'title',
+      'specialities',
       'address',
       'contact_no',
       'licenseNo',
       'idCard',
+      'isVolunteer',
       'isAvailable',
       'description',
+      'rating',
+      'sessionFee',
       'status',
-      'createdAt'
+      'coverImage',
+      'instagram',
+      'linkedin',
+      'x',
+      'website',
+      'languages',
+      'createdAt',
+      'updatedAt'
     ],
     where: whereClause,
     include: [
@@ -47,7 +58,7 @@ export const getAllPsychiatrists = async (
         model: User,
         as: 'user',
         where: userWhereClause,
-        attributes: ['name', 'email', 'avatar']
+        attributes: ['id', 'firebaseId', 'name', 'email', 'avatar', 'role', 'createdAt', 'updatedAt']
       }
     ],
     order: [['createdAt', 'DESC']]
@@ -72,11 +83,34 @@ export const getAllPsychiatrists = async (
 export const getPsychiatristById = async (userId: number) => {
   return await Psychiatrist.findOne({
     where: { userId },
+    attributes: [
+      'userId',
+      'title',
+      'specialities',
+      'address',
+      'contact_no',
+      'licenseNo',
+      'idCard',
+      'isVolunteer',
+      'isAvailable',
+      'description',
+      'rating',
+      'sessionFee',
+      'status',
+      'coverImage',
+      'instagram',
+      'linkedin',
+      'x',
+      'website',
+      'languages',
+      'createdAt',
+      'updatedAt'
+    ],
     include: [
       {
         model: User,
         as: 'user',
-        attributes: ['name', 'email', 'avatar']
+        attributes: ['id', 'firebaseId', 'name', 'email', 'avatar', 'role', 'createdAt', 'updatedAt']
       }
     ]
   });
@@ -123,7 +157,41 @@ export const updatePsychiatristStatus = async (
     }
 
     await transaction.commit();
-    return updatedPsychiatrist;
+    
+    // Return the complete psychiatrist data with user info
+    return await Psychiatrist.findOne({
+      where: { userId },
+      attributes: [
+        'userId',
+        'title',
+        'specialities',
+        'address',
+        'contact_no',
+        'licenseNo',
+        'idCard',
+        'isVolunteer',
+        'isAvailable',
+        'description',
+        'rating',
+        'sessionFee',
+        'status',
+        'coverImage',
+        'instagram',
+        'linkedin',
+        'x',
+        'website',
+        'languages',
+        'createdAt',
+        'updatedAt'
+      ],
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'firebaseId', 'name', 'email', 'avatar', 'role', 'createdAt', 'updatedAt']
+        }
+      ]
+    });
   } catch (error) {
     await transaction.rollback();
     throw error;
@@ -132,7 +200,7 @@ export const updatePsychiatristStatus = async (
 
 export const getPsychiatristCounts = async (): Promise<PsychiatristCounts> => {
   const psychiatrists = await Psychiatrist.findAll({
-    attributes: ['userId', 'status']
+    attributes: ['userId', 'status', 'isVolunteer', 'isAvailable']
   });
 
   const initialCounts: PsychiatristCounts = {
