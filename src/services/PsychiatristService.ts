@@ -619,43 +619,43 @@ export class PsychiatristService {
   //   try {
   //     const psychiatrist = await Psychiatrist.updatePsychiatristStatus(id, status);
       
-      if (!psychiatrist) {
-        throw new ItemNotFoundError('Psychiatrist not found');
-      }
+  //     if (!psychiatrist) {
+  //       throw new ItemNotFoundError('Psychiatrist not found');
+  //     }
 
-      return {
-        id: psychiatrist.id,
-        firebaseId: psychiatrist.firebaseId,
-        name: psychiatrist.name,
-        email: psychiatrist.email,
-        avatar: psychiatrist.avatar,
-        role: psychiatrist.role,
-        title: psychiatrist.title,
-        specialities: psychiatrist.specialities,
-        address: psychiatrist.address,
-        contact_no: psychiatrist.contact_no,
-        license_no: psychiatrist.license_no,
-        idCard: psychiatrist.idCard,
-        isVolunteer: psychiatrist.isVolunteer,
-        isAvailable: psychiatrist.isAvailable,
-        description: psychiatrist.description,
-        rating: psychiatrist.rating,
-        sessionFee: psychiatrist.sessionFee,
-        status: psychiatrist.status,
-        createdAt: psychiatrist.createdAt,
-        updatedAt: psychiatrist.updatedAt,
-        coverImage: psychiatrist.coverImage,
-        instagram: psychiatrist.instagram,
-        linkedin: psychiatrist.linkedin,
-        x: psychiatrist.x,
-        website: psychiatrist.website,
-        languages: psychiatrist.languages
-      };
-    } catch (error) {
-      if (error instanceof ItemNotFoundError) {
-        throw error;
-      }
-      throw new DatabaseError(`Failed to update psychiatrist status: ` + (error instanceof Error ? error.message : 'Unknown error'));
-    }
-  }
+  //     return {
+  //       id: psychiatrist.id,
+  //       firebaseId: psychiatrist.firebaseId,
+  //       name: psychiatrist.name,
+  //       email: psychiatrist.email,
+  //       avatar: psychiatrist.avatar,
+  //       role: psychiatrist.role,
+  //       title: psychiatrist.title,
+  //       specialities: psychiatrist.specialities,
+  //       address: psychiatrist.address,
+  //       contact_no: psychiatrist.contact_no,
+  //       license_no: psychiatrist.license_no,
+  //       idCard: psychiatrist.idCard,
+  //       isVolunteer: psychiatrist.isVolunteer,
+  //       isAvailable: psychiatrist.isAvailable,
+  //       description: psychiatrist.description,
+  //       rating: psychiatrist.rating,
+  //       sessionFee: psychiatrist.sessionFee,
+  //       status: psychiatrist.status,
+  //       createdAt: psychiatrist.createdAt,
+  //       updatedAt: psychiatrist.updatedAt,
+  //       coverImage: psychiatrist.coverImage,
+  //       instagram: psychiatrist.instagram,
+  //       linkedin: psychiatrist.linkedin,
+  //       x: psychiatrist.x,
+  //       website: psychiatrist.website,
+  //       languages: psychiatrist.languages
+  //     };
+  //   } catch (error) {
+  //     if (error instanceof ItemNotFoundError) {
+  //       throw error;
+  //     }
+  //     throw new DatabaseError(`Failed to update psychiatrist status: ` + (error instanceof Error ? error.message : 'Unknown error'));
+  //   }
+  // }
 }

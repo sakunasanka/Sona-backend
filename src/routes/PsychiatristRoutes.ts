@@ -4,7 +4,6 @@ import {
   getPsychiatristById,
   updatePsychiatristAvailability,
   getAllPsychiatrists,
-  updatePsychiatristStatus,
   uploadPrescription,
   getPrescriptionsByPsychiatrist,
   updatePsychiatristProfile

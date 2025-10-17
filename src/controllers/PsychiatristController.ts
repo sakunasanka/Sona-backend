@@ -618,20 +618,20 @@ export const updatePsychiatristAvailability = async (req: Request, res: Response
 //   } catch (error) {
 //     console.error('Error updating psychiatrist status:', error);
     
-    if (error instanceof ItemNotFoundError) {
-      res.status(404).json(apiResponse.error(
-        'Psychiatrist not found',
-        error.message
-      ));
-      return;
-    }
+//     if (error instanceof ItemNotFoundError) {
+//       res.status(404).json(apiResponse.error(
+//         'Psychiatrist not found',
+//         error.message
+//       ));
+//       return;
+//     }
 
-    res.status(500).json(apiResponse.error(
-      'Failed to update status',
-      error instanceof Error ? error.message : 'Unknown error'
-    ));
-  }
-};
+//     res.status(500).json(apiResponse.error(
+//       'Failed to update status',
+//       error instanceof Error ? error.message : 'Unknown error'
+//     ));
+//   }
+// };
 
 /**
  * @desc    Upload a prescription
