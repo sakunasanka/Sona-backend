@@ -39,7 +39,20 @@ const server = http.createServer(app);
 // Middleware
 app.use(cors());
 app.use(morgan('dev'));
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(), // Start with Helmet's defaults
+        // Now, override the specific directives you need
+        "script-src": ["'self'", "'unsafe-inline'", "https://cdn.socket.io"],
+        "script-src-elem": ["'self'", "'unsafe-inline'", "https://cdn.socket.io"],
+        "connect-src": ["'self'", "https://sona.org.lk", "wss://sona.org.lk"],
+        // You can add other directives from your original attempt here if needed
+      },
+    },
+  })
+);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -98,10 +111,10 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.get('/websocket-test', (req, res) => {
   res.setHeader('Content-Security-Policy', 
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; " +
-    "script-src-elem 'self' 'unsafe-inline' https://cdn.socket.io; " + // ✅ Add 'unsafe-inline' here
+    "script-src 'self' 'unsafe-inline' https://cdn.socket.io; " +                    // ✅ Added cdn.socket.io
+    "script-src-elem 'self' 'unsafe-inline' https://cdn.socket.io; " +               // ✅ Added cdn.socket.io
     "style-src 'self' 'unsafe-inline'; " +
-    "connect-src 'self' ws://localhost:5001 http://localhost:5001; " +
+    "connect-src 'self' ws://localhost:5001 http://localhost:5001 https://sona.org.lk wss://sona.org.lk; " +
     "img-src 'self' data: https:; " +
     "font-src 'self' https: data:"
   );
