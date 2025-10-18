@@ -30,7 +30,8 @@ router.get('/timeslots/:counselorId/:date', getAvailableTimeSlots);
 router.get('/counselors/:id/availability/:year/:month', getCounselorMonthlyAvailability);
 
 //jitsi endpoint for updating meeting details
-router.post('/jitsi/update-meeting', updateMeetingStatus);
+router.post('/jitsi/events/room/destroyed', updateMeetingStatus);
+router.post('/jitsi/events/room/created', updateMeetingStatus);
 
 // Psychiatrist routes
 router.get('/psychiatrists', getPsychiatrists);

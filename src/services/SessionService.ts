@@ -781,9 +781,9 @@ class SessionService {
         throw new Error('Meeting not found');
       }
 
-      if(status === 'room-created') {
+      if(status === 'muc-room-created') {
         meeting.status = 'ongoing'
-      } else if(status === 'room-destroyed') {
+      } else if(status === 'muc-room-destroyed') {
         meeting.status = 'completed'
       }
       await meeting.save();
