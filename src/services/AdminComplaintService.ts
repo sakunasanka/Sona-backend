@@ -45,12 +45,7 @@ class AdminComplaintService {
           counselor_user.role as "counselorRole",
           s.date as "sessionDate",
           s."timeSlot" as "timeSlot",
-          CASE 
-            WHEN c."reasonID" IS NOT NULL THEN (
-              SELECT reason FROM rejection_reasons WHERE "userId" = c."reasonID" LIMIT 1
-            )
-            ELSE NULL
-          END as "rejectedReason"
+          c.resolution_reason as "resolutionReason"
         FROM complaints c
         JOIN sessions s ON c.session_id = s.id
         JOIN users client_user ON c.user_id = client_user.id
@@ -121,6 +116,93 @@ class AdminComplaintService {
       return stats;
     } catch (error) {
       console.error('Error in AdminComplaintService.getComplaintStats:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update complaint status and resolution reason (Admin only)
+   */
+  static async updateComplaintStatus(
+    complaintId: number, 
+    status: 'pending' | 'resolved' | 'rejected',
+    resolutionReason?: string,
+    actionBy?: number
+  ) {
+    try {
+      const updateQuery = `
+        UPDATE complaints 
+        SET 
+          status = $1,
+          resolution_reason = $2,
+          action_by = $3,
+          "updatedAt" = NOW()
+        WHERE "complaintId" = $4
+        RETURNING *
+      `;
+
+      const [result] = await sequelize.query(updateQuery, {
+        bind: [status, resolutionReason || null, actionBy || null, complaintId],
+        type: QueryTypes.UPDATE
+      });
+
+      if (!result) {
+        throw new Error('Complaint not found');
+      }
+
+      // Get the updated complaint with full details
+      const updatedComplaint = await this.getComplaintById(complaintId);
+      return updatedComplaint;
+    } catch (error) {
+      console.error('Error in AdminComplaintService.updateComplaintStatus:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get complaint by ID with full details
+   */
+  static async getComplaintById(complaintId: number) {
+    try {
+      const query = `
+        SELECT 
+          c."complaintId",
+          c.session_id as "sessionId",
+          c.additional_details as "description",
+          c.proof,
+          c.status,
+          c.reason,
+          c."createdAt" as "createdDate",
+          c."updatedAt" as "updatedDate",
+          CASE 
+            WHEN client_c."nickName" IS NOT NULL AND client_c."nickName" != '' THEN client_c."nickName"
+            ELSE client_user.name
+          END as "clientName",
+          counselor_user.name as "counselorName",
+          counselor_user.role as "counselorRole",
+          s.date as "sessionDate",
+          s."timeSlot" as "timeSlot",
+          c.resolution_reason as "resolutionReason"
+        FROM complaints c
+        JOIN sessions s ON c.session_id = s.id
+        JOIN users client_user ON c.user_id = client_user.id
+        LEFT JOIN clients client_c ON client_user.id = client_c."userId"
+        JOIN users counselor_user ON s."counselorId" = counselor_user.id
+        WHERE c."complaintId" = $1
+      `;
+
+      const [complaint] = await sequelize.query(query, {
+        bind: [complaintId],
+        type: QueryTypes.SELECT
+      });
+
+      if (!complaint) {
+        throw new Error('Complaint not found');
+      }
+
+      return complaint;
+    } catch (error) {
+      console.error('Error in AdminComplaintService.getComplaintById:', error);
       throw error;
     }
   }

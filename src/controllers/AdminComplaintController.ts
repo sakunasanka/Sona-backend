@@ -53,4 +53,56 @@ export class AdminComplaintController {
       });
     }
   }
+
+  /**
+   * Update complaint status and resolution reason (Admin only)
+   * PUT /api/admin/complaints/:id/status
+   */
+  static async updateComplaintStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const complaintId = parseInt(req.params.id);
+      if (isNaN(complaintId)) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid complaint ID'
+        });
+        return;
+      }
+
+      const { status, resolutionReason } = req.body;
+
+      // Validate status
+      const validStatuses = ['pending', 'resolved', 'rejected'];
+      if (!status || !validStatuses.includes(status)) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid status. Must be one of: pending, resolved, rejected'
+        });
+        return;
+      }
+
+      // Get admin user ID (you can modify this based on your auth middleware)
+      const adminUserId = (req as any).user?.dbUser?.id;
+
+      const updatedComplaint = await AdminComplaintService.updateComplaintStatus(
+        complaintId,
+        status,
+        resolutionReason,
+        adminUserId
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Complaint status updated successfully',
+        data: updatedComplaint
+      });
+    } catch (error) {
+      console.error('Error in AdminComplaintController.updateComplaintStatus:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update complaint status',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
 }

@@ -10,7 +10,7 @@ export interface ComplaintAttributes {
 	user_id: number;
 	session_id: number;
 	action_by?: number;
-	reasonID?: number;
+	resolutionReason?: string;
 	createdAt?: Date;
 	updatedAt?: Date;
 }
@@ -27,7 +27,7 @@ class Complaint extends Model<ComplaintAttributes, ComplaintCreationAttributes>
 	public user_id!: number;
 	public session_id!: number;
 	public action_by?: number;
-	public reasonID?: number;
+	public resolutionReason?: string;
 	public readonly createdAt!: Date;
 	public readonly updatedAt!: Date;
 }
@@ -80,13 +80,10 @@ Complaint.init(
 				key: 'id',
 			},
 		},
-		reasonID: {
-			type: DataTypes.INTEGER,
+		resolutionReason: {
+			type: DataTypes.TEXT,
 			allowNull: true,
-			references: {
-				model: 'reasons',
-				key: 'reasonId',
-			},
+			field: 'resolution_reason',
 		},
 	},
 	{

@@ -38,4 +38,12 @@ router.get('/complaints', AdminComplaintController.getAllComplaints);
  */
 router.get('/complaints/stats', AdminComplaintController.getComplaintStats);
 
+/**
+ * @route PUT /api/admin/complaints/:id/status
+ * @desc Update complaint status and resolution reason
+ * @access Admin only
+ * @body { status: string, resolutionReason?: string }
+ */
+router.put('/complaints/:id/status', AdminComplaintController.updateComplaintStatus);
+
 export default router;
