@@ -10,7 +10,9 @@ import {
 const router = express.Router();
 
 // Apply authentication middleware to all dashboard routes
-router.use(authenticateToken);/**
+router.use(authenticateToken);
+
+/**
  * @route GET /api/admin/dashboard/overview
  * @desc Get complete dashboard overview
  * @access Admin only
@@ -77,14 +79,14 @@ router.get('/monthly-revenue', validateDashboardQuery, dashboardController.getMo
  * @access Admin only
  * @query period - Time period (7d, 30d, 3m)
  */
-router.get('/session-types', validateDashboardQuery, dashboardController.getSessionTypesData);
+// router.get('/session-types', validateDashboardQuery, dashboardController.getSessionTypesData);
 
 /**
  * @route GET /api/admin/dashboard/user-distribution
  * @desc Get user demographics/age distribution
  * @access Admin only
  */
-router.get('/user-distribution', dashboardController.getUserDistribution);
+// router.get('/user-distribution', dashboardController.getUserDistribution);
 
 /**
  * @route GET /api/admin/dashboard/session-status
@@ -120,6 +122,13 @@ router.get('/top-counselors', validateDashboardQuery, dashboardController.getTop
 router.get('/complete', validateDashboardQuery, dashboardController.getCompleteDashboard);
 
 /**
+ * @route GET /api/admin/dashboard/test-complete
+ * @desc Test endpoint without authentication
+ * @access Public (for testing)
+ */
+router.get('/test-complete', dashboardController.getCompleteDashboard);
+
+/**
  * @route GET /api/admin/dashboard/health
  * @desc Get system health status
  * @access Admin only
@@ -127,3 +136,4 @@ router.get('/complete', validateDashboardQuery, dashboardController.getCompleteD
 router.get('/health', dashboardController.getHealthStatus);
 
 export default router;
+
