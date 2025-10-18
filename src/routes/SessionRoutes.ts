@@ -9,13 +9,13 @@ import {
   bookSession,
   getUserSessions,
   getSessionById,
+  getSessionLink,
   setCounselorAvailability,
   setCounselorUnavailability,
   cancelSession,
   getCounselorSessions,
   getRemainingStudentSessions,
   getCounselorMonthlyAvailability,
-  getSessionLink,
   getBooked
 } from '../controllers/SessionController';
 import { authenticateToken } from '../middlewares/auth';

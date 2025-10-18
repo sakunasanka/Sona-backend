@@ -1,6 +1,7 @@
 import QuestionnaireResult, { PHQ9Response, QuestionnaireResultCreationAttributes } from '../models/QuestionnaireResult';
 import { ValidationError, ItemNotFoundError, ConflictError } from '../utils/errors';
 import { Op } from 'sequelize';
+import { encrypt } from '../middlewares/encrypt';
 
 export interface PHQ9SubmissionData {
   responses: PHQ9Response[];
@@ -68,21 +69,34 @@ export class PHQ9Service {
         completedAt: completedAt,
       };
 
-      const result = await QuestionnaireResult.create(creationData);
+      // 1. Create the record. This instance will have the new ID.
+      const createdResult = await QuestionnaireResult.create(creationData);
       
-      // Log high-risk cases for monitoring
-      if (result.hasItem9Positive || result.totalScore >= 15) {
+      // 2. Log high-risk cases using the *original plaintext variables*
+      //    (This is safer, as `createdResult.hasItem9Positive` might be encrypted)
+      if (calculatedItem9 || calculatedScore >= 15) {
         console.warn(`⚠️  High-risk PHQ-9 submission detected:`, {
           userId,
-          resultId: result.id,
-          totalScore: result.totalScore,
-          severity: result.severity,
-          hasItem9Positive: result.hasItem9Positive,
-          completedAt: result.completedAt
+          resultId: createdResult.id, // Get the ID from the created record
+          totalScore: calculatedScore, // Use original plaintext
+          severity: calculatedSeverity, // Use original plaintext
+          hasItem9Positive: calculatedItem9, // Use original plaintext
+          completedAt: completedAt
         });
       }
 
-      return result;
+      // 3. Re-fetch the result by its ID to get the properly decrypted instance
+      //    This triggers the 'afterFind' hooks which decrypt the data.
+      const finalResult = await QuestionnaireResult.findByPk(createdResult.id);
+
+      if (!finalResult) {
+        // This should not happen, but it's good to have a safeguard
+        throw new ItemNotFoundError('Failed to retrieve PHQ-9 result immediately after creation.');
+      }
+
+      // 4. Return the new, fully decrypted result
+      return finalResult;
+      
     } catch (error) {
       console.error('Error submitting PHQ-9 questionnaire:', error);
       throw error;
@@ -153,8 +167,7 @@ export class PHQ9Service {
           completedAt: { [Op.gte]: cutoffDate },
           deletedAt: { [Op.is]: null }
         } as any,
-        order: [['completedAt', 'DESC']],
-        attributes: ['id', 'completedAt', 'totalScore', 'severity', 'hasItem9Positive', 'createdAt']
+        order: [['completedAt', 'DESC']]
       });
     } catch (error) {
       console.error('Error checking for recent PHQ-9 assessment:', error);
@@ -238,16 +251,15 @@ export class PHQ9Service {
         };
       }
       if (filters.severity) {
-        whereClause.severity = filters.severity;
+        whereClause.severity = encrypt(filters.severity);
       }
       if (filters.hasItem9Positive !== undefined) {
-        whereClause.hasItem9Positive = filters.hasItem9Positive;
+        whereClause.hasItem9Positive = encrypt(filters.hasItem9Positive.toString());
       }
 
       // Get all matching results
       const results = await QuestionnaireResult.findAll({
         where: whereClause,
-        attributes: ['totalScore', 'severity', 'hasItem9Positive', 'completedAt'],
         order: [['completedAt', 'DESC']]
       });
 
@@ -388,14 +400,11 @@ export class PHQ9Service {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
 
-      const results = await QuestionnaireResult.findAll({
+      // Fetch all recent results and filter in application code due to encrypted fields
+      const allResults = await QuestionnaireResult.findAll({
         where: {
           completedAt: { [Op.gte]: startDate },
-          deletedAt: { [Op.is]: null },
-          [Op.or]: [
-            { hasItem9Positive: true },
-            { totalScore: { [Op.gte]: 15 } } // Moderately severe or severe
-          ]
+          deletedAt: { [Op.is]: null }
         } as any,
         include: [{
           model: QuestionnaireResult.associations.User?.target,
@@ -404,6 +413,11 @@ export class PHQ9Service {
         }],
         order: [['completedAt', 'DESC']]
       });
+
+      // Filter for high-risk cases (hasItem9Positive = true OR totalScore >= 15)
+      const results = allResults.filter(result => 
+        result.hasItem9Positive || result.totalScore >= 15
+      );
 
       // Get latest result per user
       const userLatestResults = new Map();

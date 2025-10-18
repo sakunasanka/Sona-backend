@@ -120,4 +120,13 @@ export class ChatServices {
     static async isUserInRoom(roomId: number, userId: number): Promise<boolean> {
         return await ChatRoom.isUserInRoom(roomId, userId);
     }
+
+    static async getChatRoomFromCounselorId(counselorId: number, clientId: number): Promise<ChatRoom | null> {
+        return await ChatRoom.findOne({
+            where: {
+                counselorId,
+                clientId
+            }
+        });
+    }
 }
