@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
 import sessionService from '../services/SessionService';
 import { PsychiatristService } from '../services/PsychiatristService';
+import User from '../models/User';
+import { NotificationHelper } from '../utils/NotificationHelper';
 /**
  * @desc    Get all counselors
  * @route   GET /api/sessions/counselors
@@ -31,24 +33,46 @@ export const getCounselors = asyncHandler(async (req: Request, res: Response) =>
 export const getCounselorById = asyncHandler(async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = Number(id);
     
-    const counselor = await sessionService.getCounselorById(Number(id));
-    
-    if (!counselor) {
+    // Get user details to check role
+    const user = await User.findByPk(userId);
+    if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'Counselor not found'
+        message: 'User not found'
+      });
+    }
+    
+    let result;
+    
+    if (user.role === 'Counselor') {
+      // Get counselor details
+      result = await sessionService.getCounselorById(userId);
+      if (!result) {
+        return res.status(404).json({
+          success: false,
+          message: 'Counselor not found'
+        });
+      }
+    } else if (user.role === 'Psychiatrist') {
+      // Get psychiatrist details
+      result = await PsychiatristService.getPsychiatristById(userId);
+    } else {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
       });
     }
     
     res.status(200).json({
       success: true,
-      data: counselor
+      data: result
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error instanceof Error ? error.message : 'Error fetching counselor'
+      message: error instanceof Error ? error.message : 'Error fetching user details'
     });
   }
 });
@@ -111,8 +135,31 @@ export const getPsychiatristById = asyncHandler(async (req: Request, res: Respon
 export const getAvailableTimeSlots = asyncHandler(async (req: Request, res: Response) => {
   try {
     const { counselorId, date } = req.params;
+    const userId = Number(counselorId);
     
-    const timeSlots = await sessionService.getAvailableTimeSlots(Number(counselorId), date);
+    // Get user details to check role
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    let timeSlots;
+    
+    if (user.role === 'Counselor') {
+      // Get counselor time slots
+      timeSlots = await sessionService.getAvailableTimeSlots(userId, date);
+    } else if (user.role === 'Psychiatrist') {
+      // Get psychiatrist time slots (using unified service)
+      timeSlots = await sessionService.getAvailableTimeSlots(userId, date);
+    } else {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
     
     res.status(200).json({
       success: true,
@@ -135,11 +182,11 @@ export const getPsychiatristAvailableTimeSlots = asyncHandler(async (req: Reques
   try {
     const { psychiatristId, date } = req.params;
     
-    const result = await PsychiatristService.getDateAvailability(Number(psychiatristId), date);
+    const timeSlots = await sessionService.getAvailableTimeSlots(Number(psychiatristId), date);
     
     res.status(200).json({
       success: true,
-      data: result.availability
+      data: timeSlots
     });
   } catch (error) {
     res.status(error instanceof Error && error.message.includes('not found') ? 404 : 500).json({
@@ -157,11 +204,33 @@ export const getPsychiatristAvailableTimeSlots = asyncHandler(async (req: Reques
 export const getCounselorMonthlyAvailability = asyncHandler(async (req: Request, res: Response) => {
   try {
     const { id, year, month } = req.params;
-    const counselorId = Number(id);
+    const userId = Number(id);
     const y = Number(year);
     const m = Number(month);
-
-    const result = await sessionService.getCounselorMonthlyAvailability(counselorId, y, m);
+    
+    // Get user details to check role
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    let result;
+    
+    if (user.role === 'Counselor') {
+      // Get counselor monthly availability
+      result = await sessionService.getCounselorMonthlyAvailability(userId, y, m);
+    } else if (user.role === 'Psychiatrist') {
+      // Get psychiatrist monthly availability (using unified service)
+      result = await sessionService.getCounselorMonthlyAvailability(userId, y, m);
+    } else {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -192,7 +261,7 @@ export const bookSession = asyncHandler(async (req: Request, res: Response) => {
       duration,
       price
     } = req.body;
-    
+
     const session = await sessionService.bookSession({
       userId,
       counselorId,
@@ -201,7 +270,33 @@ export const bookSession = asyncHandler(async (req: Request, res: Response) => {
       duration,
       price
     });
-    
+
+        // Send notifications after successful booking
+    try {
+      // Get counselor/psychiatrist details
+      const professional = await User.findByPk(counselorId);
+      if (professional) {
+        const professionalName = professional.name;
+        const clientName = req.user!.dbUser.name;
+
+        // Format date for notification
+        const formattedDate = new Date(date).toLocaleDateString();
+
+        // Notify client
+        await NotificationHelper.sessionBooked(userId, professionalName, formattedDate, timeSlot);
+
+        // Notify counselor/psychiatrist
+        if (professional.role === 'Counselor') {
+          await NotificationHelper.sessionBookedCounselor(counselorId, clientName, formattedDate, timeSlot);
+        } else if (professional.role === 'Psychiatrist') {
+          await NotificationHelper.sessionBookedPsychiatrist(counselorId, clientName, formattedDate, timeSlot);
+        }
+      }
+    } catch (notificationError) {
+      console.error('Failed to send booking notifications:', notificationError);
+      // Don't fail the booking if notifications fail
+    }
+
     res.status(201).json({
       success: true,
       message: 'Session booked successfully',
@@ -269,6 +364,7 @@ export const getSessionById = asyncHandler(async (req: Request, res: Response) =
   }
 });
 
+
 /**
  * @desc    Set counselor availability for a date range
  * @route   POST /api/sessions/availability
@@ -301,11 +397,16 @@ export const setCounselorAvailability = asyncHandler(async (req: Request, res: R
       });
     }
     
-    // Parse start and end times (format: "HH:00")
+    // Parse start and end times (format: "HH:00" or "23:59")
     const [startHour] = startTime.split(':').map(Number);
-    const [endHour] = endTime.split(':').map(Number);
+    let [endHour] = endTime.split(':').map(Number);
     
-    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour >= endHour) {
+    // If endTime is "23:59", treat as 24:00 to include up to 23:00
+    if (endTime === "23:59") {
+      endHour = 24;
+    }
+    
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 24 || startHour >= endHour) {
       return res.status(400).json({
         success: false,
         message: 'Invalid time range'
@@ -376,11 +477,16 @@ export const setCounselorUnavailability = asyncHandler(async (req: Request, res:
       });
     }
     
-    // Parse start and end times (format: "HH:00")
+    // Parse start and end times (format: "HH:00" or "23:59")
     const [startHour] = startTime.split(':').map(Number);
-    const [endHour] = endTime.split(':').map(Number);
+    let [endHour] = endTime.split(':').map(Number);
     
-    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 || startHour >= endHour) {
+    // If endTime is "23:59", treat as 24:00 to include up to 23:00
+    if (endTime === "23:59") {
+      endHour = 24;
+    }
+    
+    if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 24 || startHour >= endHour) {
       return res.status(400).json({
         success: false,
         message: 'Invalid time range'
@@ -430,6 +536,20 @@ export const cancelSession = asyncHandler(async (req: Request, res: Response) =>
     const { id } = req.params;
     
     const session = await sessionService.cancelSession(Number(id), userId);
+
+    // Send cancellation notifications
+    try {
+      const cancelledBy = req.user!.dbUser.name;
+      const recipientId = session.counselorId === userId ? session.userId : session.counselorId;
+
+      // Format date for notification
+      const formattedDate = new Date(session.date).toLocaleDateString();
+
+      await NotificationHelper.sessionCancelled(recipientId, formattedDate, session.timeSlot, cancelledBy);
+    } catch (notificationError) {
+      console.error('Failed to send cancellation notifications:', notificationError);
+      // Don't fail the cancellation if notifications fail
+    }
     
     res.status(200).json({
       success: true,
@@ -453,25 +573,36 @@ export const cancelSession = asyncHandler(async (req: Request, res: Response) =>
 export const getCounselorSessions = asyncHandler(async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = Number(id);
     
-    // Ensure the requesting user is the counselor
-    // if (req.user!.dbUser.id !== Number(id)) {
-    //   return res.status(403).json({
-    //     success: false,
-    //     message: 'Unauthorized: You can only view your own sessions'
-    //   });
-    // }
+    // Get user details to check role
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
     
-    const sessions = await sessionService.getCounselorSessions(Number(id));
-    
-    res.status(200).json({
-      success: true,
-      data: sessions
-    });
+    // Both counselors and psychiatrists use the same sessions table
+    if (user.role === 'Counselor' || user.role === 'Psychiatrist') {
+      // Get professional sessions (works for both counselors and psychiatrists)
+      const sessions = await sessionService.getCounselorSessions(userId);
+      
+      res.status(200).json({
+        success: true,
+        data: sessions
+      });
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Only counselors and psychiatrists can view their sessions'
+      });
+    }
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error instanceof Error ? error.message : 'Error fetching counselor sessions'
+      message: error instanceof Error ? error.message : 'Error fetching sessions'
     });
   }
 });
@@ -503,3 +634,62 @@ export const getRemainingStudentSessions = asyncHandler(async (req: Request, res
     });
   }
 });
+
+export const getSessionLink = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const userId = req.user!.dbUser.id;
+
+    console.log('session id: ', id);
+
+    if(!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Session ID is required'
+      })
+    }
+
+    try {
+      const session = await sessionService.getSessionById(Number(id), userId);
+
+      if(!session) {
+        return res.status(404).json({
+          success: false,
+          message: 'Session not found'
+        })
+      }
+
+      const sessionLink = await sessionService.generateSessionLink(session.id, userId);
+      
+      res.status(200).json({
+        success: true,
+        data: {
+          sessionLink
+        }
+      });
+      
+    }catch(e ) {
+      return res.status(500).json({
+        success: false,
+        message: e instanceof Error ? e.message : 'Error fetching session'
+      })
+    }
+});
+
+//get users booked sesisons from today onwards
+export const getBooked = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user!.dbUser.id;
+
+  try {
+    const sessions = await sessionService.getBookedSessions(userId);
+
+    res.status(200).json({
+      success: true,
+      data: sessions
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Error fetching booked sessions'
+    });
+  }
+})

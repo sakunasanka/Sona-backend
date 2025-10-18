@@ -260,33 +260,49 @@ export const getDailySessionData = async (days: number = 7) => {
 export const getMonthlyGrowthData = async (months: number = 6) => {
   const query = `
     WITH monthly_stats AS (
-      SELECT 
+      SELECT
         TO_CHAR(DATE_TRUNC('month', u."createdAt"), 'Mon YYYY') as month,
         DATE_TRUNC('month', u."createdAt") as month_date,
         COUNT(DISTINCT u.id) as users,
-        COUNT(DISTINCT s.id) as sessions,
-        0 as revenue
+        COUNT(DISTINCT s.id) as sessions
       FROM users u
       LEFT JOIN sessions s ON s."userId" = u.id OR s."counselorId" = u.id
-      -- LEFT JOIN payments p ON p."sessionId" = s.id AND p.status = 'completed'
       WHERE u."createdAt" >= NOW() - INTERVAL '${months} months'
-      GROUP BY DATE_TRUNC('month', u."createdAt")
+      GROUP BY DATE_TRUNC('month', u."createdAt"), TO_CHAR(DATE_TRUNC('month', u."createdAt"), 'Mon YYYY')
       ORDER BY DATE_TRUNC('month', u."createdAt")
     ),
+    revenue_stats AS (
+      SELECT
+        DATE_TRUNC('month', pt.created_at) as month_date,
+        SUM(pt.amount) as revenue
+      FROM payment_transactions pt
+      WHERE pt.payment_for = 'platform_fee' AND pt.status = 'success'
+      GROUP BY DATE_TRUNC('month', pt.created_at)
+    ),
+    combined_stats AS (
+      SELECT
+        ms.month,
+        ms.month_date,
+        ms.users,
+        ms.sessions,
+        COALESCE(rs.revenue, 0) as revenue
+      FROM monthly_stats ms
+      LEFT JOIN revenue_stats rs ON ms.month_date = rs.month_date
+    ),
     growth_calc AS (
-      SELECT 
+      SELECT
         *,
         LAG(users) OVER (ORDER BY month_date) as prev_users
-      FROM monthly_stats
+      FROM combined_stats
     )
-    SELECT 
+    SELECT
       month,
       users,
       sessions,
       revenue,
-      CASE 
+      CASE
         WHEN prev_users > 0 THEN ROUND(((users - prev_users) * 100.0 / prev_users), 2)
-        ELSE 0 
+        ELSE 0
       END as growth_rate
     FROM growth_calc
     ORDER BY month_date
@@ -301,6 +317,30 @@ export const getMonthlyGrowthData = async (months: number = 6) => {
     sessions: parseInt(row.sessions),
     revenue: parseFloat(row.revenue),
     growth_rate: parseFloat(row.growth_rate) || 0
+  }));
+};
+
+// Get Monthly Revenue Data
+export const getMonthlyRevenueData = async (months: number = 6) => {
+  const query = `
+    SELECT 
+      TO_CHAR(DATE_TRUNC('month', pt.created_at), 'Mon YYYY') as month,
+      DATE_TRUNC('month', pt.created_at) as month_date,
+      COALESCE(SUM(pt.amount), 0) as revenue
+    FROM payment_transactions pt
+    WHERE pt.payment_for = 'platform_fee' 
+      AND pt.status = 'success'
+      AND pt.created_at >= NOW() - INTERVAL '${months} months'
+    GROUP BY DATE_TRUNC('month', pt.created_at), TO_CHAR(DATE_TRUNC('month', pt.created_at), 'Mon YYYY')
+    ORDER BY DATE_TRUNC('month', pt.created_at)
+  `;
+
+  const result = await sequelize.query(query, {
+    type: QueryTypes.SELECT
+  });
+  return result.map((row: any) => ({
+    month: row.month,
+    revenue: parseFloat(row.revenue)
   }));
 };
 

@@ -94,18 +94,18 @@ class Psychiatrist extends User {
           userData.contact_no,
           userData.license_no,
           userData.idCard,
-          userData.isVolunteer,
-          userData.isAvailable,
-          userData.description,
-          userData.rating,
-          userData.sessionFee,
-          userData.status || 'pending', // Default status is pending (matching counselor)
-          userData.coverImage,
-          userData.instagram,
-          userData.linkedin,
-          userData.x,
-          userData.website,
-          userData.languages,
+          userData.isVolunteer !== undefined ? userData.isVolunteer : null,
+          userData.isAvailable !== undefined ? userData.isAvailable : null,
+          userData.description || null,
+          userData.rating !== undefined ? userData.rating : null,
+          userData.sessionFee !== undefined ? userData.sessionFee : null,
+          userData.status || 'pending',
+          userData.coverImage || null,
+          userData.instagram || null,
+          userData.linkedin || null,
+          userData.x || null,
+          userData.website || null,
+          userData.languages || null,
         ],
         transaction
       });
@@ -331,23 +331,74 @@ class Psychiatrist extends User {
     });
   }
 
-  // Update psychiatrist status
-  static async updatePsychiatristStatus(id: number, status: string): Promise<Psychiatrist | null> {
-    try {
-      await sequelize.query(`
-        UPDATE psychiatrists
-        SET status = $1, "updatedAt" = NOW()
-        WHERE "userId" = $2
-      `, {
-        bind: [status, id],
-        type: QueryTypes.UPDATE
-      });
+ 
+// Update psychiatrist status
+static async updatePsychiatristStatus(
+  id: number,
+  status: 'pending' | 'approved' | 'rejected' | 'unset',
+  rejectionReason?: string
+): Promise<Psychiatrist | null> {
+  const transaction = await sequelize.transaction();
 
-      return this.findPsychiatristById(id);
-    } catch (error) {
-      throw new DatabaseError(`Failed to update psychiatrist status: ` + (error instanceof Error ? error.message : 'Unknown error'));
+  try {
+    // Check if psychiatrist exists
+    const existing = await sequelize.query(
+      `SELECT * FROM psychiatrists WHERE "userId" = :id`,
+      {
+        replacements: { id },
+        type: QueryTypes.SELECT,
+        transaction,
+      }
+    );
+
+    if (existing.length === 0) {
+      await transaction.rollback();
+      return null;
     }
+
+    // Update psychiatrist status
+    await sequelize.query(
+      `UPDATE psychiatrists
+       SET status = :status, "updatedAt" = NOW()
+       WHERE "userId" = :id`,
+      {
+        replacements: { id, status },
+        type: QueryTypes.UPDATE,
+        transaction,
+      }
+    );
+
+    // If rejected, insert rejection reason
+    if (status === 'rejected' && rejectionReason) {
+      await sequelize.query(
+        `INSERT INTO rejection_reasons ("userId", reason, "createdAt")
+         VALUES (:userId, :reason, NOW())`,
+        {
+          replacements: {
+            userId: id,
+            reason: rejectionReason,
+          },
+          type: QueryTypes.INSERT,
+          transaction,
+        }
+      );
+    }
+
+    await transaction.commit();
+
+    // Return updated psychiatrist
+    return await this.findPsychiatristById(id);
+  } catch (error) {
+    await transaction.rollback();
+    console.error('❌ Error updating psychiatrist status:', error);
+    throw new Error(
+      `Failed to update psychiatrist status: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`
+    );
   }
+}
+
 
   // Update psychiatrist availability
   static async updatePsychiatristAvailability(id: number, isAvailable: boolean): Promise<Psychiatrist | null> {

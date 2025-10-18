@@ -13,7 +13,7 @@ class PsychiatristSession extends Model {
   public duration!: number;
   public price!: number;
   public concerns?: string;
-  public status!: 'scheduled' | 'completed' | 'cancelled' | 'confirmed';
+  public status!: 'scheduled' | 'completed' | 'cancelled' | 'confirmed' | 'ongoing';
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -32,9 +32,9 @@ class PsychiatristSession extends Model {
 
     try {
       const result = await sequelize.query(`
-        INSERT INTO psychiatrist_sessions (
+        INSERT INTO sessions (
           "userId",
-          "psychiatristId", 
+          "counselorId", 
           "timeSlotId",
           date,
           "timeSlot",
@@ -178,7 +178,7 @@ class PsychiatristSession extends Model {
         
         // Free up the time slot
         await sequelize.query(`
-          UPDATE psychiatrist_time_slots
+          UPDATE time_slots
           SET "isBooked" = false, "updatedAt" = NOW()
           WHERE id = $1
         `, {
@@ -198,7 +198,7 @@ class PsychiatristSession extends Model {
   }
 
   // Update session status
-  static async updateSessionStatus(id: number, status: 'scheduled' | 'completed' | 'cancelled' | 'confirmed'): Promise<PsychiatristSession | null> {
+  static async updateSessionStatus(id: number, status: 'scheduled' | 'completed' | 'cancelled' | 'confirmed' | 'ongoing'): Promise<PsychiatristSession | null> {
     try {
       await sequelize.query(`
         UPDATE psychiatrist_sessions
@@ -306,7 +306,7 @@ PsychiatristSession.init(
       allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM('scheduled', 'completed', 'cancelled', 'confirmed'),
+      type: DataTypes.ENUM('scheduled', 'completed', 'cancelled', 'confirmed', 'ongoing'),
       defaultValue: 'confirmed',
     }
   },

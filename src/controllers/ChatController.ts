@@ -165,3 +165,22 @@ export const testWebSocket = async (req: Request, res: Response) => {
 //       readStatus
 //     }, "Room read status retrieved successfully");
 // }
+
+export const getChatRoomFromCounselorId = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { counselorId } = req.params;
+    const userId = req.user!.dbUser.id;
+
+    if(!counselorId) {
+        throw new ValidationError('Counselor ID is required');
+    }
+
+    const room = await ChatServices.getChatRoomFromCounselorId(parseInt(counselorId), userId);
+
+    if (!room) {
+        throw new ItemNotFoundError("Chat room not found");
+    }
+
+    ApiResponseUtil.success(res, {
+        room
+    }, "Chat room retrieved successfully");
+}

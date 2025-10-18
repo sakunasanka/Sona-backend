@@ -230,6 +230,24 @@ export const getMonthlyGrowthData = async (req: Request, res: Response) => {
   }
 };
 
+// Monthly Revenue Data
+export const getMonthlyRevenueData = async (req: Request, res: Response) => {
+  try {
+    const { months = 6 } = req.query;
+    const revenueData = await dashboardService.getMonthlyRevenueData(parseInt(months as string));
+
+    res.status(200).json({
+      success: true,
+      data: revenueData
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch monthly revenue data'
+    });
+  }
+};
+
 // Session Types/Specialty Data
 export const getSessionTypesData = async (req: Request, res: Response) => {
   try {
@@ -335,6 +353,7 @@ export const getCompleteDashboard = async (req: Request, res: Response) => {
       monthlyUsers,
       dailySessions,
       monthlyGrowth,
+      monthlyRevenue,
       sessionTypes,
       userDistribution,
       sessionStatus,
@@ -358,6 +377,8 @@ export const getCompleteDashboard = async (req: Request, res: Response) => {
       dashboardService.getDailySessionData(7),
       // Monthly growth
       dashboardService.getMonthlyGrowthData(6),
+      // Monthly revenue
+      dashboardService.getMonthlyRevenueData(6),
       // Session types
       dashboardService.getSessionsBySpecialty(period as string),
       // User distribution
@@ -472,6 +493,7 @@ export const getCompleteDashboard = async (req: Request, res: Response) => {
         monthlyUsers: monthlyUsers,
         dailySessions: dailySessions,
         monthlyGrowth: monthlyGrowth,
+        monthlyRevenue: monthlyRevenue,
         sessionTypes: sessionTypes,
         userDistribution: userDistribution,
         sessionStatus: sessionStatus
