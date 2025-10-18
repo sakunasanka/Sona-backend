@@ -775,7 +775,7 @@ class SessionService {
   //meeting status update
   async updateMeetingStatus(roomName: string, status: string): Promise<string> {
     try {
-      const meeting = await Session.findOne({ where: { link: roomName } });
+      const meeting = await Session.findOne({ where: { link: { [Op.iLike]: roomName } } });
 
       if (!meeting) {
         throw new Error('Meeting not found');
