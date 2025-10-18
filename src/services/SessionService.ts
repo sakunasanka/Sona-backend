@@ -771,6 +771,29 @@ class SessionService {
       return 'Error fetching booked sessions';
     }
   }
+
+  //meeting status update
+  async updateMeetingStatus(roomName: string, status: string): Promise<string> {
+    try {
+      const meeting = await Session.findOne({ where: { link: { [Op.iLike]: roomName } } });
+
+      if (!meeting) {
+        throw new Error('Meeting not found');
+      }
+
+      if(status === 'muc-room-created') {
+        meeting.status = 'ongoing'
+      } else if(status === 'muc-room-destroyed') {
+        meeting.status = 'completed'
+      }
+      await meeting.save();
+
+      return 'Meeting status updated successfully';
+    } catch (error) {
+      console.error('Error updating meeting status:', error);
+      throw new Error('Error updating meeting status');
+    }
+  }
 }
 
 export default new SessionService();
