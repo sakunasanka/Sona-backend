@@ -36,6 +36,7 @@ router.post('/:id/moods', authenticateToken, createUserDailyMood);
 
 // Reviews
 router.post('/reviews', authenticateToken, asyncHandler(ReviewController.createReview));
-router.get('/reviews/session/:sessionId', authenticateToken, asyncHandler(ReviewController.checkReviewStatus));
+router.get('/reviews/session/most-recent', authenticateToken, asyncHandler(ReviewController.getMostRecentUnreviewedSession));
+router.get('/reviews/session/:sessionId(\\d+)', authenticateToken, asyncHandler(ReviewController.checkReviewStatus));
 
 export default router;

@@ -3,6 +3,7 @@ import Review from '../models/Review';
 import Session from '../models/Session';
 import { ApiResponseUtil } from '../utils/apiResponse';
 import { ValidationError, AuthenticationError } from '../utils/errors';
+import { Sequelize } from 'sequelize';
 
 export class ReviewController {
   /**
@@ -109,6 +110,73 @@ export class ReviewController {
 
       ApiResponseUtil.success(res, {
         sessionId: sessionIdNum,
+        sessionStatus: session.status,
+        hasFeedback: !!existingReview,
+        feedback: existingReview || null
+      }, 'Review status checked successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get the most recent completed session that hasn't been reviewed yet
+   * GET /api/reviews/session/most-recent
+   */
+  static async getMostRecentUnreviewedSession(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      // Ensure the authenticated user has access
+      if (!req.user || !req.user.dbUser) {
+        throw new AuthenticationError('Authentication required');
+      }
+
+      const userId = req.user.dbUser.id;
+
+      // Find the most recent completed session that hasn't been reviewed
+      // Use a simpler approach: get sessions ordered by updatedAt, then check each for reviews
+      const sessions = await Session.findAll({
+        where: {
+          userId,
+          status: 'completed'
+        },
+        order: [['updatedAt', 'DESC']], // Most recent first
+        limit: 10 // Check up to 10 recent sessions to find one without review
+      });
+
+      let sessionToReview = null;
+
+      // Check each session to see if it has a review
+      for (const session of sessions) {
+        const existingReview = await Review.findOne({
+          where: { sessionId: session.id }
+        });
+
+        if (!existingReview) {
+          sessionToReview = session;
+          break; // Found the first unreviewed session
+        }
+      }
+
+      if (!sessionToReview) {
+        // No unreviewed completed sessions found
+        ApiResponseUtil.success(res, {
+          sessionId: null,
+          sessionStatus: null,
+          hasFeedback: false,
+          feedback: null
+        }, 'No unreviewed completed sessions found');
+        return;
+      }
+
+      // Double-check that no review exists for this session
+      const existingReview = await Review.findOne({
+        where: { sessionId: sessionToReview.id },
+        attributes: ['review_id', 'rating', 'comment', 'createdAt']
+      });
+
+      ApiResponseUtil.success(res, {
+        sessionId: sessionToReview.id,
+        sessionStatus: sessionToReview.status,
         hasFeedback: !!existingReview,
         feedback: existingReview || null
       }, 'Review status checked successfully');
