@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Psychiatrist from '../models/Psychiatrist';
 import { validationResult } from 'express-validator';
+import { NotificationHelper } from '../utils/NotificationHelper';
 
 class AdminPsychiatristController {
   // Get all psychiatrists
@@ -151,6 +152,18 @@ async updatePsychiatristStatus(req: Request, res: Response) {
 
     if (!updatedPsychiatrist) {
       return res.status(404).json({ message: 'Psychiatrist not found' });
+    }
+
+    // Send notification to psychiatrist
+    try {
+      if (status === 'approved') {
+        await NotificationHelper.profileApproved(parseInt(id), 'Psychiatrist');
+      } else if (status === 'rejected') {
+        await NotificationHelper.profileRejected(parseInt(id), 'Psychiatrist', rejectionReason);
+      }
+    } catch (notificationError) {
+      console.error('Failed to send psychiatrist status notification:', notificationError);
+      // Don't fail the status update if notification fails
     }
 
     // ✅ Return updated data (after reload)

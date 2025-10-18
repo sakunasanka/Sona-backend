@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import AdminComplaintService, { AdminComplaintFilters } from '../services/AdminComplaintService';
+import { NotificationHelper } from '../utils/NotificationHelper';
+import Complaint from '../models/Complaint';
 
 export class AdminComplaintController {
   /**
@@ -84,12 +86,35 @@ export class AdminComplaintController {
       // Get admin user ID (you can modify this based on your auth middleware)
       const adminUserId = (req as any).user?.dbUser?.id;
 
+      // Get complaint to get user_id before updating
+      const complaint = await Complaint.findOne({ where: { complaintId } });
+      if (!complaint) {
+        res.status(404).json({
+          success: false,
+          message: 'Complaint not found'
+        });
+        return;
+      }
+
       const updatedComplaint = await AdminComplaintService.updateComplaintStatus(
         complaintId,
         status,
         resolutionReason,
         adminUserId
       );
+
+      // Send notification to client
+      try {
+        await NotificationHelper.complaintResolvedWithReason(
+          complaint.user_id, 
+          complaintId.toString(), 
+          status, 
+          resolutionReason
+        );
+      } catch (notificationError) {
+        console.error('Failed to send complaint resolution notification:', notificationError);
+        // Don't fail the status update if notification fails
+      }
 
       res.status(200).json({
         success: true,
