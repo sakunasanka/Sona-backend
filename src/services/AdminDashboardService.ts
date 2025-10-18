@@ -54,8 +54,17 @@ export const getDashboardOverview = async () => {
 };
 
 // Get Counselor Count
-export const getCounselorCount = async (): Promise<number> => {
-  const result = await sequelize.query('SELECT COUNT(*) as count FROM users WHERE role = $1', {
+export const getCounselorCount = async (year?: number, month?: number): Promise<number> => {
+  let whereClause = "role = $1";
+
+  if (year && month) {
+    whereClause += ` AND EXTRACT(YEAR FROM "createdAt") = ${year} AND EXTRACT(MONTH FROM "createdAt") = ${month}`;
+  } else if (year) {
+    whereClause += ` AND EXTRACT(YEAR FROM "createdAt") = ${year}`;
+  }
+  // If only month is provided without year, don't filter (show all data)
+
+  const result = await sequelize.query(`SELECT COUNT(*) as count FROM users WHERE ${whereClause}`, {
     bind: ['Counselor'],
     type: QueryTypes.SELECT
   });
@@ -63,8 +72,17 @@ export const getCounselorCount = async (): Promise<number> => {
 };
 
 // Get Psychiatrist Count
-export const getPsychiatristCount = async (): Promise<number> => {
-  const result = await sequelize.query('SELECT COUNT(*) as count FROM users WHERE role = $1', {
+export const getPsychiatristCount = async (year?: number, month?: number): Promise<number> => {
+  let whereClause = "role = $1";
+
+  if (year && month) {
+    whereClause += ` AND EXTRACT(YEAR FROM "createdAt") = ${year} AND EXTRACT(MONTH FROM "createdAt") = ${month}`;
+  } else if (year) {
+    whereClause += ` AND EXTRACT(YEAR FROM "createdAt") = ${year}`;
+  }
+  // If only month is provided without year, don't filter (show all data)
+
+  const result = await sequelize.query(`SELECT COUNT(*) as count FROM users WHERE ${whereClause}`, {
     bind: ['Psychiatrist'],
     type: QueryTypes.SELECT
   });
@@ -72,46 +90,71 @@ export const getPsychiatristCount = async (): Promise<number> => {
 };
 
 // Get Total Session Count
-export const getTotalSessionCount = async (): Promise<number> => {
-  const result = await sequelize.query('SELECT COUNT(*) as count FROM sessions', {
+export const getTotalSessionCount = async (year?: number, month?: number): Promise<number> => {
+  let whereClause = '';
+
+  if (year && month) {
+    whereClause = `WHERE EXTRACT(YEAR FROM "createdAt") = ${year} AND EXTRACT(MONTH FROM "createdAt") = ${month}`;
+  } else if (year) {
+    whereClause = `WHERE EXTRACT(YEAR FROM "createdAt") = ${year}`;
+  }
+  // If only month is provided without year, don't filter (show all data)
+
+  const result = await sequelize.query(`SELECT COUNT(*) as count FROM sessions ${whereClause}`, {
     type: QueryTypes.SELECT
   });
   return parseInt((result[0] as { count: string }).count);
 };
 
 // Get Total Revenue
-export const getTotalRevenue = async (): Promise<number> => {
-  // const result = await sequelize.query('SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE status = $1', {
-  //   bind: ['completed'],
-  //   type: QueryTypes.SELECT
-  // });
-  // return parseFloat((result[0] as { total: string }).total);
-  return 0;
+export const getTotalRevenue = async (year?: number, month?: number): Promise<number> => {
+  let whereClause = "pt.payment_for = 'platform_fee' AND pt.status = 'success'";
+
+  if (year && month) {
+    whereClause += ` AND EXTRACT(YEAR FROM pt.created_at) = ${year} AND EXTRACT(MONTH FROM pt.created_at) = ${month}`;
+  } else if (year) {
+    whereClause += ` AND EXTRACT(YEAR FROM pt.created_at) = ${year}`;
+  }
+  // If only month is provided without year, don't filter (show all data)
+
+  const result = await sequelize.query(`SELECT COALESCE(SUM(pt.amount), 0) as total FROM payment_transactions pt WHERE ${whereClause}`, {
+    type: QueryTypes.SELECT
+  });
+  return parseFloat((result[0] as { total: string }).total);
 };
 
 // Get Login Statistics
-export const getLoginStatistics = async (period: string = '30d') => {
+export const getLoginStatistics = async (period: string = '30d', year?: number, month?: number) => {
   let dateFilter = '';
-  switch (period) {
-    case '7d':
-      dateFilter = "AND login_at >= NOW() - INTERVAL '7 days'";
-      break;
-    case '30d':
-      dateFilter = "AND login_at >= NOW() - INTERVAL '30 days'";
-      break;
-    case '3m':
-      dateFilter = "AND login_at >= NOW() - INTERVAL '3 months'";
-      break;
-    case '6m':
-      dateFilter = "AND login_at >= NOW() - INTERVAL '6 months'";
-      break;
-    case '1y':
-      dateFilter = "AND login_at >= NOW() - INTERVAL '1 year'";
-      break;
+
+  // If year/month are provided, use specific date filtering
+  if (year && month) {
+    dateFilter = `AND EXTRACT(YEAR FROM l.login_at) = ${year} AND EXTRACT(MONTH FROM l.login_at) = ${month}`;
+  } else if (year) {
+    dateFilter = `AND EXTRACT(YEAR FROM l.login_at) = ${year}`;
+  } else {
+    // Use relative time filtering if no year/month specified
+    switch (period) {
+      case '7d':
+        dateFilter = "AND l.login_at >= NOW() - INTERVAL '7 days'";
+        break;
+      case '30d':
+        dateFilter = "AND l.login_at >= NOW() - INTERVAL '30 days'";
+        break;
+      case '3m':
+        dateFilter = "AND l.login_at >= NOW() - INTERVAL '3 months'";
+        break;
+      case '6m':
+        dateFilter = "AND l.login_at >= NOW() - INTERVAL '6 months'";
+        break;
+      case '1y':
+        dateFilter = "AND l.login_at >= NOW() - INTERVAL '1 year'";
+        break;
+    }
   }
 
   const query = `
-    SELECT 
+    SELECT
       u.role,
       COUNT(*) as login_count
     FROM user_logins l
@@ -123,7 +166,7 @@ export const getLoginStatistics = async (period: string = '30d') => {
   const result = await sequelize.query(query, {
     type: QueryTypes.SELECT
   });
-  
+
   const loginStats = {
     counselorLogins: 0,
     psychiatristLogins: 0,
@@ -135,7 +178,7 @@ export const getLoginStatistics = async (period: string = '30d') => {
   result.forEach((row: any) => {
     const count = parseInt(row.login_count);
     loginStats.totalLogins += count;
-    
+
     switch (row.role) {
       case 'Counselor':
         loginStats.counselorLogins = count;
@@ -157,37 +200,57 @@ export const getLoginStatistics = async (period: string = '30d') => {
 };
 
 // Get Session Breakdown
-export const getSessionBreakdown = async () => {
+export const getSessionBreakdown = async (year?: number, month?: number) => {
+  let sessionWhereClause = '';
+
+  if (year && month) {
+    sessionWhereClause = `WHERE EXTRACT(YEAR FROM "createdAt") = ${year} AND EXTRACT(MONTH FROM "createdAt") = ${month}`;
+  } else if (year) {
+    sessionWhereClause = `WHERE EXTRACT(YEAR FROM "createdAt") = ${year}`;
+  }
+  // If only month is provided without year, don't filter (show all data)
+
+  let joinedWhereClause = '';
+
+  if (year && month) {
+    joinedWhereClause = `WHERE EXTRACT(YEAR FROM s."createdAt") = ${year} AND EXTRACT(MONTH FROM s."createdAt") = ${month}`;
+  } else if (year) {
+    joinedWhereClause = `WHERE EXTRACT(YEAR FROM s."createdAt") = ${year}`;
+  }
+  // If only month is provided without year, don't filter (show all data)
+
+  const baseWhereClause = joinedWhereClause ? joinedWhereClause.replace('WHERE', 'AND') : '';
+
   const queries = await Promise.all([
     sequelize.query(`
-      SELECT COUNT(*) as count 
-      FROM sessions s 
-      JOIN users u ON s."counselorId" = u.id 
-      WHERE u.role = 'Counselor'
+      SELECT COUNT(*) as count
+      FROM sessions s
+      JOIN users u ON s."counselorId" = u.id
+      WHERE u.role = 'Counselor' ${baseWhereClause}
     `, { type: QueryTypes.SELECT }),
     sequelize.query(`
-      SELECT COUNT(*) as count 
-      FROM sessions s 
-      JOIN users u ON s."counselorId" = u.id 
-      WHERE u.role = 'Psychiatrist'
+      SELECT COUNT(*) as count
+      FROM sessions s
+      JOIN users u ON s."counselorId" = u.id
+      WHERE u.role = 'Psychiatrist' ${baseWhereClause}
     `, { type: QueryTypes.SELECT }),
-    sequelize.query('SELECT COUNT(*) as count FROM sessions WHERE status = $1', {
+    sequelize.query(`SELECT COUNT(*) as count FROM sessions ${sessionWhereClause} ${sessionWhereClause ? 'AND' : 'WHERE'} status = $1`, {
       bind: ['completed'],
       type: QueryTypes.SELECT
     }),
-    sequelize.query('SELECT COUNT(*) as count FROM sessions WHERE status = $1', {
+    sequelize.query(`SELECT COUNT(*) as count FROM sessions ${sessionWhereClause} ${sessionWhereClause ? 'AND' : 'WHERE'} status = $1`, {
       bind: ['ongoing'],
       type: QueryTypes.SELECT
     }),
-    sequelize.query('SELECT COUNT(*) as count FROM sessions WHERE status = $1', {
+    sequelize.query(`SELECT COUNT(*) as count FROM sessions ${sessionWhereClause} ${sessionWhereClause ? 'AND' : 'WHERE'} status = $1`, {
       bind: ['scheduled'],
       type: QueryTypes.SELECT
     }),
-    sequelize.query('SELECT COUNT(*) as count FROM sessions WHERE status = $1', {
+    sequelize.query(`SELECT COUNT(*) as count FROM sessions ${sessionWhereClause} ${sessionWhereClause ? 'AND' : 'WHERE'} status = $1`, {
       bind: ['cancelled'],
       type: QueryTypes.SELECT
     }),
-    sequelize.query('SELECT COUNT(*) as count FROM sessions', {
+    sequelize.query(`SELECT COUNT(*) as count FROM sessions ${sessionWhereClause}`, {
       type: QueryTypes.SELECT
     })
   ]);
@@ -204,7 +267,15 @@ export const getSessionBreakdown = async () => {
 };
 
 // Get Monthly User Growth
-export const getMonthlyUserGrowth = async (months: number = 5) => {
+export const getMonthlyUserGrowth = async (months: number = 5, year?: number, month?: number) => {
+  let whereClause = '';
+
+  if (year && month) {
+    whereClause = `AND EXTRACT(YEAR FROM "createdAt") = ${year} AND EXTRACT(MONTH FROM "createdAt") = ${month}`;
+  } else if (year) {
+    whereClause = `AND EXTRACT(YEAR FROM "createdAt") = ${year}`;
+  }
+
   const query = `
     SELECT 
       TO_CHAR("createdAt", 'Mon YYYY') as month,
@@ -213,7 +284,7 @@ export const getMonthlyUserGrowth = async (months: number = 5) => {
       COUNT(*) FILTER (WHERE role = 'Client') as clients,
       COUNT(*) as total
     FROM users 
-    WHERE "createdAt" >= NOW() - INTERVAL '${months} months'
+    WHERE "createdAt" >= NOW() - INTERVAL '${months} months' ${whereClause}
     GROUP BY TO_CHAR("createdAt", 'Mon YYYY'), DATE_TRUNC('month', "createdAt")
     ORDER BY DATE_TRUNC('month', "createdAt")
   `;
@@ -231,7 +302,15 @@ export const getMonthlyUserGrowth = async (months: number = 5) => {
 };
 
 // Get Daily Session Data
-export const getDailySessionData = async (days: number = 7) => {
+export const getDailySessionData = async (days: number = 7, year?: number, month?: number) => {
+  let whereClause = '';
+
+  if (year && month) {
+    whereClause = `AND EXTRACT(YEAR FROM s."createdAt") = ${year} AND EXTRACT(MONTH FROM s."createdAt") = ${month}`;
+  } else if (year) {
+    whereClause = `AND EXTRACT(YEAR FROM s."createdAt") = ${year}`;
+  }
+
   const query = `
     SELECT 
       DATE(s."createdAt") as date,
@@ -240,7 +319,7 @@ export const getDailySessionData = async (days: number = 7) => {
       COUNT(*) as total
     FROM sessions s
     JOIN users u ON s."counselorId" = u.id
-    WHERE s."createdAt" >= NOW() - INTERVAL '${days} days'
+    WHERE s."createdAt" >= NOW() - INTERVAL '${days} days' ${whereClause}
     GROUP BY DATE(s."createdAt")
     ORDER BY DATE(s."createdAt")
   `;
@@ -257,7 +336,15 @@ export const getDailySessionData = async (days: number = 7) => {
 };
 
 // Get Monthly Growth Data
-export const getMonthlyGrowthData = async (months: number = 6) => {
+export const getMonthlyGrowthData = async (months: number = 6, year?: number, month?: number) => {
+  let whereClause = '';
+
+  if (year && month) {
+    whereClause = `AND EXTRACT(YEAR FROM u."createdAt") = ${year} AND EXTRACT(MONTH FROM u."createdAt") = ${month}`;
+  } else if (year) {
+    whereClause = `AND EXTRACT(YEAR FROM u."createdAt") = ${year}`;
+  }
+
   const query = `
     WITH monthly_stats AS (
       SELECT
@@ -267,7 +354,7 @@ export const getMonthlyGrowthData = async (months: number = 6) => {
         COUNT(DISTINCT s.id) as sessions
       FROM users u
       LEFT JOIN sessions s ON s."userId" = u.id OR s."counselorId" = u.id
-      WHERE u."createdAt" >= NOW() - INTERVAL '${months} months'
+      WHERE u."createdAt" >= NOW() - INTERVAL '${months} months' ${whereClause}
       GROUP BY DATE_TRUNC('month', u."createdAt"), TO_CHAR(DATE_TRUNC('month', u."createdAt"), 'Mon YYYY')
       ORDER BY DATE_TRUNC('month', u."createdAt")
     ),
@@ -321,7 +408,15 @@ export const getMonthlyGrowthData = async (months: number = 6) => {
 };
 
 // Get Monthly Revenue Data
-export const getMonthlyRevenueData = async (months: number = 6) => {
+export const getMonthlyRevenueData = async (months: number = 6, year?: number, month?: number) => {
+  let whereClause = '';
+
+  if (year && month) {
+    whereClause = `AND EXTRACT(YEAR FROM pt.created_at) = ${year} AND EXTRACT(MONTH FROM pt.created_at) = ${month}`;
+  } else if (year) {
+    whereClause = `AND EXTRACT(YEAR FROM pt.created_at) = ${year}`;
+  }
+
   const query = `
     SELECT 
       TO_CHAR(DATE_TRUNC('month', pt.created_at), 'Mon YYYY') as month,
@@ -330,7 +425,7 @@ export const getMonthlyRevenueData = async (months: number = 6) => {
     FROM payment_transactions pt
     WHERE pt.payment_for = 'platform_fee' 
       AND pt.status = 'success'
-      AND pt.created_at >= NOW() - INTERVAL '${months} months'
+      AND pt.created_at >= NOW() - INTERVAL '${months} months' ${whereClause}
     GROUP BY DATE_TRUNC('month', pt.created_at), TO_CHAR(DATE_TRUNC('month', pt.created_at), 'Mon YYYY')
     ORDER BY DATE_TRUNC('month', pt.created_at)
   `;
@@ -512,17 +607,17 @@ export const getTopPerformingCounselors = async (options: { limit: number; perio
   }
 
   const query = `
-    SELECT 
+    SELECT
       u.id,
       u.name as name,
       u.email,
       COALESCE(c.specialities[1], 'General') as specialty,
       COUNT(s.id) as sessions,
-      COALESCE(AVG(f.total_score), 0) as rating,
-      CASE 
-        WHEN COUNT(s.id) > 0 THEN 
+      COALESCE(AVG(CASE WHEN f.total_score ~ '^[0-9]+$' THEN CAST(f.total_score AS NUMERIC) ELSE NULL END), 0) as rating,
+      CASE
+        WHEN COUNT(s.id) > 0 THEN
           ROUND((COUNT(s.id) FILTER (WHERE s.status = 'completed') * 100.0 / COUNT(s.id)), 2)
-        ELSE 0 
+        ELSE 0
       END as success_rate
     FROM users u
     LEFT JOIN counselors c ON u.id = c."userId"
@@ -531,7 +626,7 @@ export const getTopPerformingCounselors = async (options: { limit: number; perio
     WHERE u.role IN ('Counselor', 'Psychiatrist')
     GROUP BY u.id, u.name, u.email, c.specialities
     HAVING COUNT(s.id) > 0
-    ORDER BY COUNT(s.id) DESC, AVG(f.total_score) DESC NULLS LAST
+    ORDER BY COUNT(s.id) DESC, COALESCE(AVG(CASE WHEN f.total_score ~ '^[0-9]+$' THEN CAST(f.total_score AS NUMERIC) ELSE NULL END), 0) DESC
     LIMIT ${options.limit}
   `;
 
@@ -587,3 +682,5 @@ export const getHealthStatus = async () => {
     status: status
   };
 };
+
+

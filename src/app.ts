@@ -30,6 +30,7 @@ import studentRoutes from './routes/StudentRoutes';
 import adminDashboardRoutes from './routes/AdminDashboardRoutes';
 import adminManagementRoutes from './routes/AdminManagementRoutes';
 import notificationRoutes from './routes/NotificationRoutes';
+import adminReportRoutes from './routes/AdminReportRoutes';
 import { auth } from 'firebase-admin';
 
 dotenv.config();
@@ -109,6 +110,7 @@ app.use('/api/students', studentRoutes);
 app.use('/api/admin/dashboard', adminDashboardRoutes);
 app.use('/api/admin', adminManagementRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/admin/reports', adminReportRoutes);
 
 app.use(express.static(path.join(__dirname, '../public')));
 
@@ -200,3 +202,5 @@ const initializeApp = async () => {
 initializeAssociations();
 
 initializeApp();
+
+
