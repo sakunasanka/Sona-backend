@@ -28,6 +28,7 @@ export class AdminFeedbackController {
           s."timeSlot" as "timeSlot",
           client_user.name as "clientName",
           counselor_user.name as "counselorName",
+          counselor_user.role as "counselorRole",
           s.status as "sessionStatus"
         FROM reviews r
         JOIN sessions s ON r.session_id = s.id

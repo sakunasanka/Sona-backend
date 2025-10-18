@@ -4,7 +4,7 @@ import { sequelize } from '../config/db';
 export interface ComplaintAttributes {
 	complaintId: number;
 	additional_details?: string;
-	status: 'pending' | 'resolved' | 'rejected' | 'in review';
+	status: 'pending' | 'resolved' | 'rejected';
 	proof?: string;
 	reason?: string;
 	user_id: number;
@@ -21,7 +21,7 @@ class Complaint extends Model<ComplaintAttributes, ComplaintCreationAttributes>
 	implements ComplaintAttributes {
 	public complaintId!: number;
 	public additional_details?: string;
-	public status!: 'pending' | 'resolved' | 'rejected' | 'in review';
+	public status!: 'pending' | 'resolved' | 'rejected';
 	public proof?: string;
 	public reason?: string;
 	public user_id!: number;
@@ -44,7 +44,7 @@ Complaint.init(
 			allowNull: true,
 		},
 		status: {
-			type: DataTypes.ENUM('pending', 'resolved', 'rejected', 'in review'),
+			type: DataTypes.ENUM('pending', 'resolved', 'rejected'),
 			allowNull: false,
 			defaultValue: 'pending',
 		},

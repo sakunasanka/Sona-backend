@@ -6,7 +6,7 @@ import { sequelize } from '../config/db';
 import { QueryTypes } from 'sequelize';
 
 export interface AdminComplaintFilters {
-  status?: 'pending' | 'resolved' | 'rejected' | 'in review';
+  status?: 'pending' | 'resolved' | 'rejected';
   page?: number;
   limit?: number;
 }
@@ -42,6 +42,7 @@ class AdminComplaintService {
           c."updatedAt" as "updatedDate",
           client_user.name as "clientName",
           counselor_user.name as "counselorName",
+          counselor_user.role as "counselorRole",
           s.date as "sessionDate",
           s."timeSlot" as "timeSlot",
           CASE 
@@ -109,8 +110,7 @@ class AdminComplaintService {
           COUNT(*) as "totalComplaints",
           COUNT(CASE WHEN status = 'pending' THEN 1 END) as "pendingCount",
           COUNT(CASE WHEN status = 'resolved' THEN 1 END) as "resolvedCount", 
-          COUNT(CASE WHEN status = 'rejected' THEN 1 END) as "rejectedCount",
-          COUNT(CASE WHEN status = 'in review' THEN 1 END) as "inReviewCount"
+          COUNT(CASE WHEN status = 'rejected' THEN 1 END) as "rejectedCount"
         FROM complaints
       `;
 
