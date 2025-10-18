@@ -693,3 +693,23 @@ export const getBooked = asyncHandler(async (req: Request, res: Response) => {
     });
   }
 })
+
+export const updateMeetingStatus = asyncHandler(async (req: Request, res: Response) => {
+  const { source, event } = req.body;
+  console.log('Received meeting status update:', req.body);
+
+  try {
+    await sessionService.updateMeetingStatus(source, event);
+
+    res.status(200).json({
+      success: true,
+      message: 'Meeting status updated successfully'
+    });
+  }catch (error) {
+    console.error('Error updating meeting status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating meeting status'
+    });
+  }
+})
