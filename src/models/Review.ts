@@ -1,10 +1,11 @@
-import { DataTypes, Model } from 'sequelize';
+import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/db';
 import User from './User';
 import Session from './Session';
 
 export interface ReviewAttributes {
   review_id: number;
+  userId: number;
   sessionId: number;
   rating: number; // 1-5 stars
   comment?: string;
@@ -12,10 +13,11 @@ export interface ReviewAttributes {
   updatedAt?: Date;
 }
 
-type ReviewCreationAttributes = Omit<ReviewAttributes, 'id' | 'createdAt' | 'updatedAt'>;
+type ReviewCreationAttributes = Optional<ReviewAttributes, 'review_id' | 'userId' | 'createdAt' | 'updatedAt'>;
 
 class Review extends Model<ReviewAttributes, ReviewCreationAttributes> implements ReviewAttributes {
   public review_id!: number;
+  public userId!: number;
   public sessionId!: number;
   public rating!: number;
   public comment?: string;
@@ -29,6 +31,15 @@ Review.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+      field: 'user_id',
     },
     sessionId: {
       type: DataTypes.INTEGER,
@@ -59,6 +70,7 @@ Review.init(
     timestamps: true,
     indexes: [
       { fields: ['session_id'] },
+      { fields: ['user_id'] },
       { fields: ['client_id'] },
       { fields: ['counselor_id'] },
       { fields: ['rating'] },
@@ -69,6 +81,7 @@ Review.init(
 
 // Define associations
 Review.belongsTo(Session, { foreignKey: 'sessionId', as: 'session' });
+Review.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 Session.hasOne(Review, { foreignKey: 'sessionId', as: 'review' });
 
