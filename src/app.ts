@@ -22,6 +22,7 @@ import adminblogsRoutes from './routes/AdminBlogsRoutes';
 import adminpsychiatristRoutes from './routes/AdminPsychiatristRoutes';
 import adminclientRoutes from './routes/AdminClientRoutes';
 import adminmtmemberRoutes from './routes/AdminMTMemberRoutes';
+import adminprofileRoutes from './routes/AdminProfileRoutes';
 import counselorRoutes from './routes/CounselorRoutes';
 import psychiatristRoutes from './routes/PsychiatristRoutes';
 import phq9Routes from './routes/PHQ9Routes';
@@ -99,6 +100,7 @@ app.use('/api/adminblogs', adminblogsRoutes);
 app.use('/api/adminpsychiatrists', adminpsychiatristRoutes);
 app.use('/api/adminclients', adminclientRoutes);
 app.use('/api/adminmtmembers', adminmtmemberRoutes);
+app.use('/api/admin-profile', adminprofileRoutes);
 
 app.use('/api/counselors', counselorRoutes);
 // Alias for British spelling
