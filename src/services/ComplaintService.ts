@@ -12,13 +12,13 @@ export interface CreateComplaintData {
 }
 
 export interface UpdateComplaintData {
-  status?: 'pending' | 'resolved' | 'rejected' | 'in review';
+  status?: 'pending' | 'resolved' | 'rejected';
   action_by?: number;
   reasonID?: number;
 }
 
 export interface ComplaintFilters {
-  status?: 'pending' | 'resolved' | 'rejected' | 'in review';
+  status?: 'pending' | 'resolved' | 'rejected';
   user_id?: number;
   session_id?: number;
   page?: number;

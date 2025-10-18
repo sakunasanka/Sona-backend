@@ -22,11 +22,15 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
 // Main Metrics (First row cards)
 export const getMainMetrics = async (req: Request, res: Response) => {
   try {
+    const { year, month } = req.query;
+    const yearNum = year ? parseInt(year as string) : undefined;
+    const monthNum = month ? parseInt(month as string) : undefined;
+
     const [totalCounselors, totalPsychiatrists, totalSessions, totalRevenue] = await Promise.all([
-      dashboardService.getCounselorCount(),
-      dashboardService.getPsychiatristCount(),
-      dashboardService.getTotalSessionCount(),
-      dashboardService.getTotalRevenue()
+      dashboardService.getCounselorCount(yearNum, monthNum), // Filter counselors by month
+      dashboardService.getPsychiatristCount(yearNum, monthNum), // Filter psychiatrists by month
+      dashboardService.getTotalSessionCount(yearNum, monthNum), // Filter sessions by month
+      dashboardService.getTotalRevenue(yearNum, monthNum) // Filter revenue by month
     ]);
 
     const metrics = [
@@ -75,8 +79,11 @@ export const getMainMetrics = async (req: Request, res: Response) => {
 // Login Metrics
 export const getLoginMetrics = async (req: Request, res: Response) => {
   try {
-    const { period = '30d' } = req.query;
-    const loginStats = await dashboardService.getLoginStatistics(period as string);
+    const { period = '30d', year, month } = req.query;
+    const yearNum = year ? parseInt(year as string) : undefined;
+    const monthNum = month ? parseInt(month as string) : undefined;
+
+    const loginStats = await dashboardService.getLoginStatistics(period as string, yearNum, monthNum);
 
     const loginMetrics = [
       {
@@ -124,7 +131,11 @@ export const getLoginMetrics = async (req: Request, res: Response) => {
 // Session Breakdown
 export const getSessionBreakdown = async (req: Request, res: Response) => {
   try {
-    const sessionStats = await dashboardService.getSessionBreakdown();
+    const { year, month } = req.query;
+    const yearNum = year ? parseInt(year as string) : undefined;
+    const monthNum = month ? parseInt(month as string) : undefined;
+
+    const sessionStats = await dashboardService.getSessionBreakdown(yearNum, monthNum);
 
     const sessionMetrics = [
       {
@@ -343,7 +354,9 @@ export const getTopCounselors = async (req: Request, res: Response) => {
 // Complete Dashboard Data (All in one)
 export const getCompleteDashboard = async (req: Request, res: Response) => {
   try {
-    const { period = '30d' } = req.query;
+    const { period = '30d', year, month } = req.query;
+    const yearNum = year ? parseInt(year as string) : undefined;
+    const monthNum = month ? parseInt(month as string) : undefined;
 
     // Fetch all dashboard data in parallel
     const [
@@ -360,25 +373,25 @@ export const getCompleteDashboard = async (req: Request, res: Response) => {
       recentActivities,
       topCounselors
     ] = await Promise.all([
-      // Main metrics
+      // Main metrics - ALL filtered by year/month
       Promise.all([
-        dashboardService.getCounselorCount(),
-        dashboardService.getPsychiatristCount(),
-        dashboardService.getTotalSessionCount(),
-        dashboardService.getTotalRevenue()
+        dashboardService.getCounselorCount(yearNum, monthNum), // Filter counselors by month
+        dashboardService.getPsychiatristCount(yearNum, monthNum), // Filter psychiatrists by month
+        dashboardService.getTotalSessionCount(yearNum, monthNum), // Filter sessions by month
+        dashboardService.getTotalRevenue(yearNum, monthNum) // Filter revenue by month
       ]),
       // Login stats
-      dashboardService.getLoginStatistics(period as string),
+      dashboardService.getLoginStatistics(period as string, yearNum, monthNum),
       // Session breakdown
-      dashboardService.getSessionBreakdown(),
+      dashboardService.getSessionBreakdown(yearNum, monthNum), // Filter session breakdown by month
       // Monthly users
-      dashboardService.getMonthlyUserGrowth(5),
+      dashboardService.getMonthlyUserGrowth(5, yearNum, monthNum),
       // Daily sessions
-      dashboardService.getDailySessionData(7),
+      dashboardService.getDailySessionData(7, yearNum, monthNum),
       // Monthly growth
-      dashboardService.getMonthlyGrowthData(6),
+      dashboardService.getMonthlyGrowthData(6, yearNum, monthNum),
       // Monthly revenue
-      dashboardService.getMonthlyRevenueData(6),
+      dashboardService.getMonthlyRevenueData(6, yearNum, monthNum),
       // Session types
       dashboardService.getSessionsBySpecialty(period as string),
       // User distribution
@@ -529,3 +542,5 @@ export const getHealthStatus = async (req: Request, res: Response) => {
     });
   }
 };
+
+

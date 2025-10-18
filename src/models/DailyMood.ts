@@ -1,5 +1,27 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/db';
+import { decrypt, encrypt } from '../middlewares/encrypt';
+
+// Helper function to check if a value is encrypted (contains colons as separators)
+const isEncrypted = (value: string): boolean => {
+  if (!value || typeof value !== 'string') return false;
+  const parts = value.split(':');
+  return parts.length === 3 && parts.every(part => /^[0-9a-f]+$/i.test(part));
+};
+
+// Safe decrypt function that handles both encrypted and unencrypted data
+const safeDecrypt = (value: string): string => {
+  if (!value) return '';
+  if (isEncrypted(value)) {
+    try {
+      return decrypt(value);
+    } catch (error) {
+      console.warn('Failed to decrypt value, returning as-is:', error);
+      return value;
+    }
+  }
+  return value;
+};
 
 export interface DailyMoodAttributes {
 	id: number;
@@ -26,6 +48,19 @@ class DailyMood extends Model<DailyMoodAttributes, DailyMoodCreationAttributes>
 	public mood!: string;
 	public readonly created_at!: Date;
 	public readonly updated_at!: Date;
+
+	// Custom toJSON method to ensure encrypted fields are properly decrypted in API responses
+	toJSON() {
+		const values = Object.assign({}, this.get());
+		// The getters will automatically decrypt the values when accessed
+		return {
+			...values,
+			valence: this.valence,
+			arousal: this.arousal,
+			intensity: this.intensity,
+			mood: this.mood
+		};
+	}
 }
 
 DailyMood.init(
@@ -44,32 +79,96 @@ DailyMood.init(
 			allowNull: false,
 		},
 		valence: {
-			type: DataTypes.DECIMAL(3, 2),
+			type: DataTypes.TEXT,
 			allowNull: false,
-			validate: {
-				min: -1,
-				max: 1
+			get() {
+				const rawValue = this.getDataValue('valence' as any);
+				if (!rawValue) return 0;
+				
+				// Handle both encrypted and unencrypted values
+				if (isEncrypted(rawValue)) {
+					return parseFloat(safeDecrypt(rawValue));
+				} else {
+					// Legacy data - convert directly if it's a number
+					return typeof rawValue === 'number' ? rawValue : parseFloat(rawValue);
+				}
+			},
+			set(value: number) {
+				// Validate before encrypting
+				if (value < -1 || value > 1) {
+					throw new Error('Valence must be between -1 and 1');
+				}
+				this.setDataValue('valence' as any, encrypt(value.toString()));
 			}
 		},
 		arousal: {
-			type: DataTypes.DECIMAL(3, 2),
+			type: DataTypes.TEXT,
 			allowNull: false,
-			validate: {
-				min: -1,
-				max: 1
+			get() {
+				const rawValue = this.getDataValue('arousal' as any);
+				if (!rawValue) return 0;
+				
+				// Handle both encrypted and unencrypted values
+				if (isEncrypted(rawValue)) {
+					return parseFloat(safeDecrypt(rawValue));
+				} else {
+					// Legacy data - convert directly if it's a number
+					return typeof rawValue === 'number' ? rawValue : parseFloat(rawValue);
+				}
+			},
+			set(value: number) {
+				// Validate before encrypting
+				if (value < -1 || value > 1) {
+					throw new Error('Arousal must be between -1 and 1');
+				}
+				this.setDataValue('arousal' as any, encrypt(value.toString()));
 			}
 		},
 		intensity: {
-			type: DataTypes.DECIMAL(3, 2),
+			type: DataTypes.TEXT,
 			allowNull: false,
-			validate: {
-				min: 0,
-				max: 1
+			get() {
+				const rawValue = this.getDataValue('intensity' as any);
+				if (!rawValue) return 0;
+				
+				// Handle both encrypted and unencrypted values
+				if (isEncrypted(rawValue)) {
+					return parseFloat(safeDecrypt(rawValue));
+				} else {
+					// Legacy data - convert directly if it's a number
+					return typeof rawValue === 'number' ? rawValue : parseFloat(rawValue);
+				}
+			},
+			set(value: number) {
+				// Validate before encrypting
+				if (value < 0 || value > 1) {
+					throw new Error('Intensity must be between 0 and 1');
+				}
+				this.setDataValue('intensity' as any, encrypt(value.toString()));
 			}
 		},
 		mood: {
-			type: DataTypes.STRING(50),
+			type: DataTypes.TEXT,
 			allowNull: false,
+			get() {
+				const rawValue = this.getDataValue('mood' as any);
+				if (!rawValue) return '';
+				
+				// Handle both encrypted and unencrypted values
+				if (isEncrypted(rawValue)) {
+					return safeDecrypt(rawValue);
+				} else {
+					// Legacy data - return as-is
+					return rawValue;
+				}
+			},
+			set(value: string) {
+				// Validate before encrypting
+				if (value && value.length > 50) {
+					throw new Error('Mood must be 50 characters or less');
+				}
+				this.setDataValue('mood' as any, encrypt(value));
+			}
 		},
 		created_at: {
 			type: DataTypes.DATE,

@@ -4,12 +4,15 @@ import { sequelize } from '../config/db';
 class Experience extends Model {
   public id!: number;
   public userId!: number;
+  public position!: string;
+  public company!: string;
   public title!: string;
   public description!: string;
-  public date!: string; // Year or date range like "2024" or "2022-2024"
+  public startDate!: Date;
+  public endDate! : Date;
   public status!: 'pending' | 'approved' | 'rejected';
-  public proof?: string; // Store file path/URL for certificate/award image or PDF
-  public verificationDocument?: string;
+  public proof?: string;
+  public document?: string;
   public approvedAt?: Date;
   public approvedBy?: number;
   public readonly createdAt!: Date;
@@ -32,6 +35,10 @@ Experience.init(
       },
       onDelete: 'CASCADE'
     },
+    position: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     title: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -40,8 +47,12 @@ Experience.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
-    date: {
-      type: DataTypes.STRING,
+    startDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    endDate: {
+      type: DataTypes.DATE,
       allowNull: false,
     },
     status: {
@@ -54,7 +65,7 @@ Experience.init(
       allowNull: true,
       comment: 'File path or URL for experience certificate/award image or PDF'
     },
-    verificationDocument: {
+    document: {
       type: DataTypes.STRING,
       allowNull: true,
     },

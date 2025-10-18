@@ -150,7 +150,7 @@ export class ComplaintController {
 
       // Validate request data
       const validatedData = await validateData(updateComplaintStatusSchema, req.body) as {
-        status: 'pending' | 'resolved' | 'rejected' | 'in review';
+        status: 'pending' | 'resolved' | 'rejected';
         reasonID?: number;
       };
 
