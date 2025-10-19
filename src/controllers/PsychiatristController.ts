@@ -793,3 +793,77 @@ export const updatePsychiatristProfile = asyncHandler(async (req: Request, res: 
     data: updatedProfile
   });
 });
+
+/**
+ * @desc    Add educational qualification for psychiatrist
+ * @route   POST /api/psychiatrists/qualifications
+ * @access  Private (psychiatrist only)
+ */
+export const addPsychiatristQualification = asyncHandler(async (req: Request, res: Response) => {
+  const psychiatristId = req.user?.dbUser.id;
+  const qualificationData = req.body;
+
+  if (!psychiatristId) {
+    res.status(401).json({
+      success: false,
+      message: 'Unauthorized',
+      error: 'User authentication required'
+    });
+    return;
+  }
+
+  // Ensure the userId in payload matches the authenticated user
+  if (qualificationData.userId !== psychiatristId) {
+    res.status(400).json({
+      success: false,
+      message: 'User ID mismatch',
+      error: 'User ID in payload must match authenticated user'
+    });
+    return;
+  }
+
+  const qualification = await PsychiatristService.addQualification(psychiatristId, qualificationData);
+
+  res.status(201).json({
+    success: true,
+    message: 'Educational qualification added successfully',
+    data: { qualification }
+  });
+});
+
+/**
+ * @desc    Add experience for psychiatrist
+ * @route   POST /api/psychiatrists/experiences
+ * @access  Private (psychiatrist only)
+ */
+export const addPsychiatristExperience = asyncHandler(async (req: Request, res: Response) => {
+  const psychiatristId = req.user?.dbUser.id;
+  const experienceData = req.body;
+
+  if (!psychiatristId) {
+    res.status(401).json({
+      success: false,
+      message: 'Unauthorized',
+      error: 'User authentication required'
+    });
+    return;
+  }
+
+  // Ensure the userId in payload matches the authenticated user
+  if (experienceData.userId !== psychiatristId) {
+    res.status(400).json({
+      success: false,
+      message: 'User ID mismatch',
+      error: 'User ID in payload must match authenticated user'
+    });
+    return;
+  }
+
+  const experience = await PsychiatristService.addExperience(psychiatristId, experienceData);
+
+  res.status(201).json({
+    success: true,
+    message: 'Experience added successfully',
+    data: { experience }
+  });
+});

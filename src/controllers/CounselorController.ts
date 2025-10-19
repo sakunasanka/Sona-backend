@@ -516,3 +516,49 @@ export const getCounselorEarningsPerClient = asyncHandler(async (req: Request, r
 
   ApiResponseUtil.success(res, responseData, "Counselor earnings per client retrieved successfully");
 });
+
+/**
+ * @desc    Add educational qualification for counselor
+ * @route   POST /api/counselors/qualifications
+ * @access  Private (counselor only)
+ */
+export const addCounselorQualification = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+  const qualificationData = req.body;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  // Ensure the userId in payload matches the authenticated user
+  if (qualificationData.userId !== counselorId) {
+    throw new ValidationError('User ID mismatch');
+  }
+
+  const qualification = await CounselorService.addQualification(counselorId, qualificationData);
+
+  ApiResponseUtil.created(res, { qualification }, "Educational qualification added successfully");
+});
+
+/**
+ * @desc    Add experience for counselor
+ * @route   POST /api/counselors/experiences
+ * @access  Private (counselor only)
+ */
+export const addCounselorExperience = asyncHandler(async (req: Request, res: Response) => {
+  const counselorId = req.user?.dbUser.id;
+  const experienceData = req.body;
+
+  if (!counselorId) {
+    throw new ValidationError('Counselor ID is required');
+  }
+
+  // Ensure the userId in payload matches the authenticated user
+  if (experienceData.userId !== counselorId) {
+    throw new ValidationError('User ID mismatch');
+  }
+
+  const experience = await CounselorService.addExperience(counselorId, experienceData);
+
+  ApiResponseUtil.created(res, { experience }, "Experience added successfully");
+});

@@ -1024,4 +1024,60 @@ export class CounselorService {
       throw new DatabaseError('Failed to get counselor earnings per client');
     }
   }
+
+  /**
+   * Add educational qualification for a counselor
+   */
+  static async addQualification(counselorId: number, qualificationData: any) {
+    try {
+      // Import EduQualification model
+      const EduQualification = (await import('../models/EduQualification')).default;
+
+      const qualification = await EduQualification.create({
+        userId: counselorId,
+        institution: qualificationData.institution,
+        degree: qualificationData.degree || null,
+        field: qualificationData.field || null,
+        startDate: qualificationData.startDate || null,
+        endDate: qualificationData.endDate || null,
+        grade: qualificationData.grade || null,
+        document: qualificationData.document || null,
+        title: qualificationData.title || null,
+        year: qualificationData.year || null,
+        proof: qualificationData.proof || null,
+        status: 'pending' // Default status
+      });
+
+      return qualification;
+    } catch (error) {
+      throw new DatabaseError('Failed to add educational qualification');
+    }
+  }
+
+  /**
+   * Add experience for a counselor
+   */
+  static async addExperience(counselorId: number, experienceData: any) {
+    try {
+      // Import Experience model
+      const Experience = (await import('../models/Experience')).default;
+
+      const experience = await Experience.create({
+        userId: counselorId,
+        position: experienceData.position,
+        company: experienceData.company,
+        title: experienceData.title || experienceData.position, // Use position as title if not provided
+        description: experienceData.description,
+        startDate: experienceData.startDate,
+        endDate: experienceData.endDate,
+        proof: experienceData.proof || null,
+        document: experienceData.document || null,
+        status: 'pending' // Default status
+      });
+
+      return experience;
+    } catch (error) {
+      throw new DatabaseError('Failed to add experience');
+    }
+  }
 }
