@@ -104,7 +104,7 @@ export class NotificationHelper {
         type: NotificationType.INFO,
         title: 'Session Reminder',
         message: `Reminder: You have a session with ${professionalName} tomorrow at ${sessionTime}.`,
-        relatedURL: '/sessions/upcoming'
+        relatedURL: '/sessions'
       });
     } catch (error) {
       console.error('Failed to send session reminder notification:', error);

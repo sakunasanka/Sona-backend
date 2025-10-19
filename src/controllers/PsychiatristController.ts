@@ -779,6 +779,64 @@ export const getPrescriptionsByPsychiatrist = async (req: Request, res: Response
 };
 
 /**
+ * @desc    Get client's own prescriptions from all psychiatrists
+ * @route   GET /api/psychiatrists/my-prescriptions
+ * @access  Private (Client only)
+ */
+export const getClientPrescriptions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?.dbUser?.id;
+    const userRole = (req as any).user?.dbUser?.userType;
+
+    if (!userId) {
+      res.status(401).json(apiResponse.error(
+        'Unauthorized',
+        'User authentication required'
+      ));
+      return;
+    }
+
+    if (userRole !== 'Client') {
+      res.status(403).json(apiResponse.error(
+        'Forbidden',
+        'Only clients can view their prescriptions'
+      ));
+      return;
+    }
+
+    // Get all prescriptions for this client from all psychiatrists
+    const prescriptions = await Prescription.findAll({
+      where: { 
+        clientId: userId
+      },
+      order: [['createdAt', 'DESC']],
+      include: [
+        {
+          model: require('../models/User').default,
+          as: 'psychiatrist',
+          attributes: ['id', 'name', 'email', 'avatar']
+        }
+      ]
+    });
+
+    res.status(200).json(apiResponse.success(
+      'Prescriptions fetched successfully',
+      {
+        prescriptions,
+        count: prescriptions.length,
+        clientId: userId
+      }
+    ));
+  } catch (error) {
+    console.error('Error fetching client prescriptions:', error);
+    res.status(500).json(apiResponse.error(
+      'Failed to fetch prescriptions',
+      error instanceof Error ? error.message : 'Unknown error'
+    ));
+  }
+};
+
+/**
  * @desc    Update psychiatrist profile
  * @route   PUT /api/psychiatrists/profile
  * @access  Private (Psychiatrist only)

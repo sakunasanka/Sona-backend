@@ -249,6 +249,21 @@ export class CounselorService {
    */
   static async getDashboardStatistics(counselorId: number) {
     try {
+      // First get the user's role to determine which table to query for rating
+      const userResult = await sequelize.query(`
+        SELECT role FROM users WHERE id = ?
+      `, {
+        replacements: [counselorId],
+        type: QueryTypes.SELECT
+      });
+
+      if (userResult.length === 0) {
+        throw new ItemNotFoundError('User not found');
+      }
+
+      const userRole = (userResult[0] as any).role;
+      const tableName = userRole === 'Psychiatrist' ? 'psychiatrists' : 'counselors';
+
       const [
         totalSessionsResult,
         upcomingSessionsResult, 
@@ -290,15 +305,15 @@ export class CounselorService {
       const monthlyEarnings = (monthlyData.count || 0) * (monthlyData.avgprice || 0);
       const totalBlogs = (totalBlogsResult[0] as any).count || 0;
 
-      // Get counselor's current rating
-      const counselorData = await sequelize.query(`
-        SELECT rating FROM counselors WHERE "userId" = ?
+      // Get professional's current rating from the appropriate table
+      const ratingData = await sequelize.query(`
+        SELECT rating FROM ${tableName} WHERE "userId" = ?
       `, {
         replacements: [counselorId],
         type: QueryTypes.SELECT
       });
 
-      const averageRating = counselorData.length > 0 ? (counselorData[0] as any).rating || 0 : 0;
+      const averageRating = ratingData.length > 0 ? (ratingData[0] as any).rating || 0 : 0;
 
       return {
         totalSessions: parseInt(totalSessions),
