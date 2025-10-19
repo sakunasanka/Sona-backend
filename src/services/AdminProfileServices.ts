@@ -24,13 +24,13 @@ class AdminProfileServices {
     }
 
     // Check if user is admin
-    if (user.role !== 'Admin' && user.role !== 'MT-Team') {
+    if (user.role !== 'Admin' && user.role !== 'MT-member') {
       throw new ValidationError('Access denied. Admin or MT-Team role required.');
     }
 
     // For MT-Team members, get additional data from mt_members table
     let mtMemberData = null;
-    if (user.role === 'MT-Team') {
+    if (user.role === 'MT-member') {
       mtMemberData = await mt_members.findOne({
         where: { userId }
       });
@@ -43,7 +43,7 @@ class AdminProfileServices {
       phone: mtMemberData?.phone || '',
       location: mtMemberData?.location || '',
       joinDate: mtMemberData?.joinDate || user.createdAt.toISOString().split('T')[0],
-      role: user.role === 'MT-Team' ? (mtMemberData?.position || 'MT Team Member') : 'Administrator',
+      role: user.role === 'MT-member' ? (mtMemberData?.position || 'MT Team Member') : 'Administrator',
       profilePicture: user.avatar || '/assets/images/profiles/default.jpg',
       lastLogin: new Date().toISOString() // You might want to store this separately
     };
@@ -58,7 +58,7 @@ class AdminProfileServices {
     }
 
     // Check if user is admin
-    if (user.role !== 'Admin' && user.role !== 'MT-Team') {
+    if (user.role !== 'Admin' && user.role !== 'MT-member') {
       throw new ValidationError('Access denied. Admin or MT-Team role required.');
     }
 
@@ -72,7 +72,7 @@ class AdminProfileServices {
     }
 
     // For MT-Team members, update additional data in mt_members table
-    if (user.role === 'MT-Team') {
+    if (user.role === 'MT-member') {
       const mtMemberData = await mt_members.findOne({ where: { userId } });
       const mtUpdateData: any = {};
       
@@ -105,7 +105,7 @@ class AdminProfileServices {
     }
 
     // Check if user is admin
-    if (user.role !== 'Admin' && user.role !== 'MT-Team') {
+    if (user.role !== 'Admin' && user.role !== 'MT-member') {
       throw new ValidationError('Access denied. Admin or MT-Team role required.');
     }
 

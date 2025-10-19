@@ -47,10 +47,46 @@ interface Experience {
   updatedAt: string;
 }
 
+export interface CounselorWithRejectionInfo {
+  id: number;
+  firebaseId?: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: string;
+  title?: string;
+  specialities: string[];
+  address: string;
+  contact_no: string;
+  license_no: string;
+  idCard: string;
+  isVolunteer?: boolean;
+  isAvailable?: boolean;
+  description?: string;
+  rating?: number;
+  sessionFee?: number;
+  status: 'pending' | 'approved' | 'rejected' | 'unset';
+  coverImage?: string;
+  instagram?: string;
+  linkedin?: string;
+  x?: string;
+  website?: string;
+  languages?: string[];
+  eduQualifications: EducationQualification[];
+  experiences: Experience[];
+  createdAt: string;
+  updatedAt: string;
+  // Rejection information
+  rejectionReason?: string;
+  rejectedBy?: number;
+  rejectedByName?: string;
+  rejectedByRole?: string;
+}
+
 export const getAllCounselors = async (
   status?: 'pending' | 'approved' | 'rejected' | 'unset',
   searchTerm?: string
-) => {
+): Promise<CounselorWithRejectionInfo[]> => {
   try {
     let whereConditions = ['u.role = \'Counselor\''];
     const replacements: any = {};
@@ -90,7 +126,7 @@ export const getAllCounselors = async (
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
-    // Main query to get counselors
+    // Main query to get counselors with rejection information
     const counselors = await sequelize.query(`
       SELECT 
         u.id,
@@ -121,9 +157,15 @@ export const getAllCounselors = async (
         c.website,
         c.languages,
         c."createdAt" as "counselorCreatedAt",
-        c."updatedAt" as "counselorUpdatedAt"
+        c."updatedAt" as "counselorUpdatedAt",
+        rr.reason as "rejectionReason",
+        rr."rejectedBy",
+        admin_user.name as "rejectedByName",
+        admin_user.role as "rejectedByRole"
       FROM users u
       INNER JOIN counselors c ON u.id = c."userId"
+      LEFT JOIN rejection_reasons rr ON u.id = rr."userId"
+      LEFT JOIN users admin_user ON rr."rejectedBy" = admin_user.id
       ${whereClause}
       ORDER BY c."createdAt" DESC
     `, {
@@ -222,7 +264,12 @@ export const getAllCounselors = async (
         eduQualifications: counselorEduQualifications,
         experiences: counselorExperiences,
         createdAt: counselor.userCreatedAt || counselor.counselorCreatedAt,
-        updatedAt: counselor.userUpdatedAt || counselor.counselorUpdatedAt
+        updatedAt: counselor.userUpdatedAt || counselor.counselorUpdatedAt,
+        // Rejection information
+        rejectionReason: counselor.rejectionReason,
+        rejectedBy: counselor.rejectedBy,
+        rejectedByName: counselor.rejectedByName,
+        rejectedByRole: counselor.rejectedByRole
       };
     });
 
@@ -233,9 +280,9 @@ export const getAllCounselors = async (
   }
 };
 
-export const getCounselorById = async (userId: number) => {
+export const getCounselorById = async (userId: number): Promise<CounselorWithRejectionInfo | null> => {
   try {
-    // Get counselor basic info
+    // Get counselor basic info with rejection information
     const counselors = await sequelize.query(`
       SELECT 
         u.id,
@@ -266,9 +313,15 @@ export const getCounselorById = async (userId: number) => {
         c.website,
         c.languages,
         c."createdAt" as "counselorCreatedAt",
-        c."updatedAt" as "counselorUpdatedAt"
+        c."updatedAt" as "counselorUpdatedAt",
+        rr.reason as "rejectionReason",
+        rr."rejectedBy",
+        admin_user.name as "rejectedByName",
+        admin_user.role as "rejectedByRole"
       FROM users u
       INNER JOIN counselors c ON u.id = c."userId"
+      LEFT JOIN rejection_reasons rr ON u.id = rr."userId"
+      LEFT JOIN users admin_user ON rr."rejectedBy" = admin_user.id
       WHERE u.id = :userId AND u.role = 'Counselor'
     `, {
       replacements: { userId },
@@ -362,7 +415,12 @@ export const getCounselorById = async (userId: number) => {
       eduQualifications: eduQualifications,
       experiences: experiences,
       createdAt: counselor.userCreatedAt || counselor.counselorCreatedAt,
-      updatedAt: counselor.userUpdatedAt || counselor.counselorUpdatedAt
+      updatedAt: counselor.userUpdatedAt || counselor.counselorUpdatedAt,
+      // Rejection information
+      rejectionReason: counselor.rejectionReason,
+      rejectedBy: counselor.rejectedBy,
+      rejectedByName: counselor.rejectedByName,
+      rejectedByRole: counselor.rejectedByRole
     };
   } catch (error) {
     console.error('Error in getCounselorById:', error);
@@ -373,8 +431,9 @@ export const getCounselorById = async (userId: number) => {
 export const updateCounselorStatus = async (
   userId: number,
   status: 'pending' | 'approved' | 'rejected' | 'unset',
-  rejectionReason?: string
-) => {
+  rejectionReason?: string,
+  rejectedById?: number
+): Promise<CounselorWithRejectionInfo | null> => {
   const transaction = await sequelize.transaction();
   
   try {
@@ -388,21 +447,49 @@ export const updateCounselorStatus = async (
       return null;
     }
 
+    // Update counselor status
     await counselor.update({
       status,
       ...(status === 'rejected' && rejectionReason && { rejectionReason })
     }, { transaction });
 
+    // Handle rejection - store in rejection_reasons table
     if (status === 'rejected' && rejectionReason) {
+      if (!rejectedById) {
+        throw new Error('rejectedById is required when rejecting a counselor');
+      }
+
+      // First, delete any existing rejection reason for this user
       await sequelize.query(
-        `INSERT INTO rejection_reasons ("userId", reason, "createdAt")
-         VALUES (:userId, :reason, NOW())`,
+        `DELETE FROM rejection_reasons WHERE "userId" = :userId`,
+        {
+          replacements: { userId },
+          type: QueryTypes.DELETE,
+          transaction,
+        }
+      );
+
+      // Insert new rejection reason with rejectedBy information
+      await sequelize.query(
+        `INSERT INTO rejection_reasons ("userId", reason, "rejectedBy", "createdAt")
+         VALUES (:userId, :reason, :rejectedBy, NOW())`,
         {
           replacements: {
             userId,
             reason: rejectionReason,
+            rejectedBy: rejectedById,
           },
           type: QueryTypes.INSERT,
+          transaction,
+        }
+      );
+    } else if (status !== 'rejected') {
+      // Remove rejection reason if status is changed from rejected to something else
+      await sequelize.query(
+        `DELETE FROM rejection_reasons WHERE "userId" = :userId`,
+        {
+          replacements: { userId },
+          type: QueryTypes.DELETE,
           transaction,
         }
       );
@@ -410,29 +497,32 @@ export const updateCounselorStatus = async (
 
     await transaction.commit();
     
-    // Return the updated counselor with all relationships
+    // Return the updated counselor with all relationships and rejection info
     return await getCounselorById(userId);
   } catch (error) {
     await transaction.rollback();
+    console.error('Error in updateCounselorStatus:', error);
     throw error;
   }
 };
 
-export const getCounselorCounts = async (): Promise<CounselorCounts> => {
+export const getCounselorCounts = async (): Promise<CounselorCounts & { totalCounselors: number }> => {
   const counselors = await Counselor.findAll({
     attributes: ['userId', 'status']
   });
 
-  const initialCounts: CounselorCounts = {
+  const initialCounts: CounselorCounts & { totalCounselors: number } = {
     pending: 0,
     approved: 0,
     rejected: 0,
-    unset: 0
+    unset: 0,
+    totalCounselors: 0
   };
 
   return counselors.reduce((acc, c) => {
     const status = (c.status || 'unset').toLowerCase() as keyof CounselorCounts;
     acc[status] = (acc[status] || 0) + 1;
+    acc.totalCounselors += 1;
     return acc;
   }, initialCounts);
 };

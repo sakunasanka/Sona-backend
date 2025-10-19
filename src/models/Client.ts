@@ -8,7 +8,7 @@ class Client extends User {
   public name!: string;
   public email!: string;
   public avatar?: string;
-  public role!: "Client" | "Counselor" | "Admin" | "Psychiatrist" | "MT-Team";
+  public role!: "Client" | "Counselor" | "Admin" | "Psychiatrist" | "MT-member";
   public isStudent!: boolean;
   public nickName?: string;
   public concerns?: any[];
