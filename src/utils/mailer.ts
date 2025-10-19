@@ -39,16 +39,27 @@ export const sendEmail = async (
   content: string, 
   logoUrl?: string
 ) => {
-  // Process logo URL - convert local paths to base64 or use public URLs
-  const processedLogoUrl = logoUrl ? getImageAsBase64(logoUrl) || undefined : undefined;
-  
-  const htmlTemplate = createEmailTemplate(content, processedLogoUrl);
-  
-  await transporter.sendMail({
-    from: `"Sona" <${process.env.GMAIL_USER}>`,
-    to,
-    subject,
-    html: htmlTemplate
-  });
+  try { // <-- Add try
+    const processedLogoUrl = logoUrl ? getImageAsBase64(logoUrl) || undefined : undefined;
+    const htmlTemplate = createEmailTemplate(content, processedLogoUrl); // Assume this function exists
+
+    console.log(`Attempting to send email to ${to} with subject "${subject}"`); // Add logging
+
+    const info = await transporter.sendMail({ // Store result in 'info'
+      from: `"Sona" <${process.env.GMAIL_USER}>`,
+      to,
+      subject,
+      html: htmlTemplate
+    });
+
+    console.log(`Email sent successfully to ${to}. Message ID: ${info.messageId}`); // Log success
+
+  } catch (error) { // <-- Add catch
+    console.error(`Error sending email to ${to}:`, error);
+    // Re-throw the error or handle it appropriately
+    // Depending on your application structure, you might want to:
+    // throw new Error(`Failed to send email: ${error.message}`);
+    // Or return a specific error object/boolean
+  }
 };
 
