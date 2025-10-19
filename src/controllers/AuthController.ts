@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { adminAuth } from "../config/firebase";
 import axios from "axios";
 import { sendEmail } from "../utils/mailer";
-import { CreateClientData, CreateCounselorData, CreateUserData, SignInData, UserService } from "../services/UserSerives";
+import { CreateClientData, CreateCounselorData, CreatePsychiatristData, CreateUserData, SignInData, UserService } from "../services/UserSerives";
 import { ValidationError, ItemNotFoundError, ConflictError, AuthenticationError } from "../utils/errors";
 import { ApiResponseUtil } from "../utils/apiResponse";
 import { validateData, signInSchema } from "../schema/ValidationSchema";
@@ -11,6 +11,7 @@ import * as path from "path";
 import Client from "../models/Client";
 import { QueryTypes } from "sequelize";
 import { sequelize } from "../config/db";
+import { NotificationHelper } from "../utils/NotificationHelper";
 
 
 const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY!;
@@ -57,15 +58,15 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
       name: displayName,
       userType: 'Counselor' as const,
       //counselor only data
-      title: additionalData.title,
+      title: additionalData.title || "Counselor",
       specialities: additionalData.specialities || [],
-      address: additionalData.address,
-      contact_no: additionalData.contact_no,
-      license_no: additionalData.license_no,
-      idCard: additionalData.idCard,
+      address: additionalData.address || "Not provided",
+      contact_no: additionalData.contact_no || "Not provided",
+      license_no: additionalData.license_no || "Not provided",
+      idCard: additionalData.idCard || "Not provided",
       isVolunteer: additionalData.isVolunteer || false,
-      isAvailable: additionalData.isAvailable || true,
-      description: additionalData.description,
+      isAvailable: additionalData.isAvailable !== undefined ? additionalData.isAvailable : true,
+      description: additionalData.description || "",
       rating: additionalData.rating || 0,
       sessionFee: additionalData.sessionFee || 0
     };
@@ -76,6 +77,14 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
     const result = await UserService.createUser(counselorData);
     
     if (result) {
+      // Send notification to admins and MT members
+      try {
+        await NotificationHelper.newUserApplication('Counselor', displayName, result.dbUser.id);
+      } catch (notificationError) {
+        console.error('Failed to send new counselor application notification:', notificationError);
+        // Don't fail the signup if notification fails
+      }
+
       ApiResponseUtil.created(res, {
         user: result.dbUser,
         firebaseUser: {
@@ -107,8 +116,59 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
         }
       }, "Admin created successfully");
     }
+  } else if (userType === "Psychiatrist") {
+    console.log("Creating psychiatrist with data:", { email, displayName, userType });
+    const psychiatristData: CreatePsychiatristData = {
+      email: email,
+      password: password,
+      name: displayName,
+      userType: 'Psychiatrist' as const,
+      //psychiatrist only data
+      title: additionalData.title || "Dr.",
+      specialities: additionalData.specialities || [],
+      address: additionalData.address || "Not provided",
+      contact_no: additionalData.contact_no || "Not provided",
+      license_no: additionalData.license_no || "Not provided",
+      idCard: additionalData.idCard || "Not provided",
+      isVolunteer: additionalData.isVolunteer || false,
+      isAvailable: additionalData.isAvailable !== undefined ? additionalData.isAvailable : true,
+      description: additionalData.description || "",
+      rating: additionalData.rating || 0,
+      sessionFee: additionalData.sessionFee || 0,
+      status: additionalData.status || 'pending',
+      coverImage: additionalData.coverImage || null,
+      instagram: additionalData.instagram || null,
+      linkedin: additionalData.linkedin || null,
+      x: additionalData.x || null,
+      website: additionalData.website || null,
+      languages: additionalData.languages || []
+    };
+
+    if (process.env.DEBUG === 'true') {
+      console.log("About to call UserService.createUser for psychiatrist with:", psychiatristData);
+    }
+    const result = await UserService.createUser(psychiatristData);
+    
+    if (result) {
+      // Send notification to admins and MT members
+      try {
+        await NotificationHelper.newUserApplication('Psychiatrist', displayName, result.dbUser.id);
+      } catch (notificationError) {
+        console.error('Failed to send new psychiatrist application notification:', notificationError);
+        // Don't fail the signup if notification fails
+      }
+
+      ApiResponseUtil.created(res, {
+        user: result.dbUser,
+        firebaseUser: {
+          uid: result.firebaseUser.uid,
+          email: result.firebaseUser.email,
+          displayName: result.firebaseUser.displayName,
+        }
+      }, "Psychiatrist created successfully");
+    }
   } else {
-    throw new ValidationError("Invalid userType. Must be 'Client' or 'Counselor'");
+    throw new ValidationError("Invalid userType. Must be 'Client', 'Counselor', 'Admin', or 'Psychiatrist'");
   }
 };
 

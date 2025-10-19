@@ -9,12 +9,15 @@ import {
   bookSession,
   getUserSessions,
   getSessionById,
+  getSessionLink,
   setCounselorAvailability,
   setCounselorUnavailability,
   cancelSession,
   getCounselorSessions,
   getRemainingStudentSessions,
-  getCounselorMonthlyAvailability
+  getCounselorMonthlyAvailability,
+  getBooked,
+  updateMeetingStatus
 } from '../controllers/SessionController';
 import { authenticateToken } from '../middlewares/auth';
 
@@ -26,6 +29,10 @@ router.get('/counselors/:id', getCounselorById);
 router.get('/timeslots/:counselorId/:date', getAvailableTimeSlots);
 router.get('/counselors/:id/availability/:year/:month', getCounselorMonthlyAvailability);
 
+//jitsi endpoint for updating meeting details
+router.post('/jitsi/events/room/destroyed', updateMeetingStatus);
+router.post('/jitsi/events/room/created', updateMeetingStatus);
+
 // Psychiatrist routes
 router.get('/psychiatrists', getPsychiatrists);
 router.get('/psychiatrists/:id', getPsychiatristById);
@@ -36,10 +43,14 @@ router.use(authenticateToken);
 router.post('/book', bookSession);
 router.get('/my-sessions', getUserSessions);
 router.get('/remaining', getRemainingStudentSessions);
+router.get('/bookedSessions', getBooked);
 router.get('/:id', getSessionById);
+router.get('/:id/link', getSessionLink);
 router.put('/:id/cancel', cancelSession);
 router.post('/availability', setCounselorAvailability);
 router.post('/unavailability', setCounselorUnavailability);
 router.get('/counselor/:id', getCounselorSessions);
+
+router.get('/getSessionLink/:id', getSessionLink);
 
 export default router;

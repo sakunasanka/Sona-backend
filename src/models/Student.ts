@@ -29,37 +29,56 @@ class Student {
   public updatedAt!: Date;
   public rejectedBy!: number | null;
 
-  // Create a new student application
+    // Create a new student application
   static async createStudentApplication(studentData: Omit<StudentData, 'id' | 'createdAt' | 'updatedAt'>): Promise<Student> {
-    const result = await sequelize.query(`
-      INSERT INTO students (
-        "clientID",
-        "fullName",
-        "university",
-        "studentIDCopy",
-        "uniEmail",
-        "applicationStatus",
-        "rejectionReason",
-        "createdAt",
-        "updatedAt"
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-      RETURNING *
-    `, {
-      replacements: [
-        studentData.clientId,
-        studentData.fullName,
-        studentData.university,
-        studentData.studentIDCopy,
-        studentData.uniEmail,
-        studentData.applicationStatus,
-        studentData.rejectionReason || null,
-      ],
-      type: QueryTypes.INSERT
-    });
+    try {
+      // First insert the record
+      await sequelize.query(`
+        INSERT INTO students (
+          "clientID",
+          "fullName",
+          "university",
+          "studentIDCopy",
+          "uniEmail",
+          "applicationStatus",
+          "rejectionReason",
+          "createdAt",
+          "updatedAt"
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+      `, {
+        replacements: [
+          studentData.clientId,
+          studentData.fullName,
+          studentData.university,
+          studentData.studentIDCopy,
+          studentData.uniEmail,
+          studentData.applicationStatus,
+          studentData.rejectionReason || null,
+        ],
+        type: QueryTypes.INSERT
+      });
 
-    const data = (result[0] as any)[0];
-    return this.mapToStudent(data);
+      // Then fetch the created record
+      const result = await sequelize.query(`
+        SELECT * FROM students 
+        WHERE "clientID" = ? AND "applicationStatus" = ? 
+        ORDER BY "createdAt" DESC 
+        LIMIT 1
+      `, {
+        replacements: [studentData.clientId, studentData.applicationStatus],
+        type: QueryTypes.SELECT
+      });
+
+      const data = (result as any)[0];
+      if (!data) {
+        throw new Error('Failed to retrieve created student application');
+      }
+      return this.mapToStudent(data);
+    } catch (error) {
+      console.error('Error in createStudentApplication:', error);
+      throw error;
+    }
   }
 
   // Find student application by client ID

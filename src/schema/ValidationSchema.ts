@@ -24,7 +24,7 @@ export const createUserSchema = yup.object({
 
     userType: yup
         .string()
-        .oneOf(['Client', 'Counselor', 'Admin'], 'User type must be either Client or Counselor')
+        .oneOf(['Client', 'Counselor', 'Admin', 'Psychiatrist'], 'User type must be either Client, Counselor, Admin, or Psychiatrist')
         .required('User type is required'),
     
     avatar: yup
@@ -580,7 +580,7 @@ export const createComplaintSchema = yup.object({
 export const updateComplaintStatusSchema = yup.object({
     status: yup
         .string()
-        .oneOf(['pending', 'resolved', 'rejected', 'in review'], 'Invalid status value')
+        .oneOf(['pending', 'resolved', 'rejected'], 'Invalid status value')
         .required('Status is required'),
 
     reasonID: yup

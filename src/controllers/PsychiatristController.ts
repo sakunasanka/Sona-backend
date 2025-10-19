@@ -1,6 +1,12 @@
 import { Request, Response } from 'express';
 import { PsychiatristService } from '../services/PsychiatristService';
+import SessionService from '../services/SessionService';
+import { CounselorService } from '../services/CounselorServices';
 import { ValidationError, ItemNotFoundError } from '../utils/errors';
+import Prescription from '../models/Prescription';
+import { validateData, updateCounselorProfileSchema } from '../schema/ValidationSchema';
+import { asyncHandler } from '../utils/asyncHandler';
+import { NotificationHelper } from '../utils/NotificationHelper';
 
 // Helper for consistent API responses
 const apiResponse = {
@@ -117,7 +123,7 @@ export const getMonthlyAvailability = async (req: Request, res: Response): Promi
       return;
     }
 
-    const availability = await PsychiatristService.getMonthlyAvailability(
+    const availability = await SessionService.getCounselorMonthlyAvailability(
       psychiatristId,
       yearNum,
       monthNum
@@ -252,7 +258,7 @@ export const getTimeSlots = async (req: Request, res: Response): Promise<void> =
  */
 export const bookPsychiatristSession = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
+    const userId = req.user?.dbUser.id;
     
     if (!userId) {
       res.status(401).json(apiResponse.error(
@@ -337,7 +343,7 @@ export const bookPsychiatristSession = async (req: Request, res: Response): Prom
  */
 export const getUserPsychiatristSessions = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
+    const userId = req.user?.dbUser.id;
     
     if (!userId) {
       res.status(401).json(apiResponse.error(
@@ -370,8 +376,8 @@ export const getUserPsychiatristSessions = async (req: Request, res: Response): 
  */
 export const getPsychiatristSessions = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
-    const userRole = (req as any).user?.dbUser?.userType;
+    const userId = req.user?.dbUser.id;
+    const userRole = req.user?.dbUser.userType;
     const { id } = req.params;
     const psychiatristId = parseInt(id);
 
@@ -423,8 +429,8 @@ export const getPsychiatristSessions = async (req: Request, res: Response): Prom
  */
 export const cancelPsychiatristSession = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
-    const userRole = (req as any).user?.dbUser?.userType;
+    const userId = req.user?.dbUser.id;
+    const userRole = req.user?.dbUser.userType;
     const { id } = req.params;
     const sessionId = parseInt(id);
 
@@ -478,7 +484,7 @@ export const cancelPsychiatristSession = async (req: Request, res: Response): Pr
  */
 export const getUpcomingSessionsCount = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user?.dbUser?.id;
+    const userId = req.user?.dbUser.id;
     
     if (!userId) {
       res.status(401).json(apiResponse.error(
@@ -627,3 +633,175 @@ export const updatePsychiatristAvailability = async (req: Request, res: Response
 //     ));
 //   }
 // };
+
+/**
+ * @desc    Upload a prescription
+ * @route   POST /api/psychiatrists/prescription
+ * @access  Private (Psychiatrist only)
+ */
+export const uploadPrescription = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?.dbUser?.id;
+    const userRole = (req as any).user?.dbUser?.userType;
+
+    if (!userId) {
+      res.status(401).json(apiResponse.error(
+        'Unauthorized',
+        'User authentication required'
+      ));
+      return;
+    }
+
+    if (userRole !== 'Psychiatrist') {
+      res.status(403).json(apiResponse.error(
+        'Forbidden',
+        'Only psychiatrists can upload prescriptions'
+      ));
+      return;
+    }
+
+    const { clientId, description, prescription } = req.body;
+
+    if (!clientId || !prescription) {
+      res.status(400).json(apiResponse.error(
+        'Missing required fields',
+        'Client ID and prescription URL are required'
+      ));
+      return;
+    }
+
+    // Create the prescription
+    const newPrescription = await Prescription.create({
+      psychiatristId: userId,
+      clientId: parseInt(clientId),
+      description,
+      prescription
+    });
+
+    // Send notification to client
+    try {
+      const psychiatrist = await require('../models/User').default.findByPk(userId);
+      if (psychiatrist) {
+        await NotificationHelper.prescriptionUploaded(parseInt(clientId), psychiatrist.name);
+      }
+    } catch (notificationError) {
+      console.error('Failed to send prescription notification:', notificationError);
+      // Don't fail the prescription upload if notification fails
+    }
+
+    res.status(201).json(apiResponse.success(
+      'Prescription uploaded successfully',
+      {
+        id: newPrescription.id,
+        psychiatristId: newPrescription.psychiatristId,
+        clientId: newPrescription.clientId,
+        description: newPrescription.description,
+        prescription: newPrescription.prescription,
+        createdAt: newPrescription.createdAt
+      }
+    ));
+  } catch (error) {
+    console.error('Error uploading prescription:', error);
+    res.status(500).json(apiResponse.error(
+      'Failed to upload prescription',
+      error instanceof Error ? error.message : 'Unknown error'
+    ));
+  }
+};
+
+/**
+ * @desc    Get all prescriptions by psychiatrist for a specific client
+ * @route   GET /api/psychiatrists/prescriptions/:clientId
+ * @access  Private (Psychiatrist only)
+ */
+export const getPrescriptionsByPsychiatrist = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?.dbUser?.id;
+    const userRole = (req as any).user?.dbUser?.userType;
+    const { clientId } = req.params;
+
+    if (!userId) {
+      res.status(401).json(apiResponse.error(
+        'Unauthorized',
+        'User authentication required'
+      ));
+      return;
+    }
+
+    if (userRole !== 'Psychiatrist') {
+      res.status(403).json(apiResponse.error(
+        'Forbidden',
+        'Only psychiatrists can view their prescriptions'
+      ));
+      return;
+    }
+
+    const clientIdNum = parseInt(clientId);
+    if (isNaN(clientIdNum)) {
+      res.status(400).json(apiResponse.error(
+        'Invalid client ID',
+        'Client ID must be a valid number'
+      ));
+      return;
+    }
+
+    // Get all prescriptions by this psychiatrist for the specific client
+    const prescriptions = await Prescription.findAll({
+      where: { 
+        psychiatristId: userId,
+        clientId: clientIdNum
+      },
+      order: [['createdAt', 'DESC']],
+      include: [
+        {
+          model: require('../models/User').default,
+          as: 'client',
+          attributes: ['id', 'name', 'email']
+        }
+      ]
+    });
+
+    res.status(200).json(apiResponse.success(
+      'Prescriptions fetched successfully',
+      {
+        prescriptions,
+        count: prescriptions.length,
+        clientId: clientIdNum
+      }
+    ));
+  } catch (error) {
+    console.error('Error fetching prescriptions:', error);
+    res.status(500).json(apiResponse.error(
+      'Failed to fetch prescriptions',
+      error instanceof Error ? error.message : 'Unknown error'
+    ));
+  }
+};
+
+/**
+ * @desc    Update psychiatrist profile
+ * @route   PUT /api/psychiatrists/profile
+ * @access  Private (Psychiatrist only)
+ */
+export const updatePsychiatristProfile = asyncHandler(async (req: Request, res: Response) => {
+  const psychiatristId = req.user?.dbUser.id;
+
+  if (!psychiatristId) {
+    res.status(401).json({
+      success: false,
+      message: 'Unauthorized',
+      error: 'User authentication required'
+    });
+    return;
+  }
+
+  const validatedData = await validateData(updateCounselorProfileSchema, req.body);
+
+  const updatedProfile = await CounselorService.updateCounselorProfile(psychiatristId, validatedData);
+
+  res.status(200).json({
+    success: true,
+    message: 'Profile updated successfully',
+    data: updatedProfile
+  });
+});

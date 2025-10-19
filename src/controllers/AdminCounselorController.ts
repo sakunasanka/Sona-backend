@@ -6,6 +6,7 @@ import {
   getCounselorCounts
 } from '../services/AdminCounselorServices';
 import { validationResult } from 'express-validator';
+import { NotificationHelper } from '../utils/NotificationHelper';
 
 class AdminCounselorController {
   // Get all counselors
@@ -84,6 +85,18 @@ class AdminCounselorController {
 
       if (!updatedCounselor) {
         return res.status(404).json({ message: 'Counselor not found' });
+      }
+
+      // Send notification to counselor
+      try {
+        if (status === 'approved') {
+          await NotificationHelper.profileApproved(parseInt(id), 'Counselor');
+        } else if (status === 'rejected') {
+          await NotificationHelper.profileRejected(parseInt(id), 'Counselor', rejectionReason);
+        }
+      } catch (notificationError) {
+        console.error('Failed to send counselor status notification:', notificationError);
+        // Don't fail the status update if notification fails
       }
 
       res.status(200).json(updatedCounselor);

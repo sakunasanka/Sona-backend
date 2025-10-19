@@ -1,6 +1,28 @@
-import { DataTypes, Model, Optional, Op } from 'sequelize';
+import { DataTypes, Model, Optional, Op, Sequelize } from 'sequelize';
 import { sequelize } from '../config/db';
 import User from './User';
+import { decrypt, encrypt } from '../middlewares/encrypt';
+
+// Helper function to check if a value is encrypted (contains colons as separators)
+const isEncrypted = (value: string): boolean => {
+  if (!value || typeof value !== 'string') return false;
+  const parts = value.split(':');
+  return parts.length === 3 && parts.every(part => /^[0-9a-f]+$/i.test(part));
+};
+
+// Safe decrypt function that handles both encrypted and unencrypted data
+const safeDecrypt = (value: string): string => {
+  if (!value) return '';
+  if (isEncrypted(value)) {
+    try {
+      return decrypt(value);
+    } catch (error) {
+      console.warn('Failed to decrypt value, returning as-is:', error);
+      return value;
+    }
+  }
+  return value;
+};
 
 // Define the interface for PHQ-9 response
 export interface PHQ9Response {
@@ -28,6 +50,9 @@ export interface QuestionnaireResultAttributes {
 export interface QuestionnaireResultCreationAttributes 
   extends Optional<QuestionnaireResultAttributes, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
 
+// It's a good practice to create a helper type for severity
+export type SeverityType = QuestionnaireResultAttributes['severity'];
+
 class QuestionnaireResult extends Model<QuestionnaireResultAttributes, QuestionnaireResultCreationAttributes> 
   implements QuestionnaireResultAttributes {
   
@@ -36,7 +61,7 @@ class QuestionnaireResult extends Model<QuestionnaireResultAttributes, Questionn
   public questionnaireType!: 'PHQ9';
   public responses!: PHQ9Response[];
   public totalScore!: number;
-  public severity!: 'Minimal or none' | 'Mild' | 'Moderate' | 'Moderately severe' | 'Severe';
+  public severity!: SeverityType;
   public impact?: string;
   public hasItem9Positive!: boolean;
   public completedAt!: Date;
@@ -47,10 +72,8 @@ class QuestionnaireResult extends Model<QuestionnaireResultAttributes, Questionn
   // Association with User
   public User?: User;
 
-  /**
-   * Calculate PHQ-9 severity based on total score
-   */
-  public static calculateSeverity(score: number): QuestionnaireResultAttributes['severity'] {
+  // --- (All static methods like calculateSeverity, findUserHistory, etc. remain unchanged) ---
+  public static calculateSeverity(score: number): SeverityType {
     if (score >= 0 && score <= 4) return 'Minimal or none';
     if (score >= 5 && score <= 9) return 'Mild';
     if (score >= 10 && score <= 14) return 'Moderate';
@@ -59,11 +82,8 @@ class QuestionnaireResult extends Model<QuestionnaireResultAttributes, Questionn
     throw new Error('Invalid PHQ-9 score. Score must be between 0 and 27.');
   }
 
-  /**
-   * Calculate total score from responses
-   */
   public static calculateTotalScore(responses: PHQ9Response[]): number {
-    if (responses.length !== 9) {
+    if (!responses || responses.length !== 9) {
       throw new Error('PHQ-9 must have exactly 9 responses');
     }
     return responses.reduce((total, response) => {
@@ -74,17 +94,11 @@ class QuestionnaireResult extends Model<QuestionnaireResultAttributes, Questionn
     }, 0);
   }
 
-  /**
-   * Check if item 9 (suicidal ideation) is positive
-   */
   public static checkItem9Positive(responses: PHQ9Response[]): boolean {
     const item9 = responses.find(r => r.questionIndex === 8); // Item 9 is index 8
     return item9 ? item9.answer > 0 : false;
   }
-
-  /**
-   * Validate PHQ-9 responses
-   */
+  
   public static validateResponses(responses: PHQ9Response[]): void {
     if (!Array.isArray(responses)) {
       throw new Error('Responses must be an array');
@@ -94,14 +108,12 @@ class QuestionnaireResult extends Model<QuestionnaireResultAttributes, Questionn
       throw new Error('PHQ-9 must have exactly 9 responses');
     }
 
-    // Check for duplicate question indices
     const indices = responses.map(r => r.questionIndex);
     const uniqueIndices = new Set(indices);
     if (uniqueIndices.size !== 9) {
       throw new Error('Each question must be answered exactly once');
     }
 
-    // Validate question indices are 0-8
     const validIndices = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8]);
     for (const index of indices) {
       if (!validIndices.has(index)) {
@@ -109,7 +121,6 @@ class QuestionnaireResult extends Model<QuestionnaireResultAttributes, Questionn
       }
     }
 
-    // Validate answers are 0-3
     for (const response of responses) {
       if (typeof response.answer !== 'number' || response.answer < 0 || response.answer > 3) {
         throw new Error(`Invalid answer for question ${response.questionIndex}. Must be between 0 and 3.`);
@@ -117,15 +128,9 @@ class QuestionnaireResult extends Model<QuestionnaireResultAttributes, Questionn
     }
   }
 
-  /**
-   * Find user's questionnaire history
-   */
   public static async findUserHistory(userId: number, limit: number = 10, offset: number = 0) {
-    return await QuestionnaireResult.findAndCountAll({
-      where: { 
-        userId,
-        deletedAt: { [Op.is]: null }
-      } as any,
+    return this.findAndCountAll({
+      where: { userId },
       order: [['completedAt', 'DESC']],
       limit,
       offset,
@@ -137,15 +142,9 @@ class QuestionnaireResult extends Model<QuestionnaireResultAttributes, Questionn
     });
   }
 
-  /**
-   * Find user's latest result
-   */
   public static async findUserLatest(userId: number) {
-    return await QuestionnaireResult.findOne({
-      where: { 
-        userId,
-        deletedAt: { [Op.is]: null }
-      } as any,
+    return this.findOne({
+      where: { userId },
       order: [['completedAt', 'DESC']],
       include: [{
         model: User,
@@ -155,16 +154,13 @@ class QuestionnaireResult extends Model<QuestionnaireResultAttributes, Questionn
     });
   }
 
-  /**
-   * Get analytics data for counselors/admins
-   */
   public static async getAnalytics(filters: {
     startDate?: Date;
     endDate?: Date;
-    severity?: string;
+    severity?: SeverityType;
     hasItem9Positive?: boolean;
   } = {}) {
-    const whereClause: any = { deletedAt: { [Op.is]: null } };
+    const whereClause: any = {};
     
     if (filters.startDate) {
       whereClause.completedAt = { ...whereClause.completedAt, [Op.gte]: filters.startDate };
@@ -173,32 +169,38 @@ class QuestionnaireResult extends Model<QuestionnaireResultAttributes, Questionn
       whereClause.completedAt = { ...whereClause.completedAt, [Op.lte]: filters.endDate };
     }
     if (filters.severity) {
-      whereClause.severity = filters.severity;
+      whereClause.severity = encrypt(filters.severity);
     }
     if (filters.hasItem9Positive !== undefined) {
-      whereClause.hasItem9Positive = filters.hasItem9Positive;
+      whereClause.hasItem9Positive = encrypt(filters.hasItem9Positive.toString());
     }
 
-    return await QuestionnaireResult.findAll({
+    return this.findAll({
       where: whereClause,
-      attributes: [
-        'severity',
-        'totalScore',
-        'hasItem9Positive',
-        'completedAt',
-        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
-      ],
-      group: ['severity', 'totalScore', 'hasItem9Positive', 'completedAt'],
+      attributes: ['severity', 'totalScore', 'hasItem9Positive', 'completedAt'],
       order: [['completedAt', 'DESC']]
     });
   }
 
-  /**
-   * Soft delete a result
-   */
   public async softDelete(): Promise<void> {
-    this.deletedAt = new Date();
+    this.setDataValue('deletedAt', new Date());
     await this.save();
+  }
+
+  // ✅ =================================================================
+  // ✅ ADD THIS METHOD TO FIX THE DECRYPTION PROBLEM
+  // ✅ This method is called by JSON.stringify() (and res.json())
+  // ✅ =================================================================
+  public toJSON(): QuestionnaireResultAttributes {
+    // Get all attributes from the model instance
+    const attributes = super.toJSON() as QuestionnaireResultAttributes;
+
+    // The `super.toJSON()` method will *already* have triggered
+    // all the `get()` methods defined in `QuestionnaireResult.init`.
+    // This function now simply ensures that the object returned
+    // is the clean, decrypted version.
+    
+    return attributes;
   }
 }
 
@@ -213,10 +215,7 @@ QuestionnaireResult.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       field: 'user_id',
-      references: {
-        model: 'users',
-        key: 'id',
-      },
+      references: { model: 'users', key: 'id' },
     },
     questionnaireType: {
       type: DataTypes.ENUM('PHQ9'),
@@ -227,37 +226,114 @@ QuestionnaireResult.init(
     responses: {
       type: DataTypes.JSONB,
       allowNull: false,
-      validate: {
-        isValidResponses(value: PHQ9Response[]) {
-          QuestionnaireResult.validateResponses(value);
-        },
+      get() {
+        const rawValue = this.getDataValue('responses' as any);
+        if (!rawValue || !Array.isArray(rawValue)) {
+          return [];
+        }
+        
+        // Decrypt only the answer values, keep questionIndex as-is
+        return rawValue.map((response: any) => ({
+          questionIndex: response.questionIndex,
+          answer: response.answer && isEncrypted(response.answer) 
+            ? parseInt(safeDecrypt(response.answer), 10)
+            : (typeof response.answer === 'number' ? response.answer : parseInt(response.answer, 10))
+        })) as PHQ9Response[];
+      },
+      set(value: PHQ9Response[]) {
+        if (!value || !Array.isArray(value)) {
+          this.setDataValue('responses' as any, []);
+          return;
+        }
+        
+        // ✅ Simplified: Validation is now only in the hook
+        
+        // Encrypt only the answer values, keep questionIndex in plain text
+        const encryptedResponses = value.map(response => ({
+          questionIndex: response.questionIndex,
+          answer: encrypt(response.answer.toString())
+        }));
+        
+        this.setDataValue('responses' as any, encryptedResponses);
       },
     },
     totalScore: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.TEXT,
       allowNull: false,
       field: 'total_score',
-      validate: {
-        min: 0,
-        max: 27,
+      get() {
+        const rawValue = this.getDataValue('totalScore' as any);
+        if (!rawValue) return 0;
+        
+        // Handle both encrypted and unencrypted values
+        if (isEncrypted(rawValue)) {
+          return parseInt(safeDecrypt(rawValue), 10);
+        } else {
+          // Legacy data
+          return typeof rawValue === 'number' ? rawValue : parseInt(rawValue, 10);
+        }
       },
+      set(value: number) {
+        this.setDataValue('totalScore' as any, encrypt(value.toString()));
+      }
     },
     severity: {
-      type: DataTypes.STRING(50),
+      type: DataTypes.TEXT,
       allowNull: false,
-      validate: {
-        isIn: [['Minimal or none', 'Mild', 'Moderate', 'Moderately severe', 'Severe']],
+      get() {
+        const rawValue = this.getDataValue('severity' as any);
+        if (!rawValue) return 'Minimal or none';
+        
+        // Handle both encrypted and unencrypted values
+        if (isEncrypted(rawValue)) {
+          return safeDecrypt(rawValue) as SeverityType;
+        } else {
+          // Legacy data
+          return rawValue as SeverityType;
+        }
       },
+      set(value: SeverityType) {
+        this.setDataValue('severity' as any, encrypt(value));
+      }
     },
     impact: {
-      type: DataTypes.STRING(100),
+      type: DataTypes.TEXT,
       allowNull: true,
+      get() {
+        const rawValue = this.getDataValue('impact' as any);
+        if (!rawValue) return undefined;
+        
+        // Handle both encrypted and unencrypted values
+        if (isEncrypted(rawValue)) {
+          return safeDecrypt(rawValue);
+        } else {
+          // Legacy data
+          return rawValue;
+        }
+      },
+      set(value: string | undefined) {
+        this.setDataValue('impact' as any, value ? encrypt(value) : null);
+      }
     },
     hasItem9Positive: {
-      type: DataTypes.BOOLEAN,
+      type: DataTypes.TEXT,
       allowNull: false,
-      defaultValue: false,
       field: 'has_item9_positive',
+      get() {
+        const rawValue = this.getDataValue('hasItem9Positive' as any);
+        if (!rawValue) return false;
+        
+        // Handle both encrypted and unencrypted values
+        if (isEncrypted(rawValue)) {
+          return safeDecrypt(rawValue) === 'true';
+        } else {
+          // Legacy data
+          return typeof rawValue === 'boolean' ? rawValue : rawValue === 'true';
+        }
+      },
+      set(value: boolean) {
+        this.setDataValue('hasItem9Positive' as any, encrypt(value.toString()));
+      }
     },
     completedAt: {
       type: DataTypes.DATE,
@@ -284,21 +360,24 @@ QuestionnaireResult.init(
     sequelize,
     modelName: 'QuestionnaireResult',
     tableName: 'questionnaire_results',
-    paranoid: false, // We handle soft deletion manually
+    timestamps: true,
+    paranoid: true,
     hooks: {
-      beforeCreate: (instance: QuestionnaireResult) => {
-        // Validate and calculate fields before creation
-        QuestionnaireResult.validateResponses(instance.responses);
-        instance.totalScore = QuestionnaireResult.calculateTotalScore(instance.responses);
-        instance.severity = QuestionnaireResult.calculateSeverity(instance.totalScore);
-        instance.hasItem9Positive = QuestionnaireResult.checkItem9Positive(instance.responses);
-      },
-      beforeUpdate: (instance: QuestionnaireResult) => {
-        // Recalculate if responses are updated
-        if (instance.changed('responses')) {
+      beforeValidate: (instance: QuestionnaireResult) => {
+        // This hook runs on create and update.
+        // It reads `instance.responses` (which triggers the GETTER to decrypt)
+        // and uses the clean data to calculate the other fields.
+        
+        if (instance.isNewRecord || instance.changed('responses')) {
+          // 1. Validate the (decrypted) responses
           QuestionnaireResult.validateResponses(instance.responses);
-          instance.totalScore = QuestionnaireResult.calculateTotalScore(instance.responses);
-          instance.severity = QuestionnaireResult.calculateSeverity(instance.totalScore);
+
+          // 2. Calculate score from (decrypted) responses
+          const score = QuestionnaireResult.calculateTotalScore(instance.responses);
+          
+          // 3. These assignments will trigger their respective encrypted SETTERS
+          instance.totalScore = score;
+          instance.severity = QuestionnaireResult.calculateSeverity(score);
           instance.hasItem9Positive = QuestionnaireResult.checkItem9Positive(instance.responses);
         }
       },
@@ -306,15 +385,7 @@ QuestionnaireResult.init(
   }
 );
 
-// Define associations
-QuestionnaireResult.belongsTo(User, {
-  foreignKey: 'userId',
-  as: 'User',
-});
-
-User.hasMany(QuestionnaireResult, {
-  foreignKey: 'userId',
-  as: 'QuestionnaireResults',
-});
+QuestionnaireResult.belongsTo(User, { foreignKey: 'userId', as: 'User' });
+User.hasMany(QuestionnaireResult, { foreignKey: 'userId', as: 'QuestionnaireResults' });
 
 export default QuestionnaireResult;

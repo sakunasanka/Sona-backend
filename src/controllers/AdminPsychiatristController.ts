@@ -3,6 +3,7 @@ import Psychiatrist from '../models/Psychiatrist';
 import { validationResult } from 'express-validator';
 import { sequelize } from '../config/db';
 import { QueryTypes } from 'sequelize';
+import { NotificationHelper } from '../utils/NotificationHelper';
 
 class AdminPsychiatristController {
  
@@ -341,9 +342,10 @@ class AdminPsychiatristController {
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { id } = req.params;
+      const { id } = req.params; // psychiatrist's userId (PK)
       const { status, rejectionReason } = req.body;
 
+      // Validate rejection reason for rejected status
       if (status === 'rejected' && !rejectionReason) {
         return res
           .status(400)
@@ -354,20 +356,33 @@ class AdminPsychiatristController {
       const rejectedById = req.user?.dbUser.id;
 
       if (status === 'rejected' && !rejectedById) {
-        return res.status(401).json({ 
-          message: 'Authentication required for rejection' 
+        return res.status(401).json({
+          message: 'Authentication required for rejection',
         });
       }
 
+      // Update psychiatrist status using the model
       const updatedPsychiatrist = await Psychiatrist.updatePsychiatristStatus(
         parseInt(id),
         status,
         rejectionReason,
-        rejectedById
+        rejectedById // Pass the rejectedById
       );
 
       if (!updatedPsychiatrist) {
         return res.status(404).json({ message: 'Psychiatrist not found' });
+      }
+
+      // Send notification to psychiatrist
+      try {
+        if (status === 'approved') {
+          await NotificationHelper.profileApproved(parseInt(id), 'Psychiatrist');
+        } else if (status === 'rejected') {
+          await NotificationHelper.profileRejected(parseInt(id), 'Psychiatrist', rejectionReason);
+        }
+      } catch (notificationError) {
+        console.error('Failed to send psychiatrist status notification:', notificationError);
+        // Don't fail the status update if notification fails
       }
 
       // Define interface for rejection info
@@ -411,7 +426,7 @@ class AdminPsychiatristController {
       }
     }
   }
-
+  
   // New method to revoke psychiatrist status
   async revokePsychiatristStatus(req: Request, res: Response) {
     try {
