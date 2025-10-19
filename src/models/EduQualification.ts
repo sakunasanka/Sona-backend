@@ -141,7 +141,7 @@ EduQualification.init(
       allowNull: true,
       comment: 'File path or URL for certificate/diploma image or PDF'
     },
-    verificationDocument: {
+    document: {
       type: DataTypes.STRING,
       allowNull: true,
     },

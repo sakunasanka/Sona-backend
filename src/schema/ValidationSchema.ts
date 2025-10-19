@@ -580,7 +580,7 @@ export const createComplaintSchema = yup.object({
 export const updateComplaintStatusSchema = yup.object({
     status: yup
         .string()
-        .oneOf(['pending', 'resolved', 'rejected', 'in review'], 'Invalid status value')
+        .oneOf(['pending', 'resolved', 'rejected'], 'Invalid status value')
         .required('Status is required'),
 
     reasonID: yup
