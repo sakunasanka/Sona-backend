@@ -24,6 +24,7 @@ export interface ClientWithStudentInfo {
     status?: 'pending' | 'approved' | 'rejected';
     appliedDate?: string;
     school?: string;
+    uniEmail?: string;
     studentIDCopy?: string;
     clientID?: string;
     rejectionReason?: string;
@@ -68,6 +69,7 @@ class AdminClientServices {
         c."concerns",
         s."applicationStatus" AS "status",
         s."university" AS "school",
+        s."uniEmail",
         s."clientID",
         s."rejectionReason",
         s."studentIDCopy",
@@ -108,6 +110,7 @@ class AdminClientServices {
             status: client.status,
             appliedDate: client.appliedDate,
             school: client.school,
+            uniEmail: client.uniEmail,
             clientID: client.clientID,
             studentIDCopy: client.studentIDCopy,
             rejectionReason: client.rejectionReason,
@@ -149,6 +152,7 @@ class AdminClientServices {
         c."concerns",
         s."applicationStatus" AS "status",
         s."university" AS "school",
+        s."uniEmail",
         s."clientID",
         s."studentIDCopy",
         s."rejectionReason",
@@ -189,6 +193,7 @@ class AdminClientServices {
           status: client.status,
           appliedDate: client.appliedDate,
           school: client.school,
+          uniEmail: client.uniEmail,
           clientID: client.clientID,
           studentIDCopy: client.studentIDCopy,
           rejectionReason: client.rejectionReason,
