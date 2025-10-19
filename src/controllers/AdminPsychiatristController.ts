@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Psychiatrist from '../models/Psychiatrist';
 import { validationResult } from 'express-validator';
+import { NotificationHelper } from '../utils/NotificationHelper';
 
 class AdminPsychiatristController {
   // Get all psychiatrists
@@ -8,14 +9,12 @@ class AdminPsychiatristController {
     try {
       const { status, search } = req.query;
       
-      let psychiatrists = await Psychiatrist.findAllPsychiatrists();
+      let psychiatrists = await Psychiatrist.findAllPsychiatristsForAdmin();
 
-      // Filter by status if provided and not 'unset'
       if (status && status !== 'unset') {
         psychiatrists = psychiatrists.filter(psych => psych.status === status);
       }
 
-      // Filter by search term if provided
       if (search) {
         const searchTerm = (search as string).toLowerCase();
         psychiatrists = psychiatrists.filter(psych => 
@@ -27,11 +26,22 @@ class AdminPsychiatristController {
           psych.contact_no?.toLowerCase().includes(searchTerm) ||
           psych.address?.toLowerCase().includes(searchTerm) ||
           psych.description?.toLowerCase().includes(searchTerm) ||
-          psych.languages?.some(lang => lang.toLowerCase().includes(searchTerm))
+          psych.languages?.some(lang => lang.toLowerCase().includes(searchTerm)) ||
+          // Search in education qualifications
+          psych.eduQualifications?.some(edu => 
+            edu.institution.toLowerCase().includes(searchTerm) ||
+            edu.degree?.toLowerCase().includes(searchTerm) ||
+            edu.field?.toLowerCase().includes(searchTerm) ||
+            edu.title?.toLowerCase().includes(searchTerm)
+          ) ||
+          // Search in experiences
+          psych.experiences?.some(exp => 
+            exp.title.toLowerCase().includes(searchTerm) ||
+            exp.description.toLowerCase().includes(searchTerm)
+          )
         );
       }
 
-      // Return all fields from the model
       const response = psychiatrists.map(psych => ({
         id: psych.id,
         firebaseId: psych.firebaseId,
@@ -57,6 +67,40 @@ class AdminPsychiatristController {
         x: psych.x,
         website: psych.website,
         languages: psych.languages,
+        eduQualifications: psych.eduQualifications?.map(edu => ({
+          id: edu.id,
+          institution: edu.institution,
+          degree: edu.degree,
+          field: edu.field,
+          startDate: edu.startDate,
+          endDate: edu.endDate,
+          grade: edu.grade,
+          document: edu.document,
+          title: edu.title,
+          year: edu.year,
+          status: edu.status,
+          proof: edu.proof,
+          approvedAt: edu.approvedAt,
+          createdAt: edu.createdAt,
+          updatedAt: edu.updatedAt
+        })) || [],
+        experiences: psych.experiences?.map(exp => ({
+          id: exp.id,
+          userId: exp.userId,
+          position: exp.position,
+          company: exp.company,
+          title: exp.title,
+          description: exp.description,
+          startDate: exp.startDate,
+          endDate: exp.endDate,
+          status: exp.status,
+          proof: exp.proof,
+          document: exp.document,
+          approvedAt: exp.approvedAt,
+          approvedBy: exp.approvedBy,
+          createdAt: exp.createdAt,
+          updatedAt: exp.updatedAt
+        })) || [],
         createdAt: psych.createdAt,
         updatedAt: psych.updatedAt
       }));
@@ -72,17 +116,15 @@ class AdminPsychiatristController {
     }
   }
 
-  // Get psychiatrist by ID
   async getPsychiatristById(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const psychiatrist = await Psychiatrist.findPsychiatristById(parseInt(id));
+      const psychiatrist = await Psychiatrist.findPsychiatristByIdForAdmin(parseInt(id));
 
       if (!psychiatrist) {
         return res.status(404).json({ message: 'Psychiatrist not found' });
       }
 
-      // Return all fields from the model
       const response = {
         id: psychiatrist.id,
         firebaseId: psychiatrist.firebaseId,
@@ -108,6 +150,40 @@ class AdminPsychiatristController {
         x: psychiatrist.x,
         website: psychiatrist.website,
         languages: psychiatrist.languages,
+        eduQualifications: psychiatrist.eduQualifications?.map(edu => ({
+          id: edu.id,
+          institution: edu.institution,
+          degree: edu.degree,
+          field: edu.field,
+          startDate: edu.startDate,
+          endDate: edu.endDate,
+          grade: edu.grade,
+          document: edu.document,
+          title: edu.title,
+          year: edu.year,
+          status: edu.status,
+          proof: edu.proof,
+          approvedAt: edu.approvedAt,
+          createdAt: edu.createdAt,
+          updatedAt: edu.updatedAt
+        })) || [],
+        experiences: psychiatrist.experiences?.map(exp => ({
+          id: exp.id,
+          userId: exp.userId,
+          position: exp.position,
+          company: exp.company,
+          title: exp.title,
+          description: exp.description,
+          startDate: exp.startDate,
+          endDate: exp.endDate,
+          status: exp.status,
+          proof: exp.proof,
+          document: exp.document,
+          approvedAt: exp.approvedAt,
+          approvedBy: exp.approvedBy,
+          createdAt: exp.createdAt,
+          updatedAt: exp.updatedAt
+        })) || [],
         createdAt: psychiatrist.createdAt,
         updatedAt: psychiatrist.updatedAt
       };
@@ -122,54 +198,64 @@ class AdminPsychiatristController {
       }
     }
   }
-
+  
   // Update psychiatrist status
-  // Update psychiatrist status
-async updatePsychiatristStatus(req: Request, res: Response) {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+  async updatePsychiatristStatus(req: Request, res: Response) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
 
-    const { id } = req.params; // psychiatrist's userId (PK)
-    const { status, rejectionReason } = req.body;
+      const { id } = req.params; // psychiatrist's userId (PK)
+      const { status, rejectionReason } = req.body;
 
-    // Validate rejection reason for rejected status
-    if (status === 'rejected' && !rejectionReason) {
-      return res
-        .status(400)
-        .json({ message: 'Rejection reason is required when status is rejected' });
-    }
+      // Validate rejection reason for rejected status
+      if (status === 'rejected' && !rejectionReason) {
+        return res
+          .status(400)
+          .json({ message: 'Rejection reason is required when status is rejected' });
+      }
 
-    // Update psychiatrist status using the model
-    const updatedPsychiatrist = await Psychiatrist.updatePsychiatristStatus(
-      parseInt(id),
-      status,
-      rejectionReason
-    );
+      // Update psychiatrist status using the model
+      const updatedPsychiatrist = await Psychiatrist.updatePsychiatristStatus(
+        parseInt(id),
+        status,
+        rejectionReason
+      );
 
-    if (!updatedPsychiatrist) {
-      return res.status(404).json({ message: 'Psychiatrist not found' });
-    }
+      if (!updatedPsychiatrist) {
+        return res.status(404).json({ message: 'Psychiatrist not found' });
+      }
 
-    // ✅ Return updated data (after reload)
-    const response = {
-      ...updatedPsychiatrist.get({ plain: true }),
-      rejectionReason: status === 'rejected' ? rejectionReason : undefined,
-    };
+      // Send notification to psychiatrist
+      try {
+        if (status === 'approved') {
+          await NotificationHelper.profileApproved(parseInt(id), 'Psychiatrist');
+        } else if (status === 'rejected') {
+          await NotificationHelper.profileRejected(parseInt(id), 'Psychiatrist', rejectionReason);
+        }
+      } catch (notificationError) {
+        console.error('Failed to send psychiatrist status notification:', notificationError);
+        // Don't fail the status update if notification fails
+      }
 
-    res.status(200).json(response);
-  } catch (error) {
-    console.error('Error updating psychiatrist status:', error);
-    if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: 'An unknown error occurred' });
+      // ✅ Return updated data (after reload)
+      const response = {
+        ...updatedPsychiatrist.get({ plain: true }),
+        rejectionReason: status === 'rejected' ? rejectionReason : undefined,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      console.error('Error updating psychiatrist status:', error);
+      if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'An unknown error occurred' });
+      }
     }
   }
-}
-
 
   // Get psychiatrist counts
   async getPsychiatristCounts(req: Request, res: Response) {

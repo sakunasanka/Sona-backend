@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { PaymentServices } from '../services/PaymentServices';
 import { ApiResponseUtil } from '../utils/apiResponse';
 import { ValidationError } from '../utils/errors';
+import { NotificationHelper } from '../utils/NotificationHelper';
 
 // Helper function to get current date with +05:30 offset
 const getCurrentDatePlus0530 = () => new Date(Date.now() + (5.5 * 60 * 60 * 1000));
@@ -103,6 +104,14 @@ export const initiatePlatformFeePayment = async (req: Request, res: Response): P
         orderId,
         numericAmount
     );
+
+    // Send notification to student
+    try {
+      await NotificationHelper.platformFeePaid(req.user!.dbUser.id, numericAmount.toFixed(2));
+    } catch (notificationError) {
+      console.error('Failed to send platform fee payment notification:', notificationError);
+      // Don't fail the payment if notification fails
+    }
 
     ApiResponseUtil.success(res, {
         transactionId: paymentResult.transactionId,
