@@ -18,7 +18,6 @@ router.get(
   psychiatristController.getPsychiatristById
 );
 
-
 // Update psychiatrist status 
 router.put(
   '/:id/status',
@@ -35,7 +34,12 @@ router.put(
   psychiatristController.updatePsychiatristStatus
 );
 
-
+// New revoke psychiatrist status route
+router.post(
+  '/:id/revoke',
+  authenticateToken,
+  psychiatristController.revokePsychiatristStatus
+);
 
 // Get psychiatrist counts
 router.get(

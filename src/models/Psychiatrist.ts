@@ -2,6 +2,8 @@ import { DataTypes, Model, QueryTypes } from 'sequelize';
 import { sequelize } from '../config/db';
 import User from './User';
 import { DatabaseError } from '../utils/errors';
+import EduQualification from './EduQualification'; 
+import Experience from './Experience'; 
 
 class Psychiatrist extends User {
   public title!: string;
@@ -22,6 +24,8 @@ class Psychiatrist extends User {
   public x?: string;
   public website?: string;
   public languages?: string[];
+  public eduQualifications?: EduQualification[];
+  public experiences?: Experience[];
 
   static async createPsychiatrist(userData: {
     firebaseId: string;
@@ -333,10 +337,12 @@ class Psychiatrist extends User {
 
  
 // Update psychiatrist status
+// Update psychiatrist status
 static async updatePsychiatristStatus(
   id: number,
   status: 'pending' | 'approved' | 'rejected' | 'unset',
-  rejectionReason?: string
+  rejectionReason?: string,
+  rejectedById?: number
 ): Promise<Psychiatrist | null> {
   const transaction = await sequelize.transaction();
 
@@ -368,17 +374,43 @@ static async updatePsychiatristStatus(
       }
     );
 
-    // If rejected, insert rejection reason
+    // If rejected, insert rejection reason with rejectedBy
     if (status === 'rejected' && rejectionReason) {
+      if (!rejectedById) {
+        throw new Error('rejectedById is required when rejecting a psychiatrist');
+      }
+
+      // First, delete any existing rejection reason for this user
       await sequelize.query(
-        `INSERT INTO rejection_reasons ("userId", reason, "createdAt")
-         VALUES (:userId, :reason, NOW())`,
+        `DELETE FROM rejection_reasons WHERE "userId" = :userId`,
+        {
+          replacements: { userId: id },
+          type: QueryTypes.DELETE,
+          transaction,
+        }
+      );
+
+      // Insert new rejection reason with rejectedBy information
+      await sequelize.query(
+        `INSERT INTO rejection_reasons ("userId", reason, "rejectedBy", "createdAt")
+         VALUES (:userId, :reason, :rejectedBy, NOW())`,
         {
           replacements: {
             userId: id,
             reason: rejectionReason,
+            rejectedBy: rejectedById,
           },
           type: QueryTypes.INSERT,
+          transaction,
+        }
+      );
+    } else if (status !== 'rejected') {
+      // Remove rejection reason if status is changed from rejected to something else
+      await sequelize.query(
+        `DELETE FROM rejection_reasons WHERE "userId" = :userId`,
+        {
+          replacements: { userId: id },
+          type: QueryTypes.DELETE,
           transaction,
         }
       );
@@ -387,7 +419,7 @@ static async updatePsychiatristStatus(
     await transaction.commit();
 
     // Return updated psychiatrist
-    return await this.findPsychiatristById(id);
+    return await this.findPsychiatristByIdForAdmin(id);
   } catch (error) {
     await transaction.rollback();
     console.error('❌ Error updating psychiatrist status:', error);
@@ -398,7 +430,6 @@ static async updatePsychiatristStatus(
     );
   }
 }
-
 
   // Update psychiatrist availability
   static async updatePsychiatristAvailability(id: number, isAvailable: boolean): Promise<Psychiatrist | null> {
@@ -417,6 +448,154 @@ static async updatePsychiatristStatus(
       throw new DatabaseError(`Failed to update psychiatrist availability: ` + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
+
+    // Update findPsychiatristById to include education qualifications AND experiences
+  static async findPsychiatristByIdForAdmin(id: number): Promise<Psychiatrist | null> {
+    const result = await sequelize.query(`
+      SELECT 
+        u.id, u."firebaseId", u.name, u.email, u.avatar, u.role, u."createdAt", u."updatedAt",
+        p.title, p.specialities, p.address, p.contact_no, p."licenseNo", p."idCard", 
+        p."isVolunteer", p."isAvailable", p.description, p.rating, p."sessionFee", p.status,
+        p."coverImage", p.instagram, p.linkedin, p.x, p.website, p.languages
+      FROM users u
+      JOIN psychiatrists p ON u.id = p."userId"
+      WHERE u.id = ? AND u.role = 'Psychiatrist'
+    `, {
+      replacements: [id],
+      type: QueryTypes.SELECT
+    });
+
+    if (result.length === 0) return null;
+
+    const data = result[0] as any;
+    const psychiatrist = new Psychiatrist();
+
+    // Set all properties
+    psychiatrist.id = data.id;
+    psychiatrist.firebaseId = data.firebaseId;
+    psychiatrist.name = data.name;
+    psychiatrist.email = data.email;
+    psychiatrist.avatar = data.avatar;
+    psychiatrist.title = data.title;
+    psychiatrist.specialities = data.specialities;
+    psychiatrist.address = data.address;
+    psychiatrist.contact_no = data.contact_no;
+    psychiatrist.license_no = data.licenseNo;
+    psychiatrist.idCard = data.idCard;
+    psychiatrist.isVolunteer = data.isVolunteer;
+    psychiatrist.isAvailable = data.isAvailable;
+    psychiatrist.description = data.description;
+    psychiatrist.rating = data.rating;
+    psychiatrist.sessionFee = data.sessionFee;
+    psychiatrist.status = data.status;
+    psychiatrist.coverImage = data.coverImage;
+    psychiatrist.instagram = data.instagram;
+    psychiatrist.linkedin = data.linkedin;
+    psychiatrist.x = data.x;
+    psychiatrist.website = data.website;
+    psychiatrist.languages = data.languages;
+
+    // Fetch education qualifications
+    psychiatrist.eduQualifications = await EduQualification.findAll({
+      where: { userId: id },
+      order: [['year', 'DESC']]
+    });
+
+    // Fetch experiences
+    psychiatrist.experiences = await Experience.findAll({
+      where: { userId: id },
+      order: [['date', 'DESC']]
+    });
+
+    return psychiatrist;
+  }
+
+  // Update findAllPsychiatrists to include education qualifications AND experiences
+  static async findAllPsychiatristsForAdmin(): Promise<Psychiatrist[]> {
+    const results = await sequelize.query(`
+      SELECT 
+        u.id, 
+        u."firebaseId", 
+        u."name", 
+        u."email", 
+        u."avatar", 
+        u."role", 
+        u."createdAt", 
+        u."updatedAt",
+        p."title", 
+        p."specialities", 
+        p."address", 
+        p."contact_no", 
+        p."licenseNo", 
+        p."idCard",
+        p."isVolunteer", 
+        p."isAvailable", 
+        p."description", 
+        p."rating", 
+        p."sessionFee",
+        p."status",
+        p."coverImage", 
+        p."instagram", 
+        p."linkedin", 
+        p."x", 
+        p."website",
+        p."languages"
+      FROM users u
+      JOIN psychiatrists p ON u.id = p."userId"
+      WHERE u."role" = 'Psychiatrist'
+      ORDER BY u."name" ASC
+    `, {
+      type: QueryTypes.SELECT
+    });
+
+    const psychiatrists = await Promise.all(
+      results.map(async (data: any) => {
+        const psychiatrist = new Psychiatrist();
+        psychiatrist.id = data.id;
+        psychiatrist.firebaseId = data.firebaseId;
+        psychiatrist.name = data.name;
+        psychiatrist.email = data.email;
+        psychiatrist.avatar = data.avatar;
+        psychiatrist.role = data.role;
+        psychiatrist.title = data.title;
+        psychiatrist.specialities = data.specialities;
+        psychiatrist.address = data.address;
+        psychiatrist.contact_no = data.contact_no;
+        psychiatrist.license_no = data.licenseNo;
+        psychiatrist.idCard = data.idCard;
+        psychiatrist.isVolunteer = data.isVolunteer;
+        psychiatrist.isAvailable = data.isAvailable;
+        psychiatrist.description = data.description;
+        psychiatrist.rating = data.rating;
+        psychiatrist.sessionFee = data.sessionFee;
+        psychiatrist.status = data.status;
+        psychiatrist.coverImage = data.coverImage;
+        psychiatrist.instagram = data.instagram;
+        psychiatrist.linkedin = data.linkedin;
+        psychiatrist.x = data.x;
+        psychiatrist.website = data.website;
+        psychiatrist.languages = data.languages;
+
+        // Fetch education qualifications for each psychiatrist
+        psychiatrist.eduQualifications = await EduQualification.findAll({
+          where: { userId: data.id },
+          order: [['year', 'DESC']]
+        });
+
+        // Fetch experiences for each psychiatrist
+        psychiatrist.experiences = await Experience.findAll({
+          where: { userId: data.id },
+          order: [['date', 'DESC']]
+        });
+
+        return psychiatrist;
+      })
+    );
+
+    return psychiatrists;
+  }
+
 }
+
 
 export default Psychiatrist;

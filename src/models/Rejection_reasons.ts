@@ -6,6 +6,7 @@ class RejectionReason extends Model {
   public userId!: number;
   public reason!: string;
   public readonly createdAt!: Date;
+  public rejectedBy!: number; // Add this field
 }
 
 RejectionReason.init(
@@ -23,13 +24,21 @@ RejectionReason.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    rejectedBy: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
   },
   {
     sequelize,
     modelName: 'rejection_reason',
     tableName: 'rejection_reasons',
     timestamps: true,
-    updatedAt: false, // We only need createdAt
+    updatedAt: false,
   }
 );
 

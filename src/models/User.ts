@@ -7,7 +7,7 @@ class User extends Model {
   public name!: string;
   public email!: string;
   public avatar?: string;
-  public role!: 'Client' | 'Counselor' | 'Admin' | 'Psychiatrist' | 'MT-Team';
+  public role!: 'Client' | 'Counselor' | 'Admin' | 'Psychiatrist' | 'MT-member';
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -67,7 +67,7 @@ User.init(
       allowNull: true,
     },
     role: {
-      type: DataTypes.ENUM('Client', 'Counselor' , 'Admin', 'Psychiatrist', 'MT-Team'),
+      type: DataTypes.ENUM('Client', 'Counselor' , 'Admin', 'Psychiatrist', 'MT-member'),
       allowNull: false,
     },
   },

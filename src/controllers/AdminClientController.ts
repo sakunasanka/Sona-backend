@@ -74,8 +74,6 @@ class AdminClientController {
     }
   }
 
-
-
   async approveStudentPackage(req: Request, res: Response) {
     try {
       const { clientId } = req.params;
@@ -107,12 +105,24 @@ class AdminClientController {
         });
       }
 
-      console.log('Rejection Reason:', rejectionReason); // Debug log for rejectionReason
+      // Get the current admin user ID from the authenticated request
+      const rejectedById = req.user?.dbUser.id;
+
+      if (!rejectedById) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
+      }
+
+      console.log('Rejection Reason:', rejectionReason);
+      console.log('Rejected By User ID:', rejectedById);
 
       await studentService.updateStudentApplicationStatus(
         parseInt(clientId), 
         'rejected', 
-        rejectionReason
+        rejectionReason,
+        rejectedById  // Pass the admin user ID
       );
 
       res.json({
@@ -121,6 +131,41 @@ class AdminClientController {
       });
     } catch (error) {
       console.error('Error rejecting student package:', error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error'
+      });
+    }
+  }
+
+  // New revoke student package method
+  async revokeStudentPackage(req: Request, res: Response) {
+    try {
+      const { clientId } = req.params;
+
+      // Get the current admin user ID from the authenticated request
+      const revokedById = req.user?.dbUser.id;
+
+      if (!revokedById) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
+      }
+
+      await studentService.updateStudentApplicationStatus(
+        parseInt(clientId), 
+        'pending', 
+        undefined, // No rejection reason for revocation
+        revokedById  // Pass the admin user ID
+      );
+
+      res.json({
+        success: true,
+        message: 'Student package revoked successfully. Status reset to pending.'
+      });
+    } catch (error) {
+      console.error('Error revoking student package:', error);
       res.status(500).json({
         success: false,
         message: error instanceof Error ? error.message : 'Internal server error'

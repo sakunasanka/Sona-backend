@@ -12,6 +12,7 @@ export interface StudentData {
   rejectionReason?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
+  rejectedBy?: number | null;
   
 }
 
@@ -26,6 +27,7 @@ class Student {
   public rejectionReason!: string | null;
   public createdAt!: Date;
   public updatedAt!: Date;
+  public rejectedBy!: number | null;
 
   // Create a new student application
   static async createStudentApplication(studentData: Omit<StudentData, 'id' | 'createdAt' | 'updatedAt'>): Promise<Student> {
@@ -111,6 +113,50 @@ class Student {
     if (!result || result.length === 0) return null;
     return this.mapToStudent(result[0] as any);
   }
+
+  // In Student model
+static async updateApplicationStatusInAdmin(
+  id: number, 
+  status: 'pending' | 'approved' | 'rejected', 
+  rejectionReason?: string,
+  rejectedById?: number  // Add this parameter
+): Promise<Student | null> {
+  
+  let query = `
+    UPDATE students
+    SET "applicationStatus" = ?, 
+        "rejectionReason" = ?, 
+        "updatedAt" = NOW()
+  `;
+  
+  let replacements: any[] = [
+    status,
+    rejectionReason !== undefined ? rejectionReason : null,
+  ];
+
+  // Only set rejectedBy if the status is 'rejected' and rejectedById is provided
+  if (status === 'rejected' && rejectedById) {
+    query += `, "rejectedBy" = ?`;
+    replacements.push(rejectedById);
+  } else if (status !== 'rejected') {
+    query += `, "rejectedBy" = ?`;
+    replacements.push(null); // Clear rejectedBy if not rejecting
+  }
+
+  query += ` WHERE id = ? RETURNING *`;
+  replacements.push(id);
+
+  console.log('Update Query:', query);
+  console.log('Replacements:', replacements);
+
+  const result = await sequelize.query(query, {
+    replacements,
+    type: QueryTypes.SELECT
+  });
+
+  if (!result || result.length === 0) return null;
+  return this.mapToStudent(result[0] as any);
+}
 
   // Get all student applications with optional status filter
   static async findAll(status?: 'pending' | 'approved' | 'rejected'): Promise<Student[]> {
