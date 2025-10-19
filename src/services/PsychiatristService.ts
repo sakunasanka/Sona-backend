@@ -615,47 +615,103 @@ export class PsychiatristService {
   /**
    * Update psychiatrist status (approve/reject)
    */
-  static async updatePsychiatristStatus(id: number, status: string): Promise<PsychiatristResponse> {
-    try {
-      const psychiatrist = await Psychiatrist.updatePsychiatristStatus(id, status);
+  // static async updatePsychiatristStatus(id: number, status: string): Promise<PsychiatristResponse> {
+  //   try {
+  //     const psychiatrist = await Psychiatrist.updatePsychiatristStatus(id, status);
       
-      if (!psychiatrist) {
-        throw new ItemNotFoundError('Psychiatrist not found');
-      }
+  //     if (!psychiatrist) {
+  //       throw new ItemNotFoundError('Psychiatrist not found');
+  //     }
 
-      return {
-        id: psychiatrist.id,
-        firebaseId: psychiatrist.firebaseId,
-        name: psychiatrist.name,
-        email: psychiatrist.email,
-        avatar: psychiatrist.avatar,
-        role: psychiatrist.role,
-        title: psychiatrist.title,
-        specialities: psychiatrist.specialities,
-        address: psychiatrist.address,
-        contact_no: psychiatrist.contact_no,
-        license_no: psychiatrist.license_no,
-        idCard: psychiatrist.idCard,
-        isVolunteer: psychiatrist.isVolunteer,
-        isAvailable: psychiatrist.isAvailable,
-        description: psychiatrist.description,
-        rating: psychiatrist.rating,
-        sessionFee: psychiatrist.sessionFee,
-        status: psychiatrist.status,
-        createdAt: psychiatrist.createdAt,
-        updatedAt: psychiatrist.updatedAt,
-        coverImage: psychiatrist.coverImage,
-        instagram: psychiatrist.instagram,
-        linkedin: psychiatrist.linkedin,
-        x: psychiatrist.x,
-        website: psychiatrist.website,
-        languages: psychiatrist.languages
-      };
+  //     return {
+  //       id: psychiatrist.id,
+  //       firebaseId: psychiatrist.firebaseId,
+  //       name: psychiatrist.name,
+  //       email: psychiatrist.email,
+  //       avatar: psychiatrist.avatar,
+  //       role: psychiatrist.role,
+  //       title: psychiatrist.title,
+  //       specialities: psychiatrist.specialities,
+  //       address: psychiatrist.address,
+  //       contact_no: psychiatrist.contact_no,
+  //       license_no: psychiatrist.license_no,
+  //       idCard: psychiatrist.idCard,
+  //       isVolunteer: psychiatrist.isVolunteer,
+  //       isAvailable: psychiatrist.isAvailable,
+  //       description: psychiatrist.description,
+  //       rating: psychiatrist.rating,
+  //       sessionFee: psychiatrist.sessionFee,
+  //       status: psychiatrist.status,
+  //       createdAt: psychiatrist.createdAt,
+  //       updatedAt: psychiatrist.updatedAt,
+  //       coverImage: psychiatrist.coverImage,
+  //       instagram: psychiatrist.instagram,
+  //       linkedin: psychiatrist.linkedin,
+  //       x: psychiatrist.x,
+  //       website: psychiatrist.website,
+  //       languages: psychiatrist.languages
+  //     };
+  //   } catch (error) {
+  //     if (error instanceof ItemNotFoundError) {
+  //       throw error;
+  //     }
+  //     throw new DatabaseError(`Failed to update psychiatrist status: ` + (error instanceof Error ? error.message : 'Unknown error'));
+  //   }
+  // }
+
+  /**
+   * Add educational qualification for a psychiatrist
+   */
+  static async addQualification(psychiatristId: number, qualificationData: any) {
+    try {
+      // Import EduQualification model
+      const EduQualification = (await import('../models/EduQualification')).default;
+
+      const qualification = await EduQualification.create({
+        userId: psychiatristId,
+        institution: qualificationData.institution,
+        degree: qualificationData.degree || null,
+        field: qualificationData.field || null,
+        startDate: qualificationData.startDate || null,
+        endDate: qualificationData.endDate || null,
+        grade: qualificationData.grade || null,
+        document: qualificationData.document || null,
+        title: qualificationData.title || null,
+        year: qualificationData.year || null,
+        proof: qualificationData.proof || null,
+        status: 'pending' // Default status
+      });
+
+      return qualification;
     } catch (error) {
-      if (error instanceof ItemNotFoundError) {
-        throw error;
-      }
-      throw new DatabaseError(`Failed to update psychiatrist status: ` + (error instanceof Error ? error.message : 'Unknown error'));
+      throw new DatabaseError('Failed to add educational qualification');
+    }
+  }
+
+  /**
+   * Add experience for a psychiatrist
+   */
+  static async addExperience(psychiatristId: number, experienceData: any) {
+    try {
+      // Import Experience model
+      const Experience = (await import('../models/Experience')).default;
+
+      const experience = await Experience.create({
+        userId: psychiatristId,
+        position: experienceData.position,
+        company: experienceData.company,
+        title: experienceData.title || experienceData.position, // Use position as title if not provided
+        description: experienceData.description,
+        startDate: experienceData.startDate,
+        endDate: experienceData.endDate,
+        proof: experienceData.proof || null,
+        document: experienceData.document || null,
+        status: 'pending' // Default status
+      });
+
+      return experience;
+    } catch (error) {
+      throw new DatabaseError('Failed to add experience');
     }
   }
 }

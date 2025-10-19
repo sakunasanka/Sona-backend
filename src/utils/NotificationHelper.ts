@@ -1,5 +1,6 @@
 import { NotificationService } from '../services/NotificationService';
 import { NotificationType } from '../models/Notification';
+import User from '../models/User';
 
 /**
  * Notification Helper - Easy-to-use functions for sending notifications
@@ -311,6 +312,187 @@ export class NotificationHelper {
       });
     } catch (error) {
       console.error('Failed to send custom notification:', error);
+    }
+  }
+
+  /**
+   * Send prescription uploaded notification to client
+   */
+  static async prescriptionUploaded(clientId: number, psychiatristName: string) {
+    try {
+      await NotificationService.createNotification({
+        userId: clientId,
+        type: NotificationType.INFO,
+        title: 'New Prescription Available',
+        message: `Dr. ${psychiatristName} has uploaded a new prescription for you. Please check your prescriptions.`,
+        relatedURL: '/prescriptions'
+      });
+    } catch (error) {
+      console.error('Failed to send prescription uploaded notification:', error);
+    }
+  }
+
+  /**
+   * Send complaint resolved notification with reason
+   */
+  static async complaintResolvedWithReason(userId: number, complaintId: string, status: string, reason?: string) {
+    try {
+      const statusText = status === 'resolved' ? 'resolved' : 'rejected';
+      const message = `Your complaint (#${complaintId}) has been ${statusText}${reason ? `. Reason: ${reason}` : ''}.`;
+      
+      await NotificationService.createNotification({
+        userId,
+        type: status === 'resolved' ? NotificationType.SUCCESS : NotificationType.WARNING,
+        title: `Complaint ${statusText.charAt(0).toUpperCase() + statusText.slice(1)}`,
+        message
+      });
+    } catch (error) {
+      console.error('Failed to send complaint resolved notification:', error);
+    }
+  }
+
+  /**
+   * Send new user application notification to admins and MT members
+   */
+  static async newUserApplication(userType: string, userName: string, userId: number) {
+    try {
+      // Get all admins and MT members
+      const adminsAndMT = await User.findAll({
+        where: {
+          role: ['Admin', 'MT-Team']
+        },
+        attributes: ['id']
+      });
+
+      // Set related URL based on user type
+      let relatedURL = `/admin/users/${userId}`;
+      if (userType.toLowerCase() === 'counselor') {
+        relatedURL = '/counsellor';
+      } else if (userType.toLowerCase() === 'psychiatrist') {
+        relatedURL = '/psychiatrist';
+      }
+
+      const notifications = adminsAndMT.map(user => 
+        NotificationService.createNotification({
+          userId: user.id,
+          type: NotificationType.INFO,
+          title: 'New User Application',
+          message: `A new ${userType} (${userName}) has applied and is pending approval.`,
+          relatedURL
+        })
+      );
+
+      await Promise.all(notifications);
+    } catch (error) {
+      console.error('Failed to send new user application notifications:', error);
+    }
+  }
+
+  /**
+   * Send student pack application notification to student
+   */
+  static async studentPackApplied(studentId: number) {
+    try {
+      await NotificationService.createNotification({
+        userId: studentId,
+        type: NotificationType.SUCCESS,
+        title: 'Student Pack Application Submitted',
+        message: 'Your student pack application has been submitted successfully. You will be notified once it\'s reviewed.'
+      });
+    } catch (error) {
+      console.error('Failed to send student pack application notification:', error);
+    }
+  }
+
+  /**
+   * Send student pack application notification to admins and MT members
+   */
+  static async studentPackApplicationToAdmins(studentName: string, applicationId: number) {
+    try {
+      // Get all admins and MT members
+      const adminsAndMT = await User.findAll({
+        where: {
+          role: ['Admin', 'MT-Team']
+        },
+        attributes: ['id']
+      });
+
+      const notifications = adminsAndMT.map(user => 
+        NotificationService.createNotification({
+          userId: user.id,
+          type: NotificationType.INFO,
+          title: 'New Student Pack Application',
+          message: `${studentName} has applied for the student pack and is pending approval.`,
+          relatedURL: `/client`
+        })
+      );
+
+      await Promise.all(notifications);
+    } catch (error) {
+      console.error('Failed to send student pack application notifications to admins:', error);
+    }
+  }
+
+  /**
+   * Send platform fee payment notification to student
+   */
+  static async platformFeePaid(studentId: number, amount: string) {
+    try {
+      await NotificationService.createNotification({
+        userId: studentId,
+        type: NotificationType.SUCCESS,
+        title: 'Platform Fee Payment Successful',
+        message: `Your platform fee payment of ${amount} LKR has been processed successfully. You now have access to all platform features.`,
+        relatedURL: '/(hidden)/profile/view_profile'
+      });
+    } catch (error) {
+      console.error('Failed to send platform fee payment notification:', error);
+    }
+  }
+
+  /**
+   * Send session reminder to counselor/psychiatrist
+   */
+  static async sessionReminderToProfessional(professionalId: number, clientName: string, sessionDate: string, sessionTime: string) {
+    try {
+      await NotificationService.createNotification({
+        userId: professionalId,
+        type: NotificationType.INFO,
+        title: 'Upcoming Session Reminder',
+        message: `You have a session with ${clientName} scheduled for ${sessionDate} at ${sessionTime}.`,
+        relatedURL: '/sessions/upcoming'
+      });
+    } catch (error) {
+      console.error('Failed to send session reminder to professional:', error);
+    }
+  }
+
+  /**
+   * Send new complaint notification to admins and MT members
+   */
+  static async newComplaintToAdmins(clientName: string, complaintId: number) {
+    try {
+      // Get all admins and MT members
+      const adminsAndMT = await User.findAll({
+        where: {
+          role: ['Admin', 'MT-Team']
+        },
+        attributes: ['id']
+      });
+
+      const notifications = adminsAndMT.map(user => 
+        NotificationService.createNotification({
+          userId: user.id,
+          type: NotificationType.WARNING,
+          title: 'New Complaint Submitted',
+          message: `${clientName} has submitted a new complaint (#${complaintId}) that requires attention.`,
+          relatedURL: `/feedback`
+        })
+      );
+
+      await Promise.all(notifications);
+    } catch (error) {
+      console.error('Failed to send new complaint notifications to admins:', error);
     }
   }
 }

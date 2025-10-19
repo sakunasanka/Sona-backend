@@ -12,6 +12,8 @@ export interface StudentData {
   rejectionReason?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
+  rejectedBy?: number | null;
+  
 }
 
 class Student {
@@ -25,38 +27,58 @@ class Student {
   public rejectionReason!: string | null;
   public createdAt!: Date;
   public updatedAt!: Date;
+  public rejectedBy!: number | null;
 
-  // Create a new student application
+    // Create a new student application
   static async createStudentApplication(studentData: Omit<StudentData, 'id' | 'createdAt' | 'updatedAt'>): Promise<Student> {
-    const result = await sequelize.query(`
-      INSERT INTO students (
-        "clientID",
-        "fullName",
-        "university",
-        "studentIDCopy",
-        "uniEmail",
-        "applicationStatus",
-        "rejectionReason",
-        "createdAt",
-        "updatedAt"
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-      RETURNING *
-    `, {
-      replacements: [
-        studentData.clientId,
-        studentData.fullName,
-        studentData.university,
-        studentData.studentIDCopy,
-        studentData.uniEmail,
-        studentData.applicationStatus,
-        studentData.rejectionReason || null,
-      ],
-      type: QueryTypes.INSERT
-    });
+    try {
+      // First insert the record
+      await sequelize.query(`
+        INSERT INTO students (
+          "clientID",
+          "fullName",
+          "university",
+          "studentIDCopy",
+          "uniEmail",
+          "applicationStatus",
+          "rejectionReason",
+          "createdAt",
+          "updatedAt"
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+      `, {
+        replacements: [
+          studentData.clientId,
+          studentData.fullName,
+          studentData.university,
+          studentData.studentIDCopy,
+          studentData.uniEmail,
+          studentData.applicationStatus,
+          studentData.rejectionReason || null,
+        ],
+        type: QueryTypes.INSERT
+      });
 
-    const data = (result[0] as any)[0];
-    return this.mapToStudent(data);
+      // Then fetch the created record
+      const result = await sequelize.query(`
+        SELECT * FROM students 
+        WHERE "clientID" = ? AND "applicationStatus" = ? 
+        ORDER BY "createdAt" DESC 
+        LIMIT 1
+      `, {
+        replacements: [studentData.clientId, studentData.applicationStatus],
+        type: QueryTypes.SELECT
+      });
+
+      const data = (result as any)[0];
+      if (!data) {
+        throw new Error('Failed to retrieve created student application');
+      }
+      return this.mapToStudent(data);
+    } catch (error) {
+      console.error('Error in createStudentApplication:', error);
+      throw error;
+    }
   }
 
   // Find student application by client ID
@@ -93,13 +115,67 @@ class Student {
       WHERE id = ?
       RETURNING *
     `, {
-      replacements: [status, rejectionReason || null, id],
+      replacements: [
+        status,
+        rejectionReason !== undefined ? rejectionReason : null, // Ensure rejectionReason is null if undefined
+        id
+      ],
       type: QueryTypes.SELECT
     });
+
+    console.log('Replacements:', [
+      status,
+      rejectionReason !== undefined ? rejectionReason : null, // Ensure rejectionReason is null if undefined
+      id
+    ]); // Debug log for replacements array
 
     if (!result || result.length === 0) return null;
     return this.mapToStudent(result[0] as any);
   }
+
+  // In Student model
+static async updateApplicationStatusInAdmin(
+  id: number, 
+  status: 'pending' | 'approved' | 'rejected', 
+  rejectionReason?: string,
+  rejectedById?: number  // Add this parameter
+): Promise<Student | null> {
+  
+  let query = `
+    UPDATE students
+    SET "applicationStatus" = ?, 
+        "rejectionReason" = ?, 
+        "updatedAt" = NOW()
+  `;
+  
+  let replacements: any[] = [
+    status,
+    rejectionReason !== undefined ? rejectionReason : null,
+  ];
+
+  // Only set rejectedBy if the status is 'rejected' and rejectedById is provided
+  if (status === 'rejected' && rejectedById) {
+    query += `, "rejectedBy" = ?`;
+    replacements.push(rejectedById);
+  } else if (status !== 'rejected') {
+    query += `, "rejectedBy" = ?`;
+    replacements.push(null); // Clear rejectedBy if not rejecting
+  }
+
+  query += ` WHERE id = ? RETURNING *`;
+  replacements.push(id);
+
+  console.log('Update Query:', query);
+  console.log('Replacements:', replacements);
+
+  const result = await sequelize.query(query, {
+    replacements,
+    type: QueryTypes.SELECT
+  });
+
+  if (!result || result.length === 0) return null;
+  return this.mapToStudent(result[0] as any);
+}
 
   // Get all student applications with optional status filter
   static async findAll(status?: 'pending' | 'approved' | 'rejected'): Promise<Student[]> {

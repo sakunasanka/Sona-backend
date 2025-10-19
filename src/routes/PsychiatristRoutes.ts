@@ -4,11 +4,12 @@ import {
   getPsychiatristById,
   updatePsychiatristAvailability,
   getAllPsychiatrists,
-  updatePsychiatristStatus,
   uploadPrescription,
   getPrescriptionsByPsychiatrist,
   getClientPrescriptions,
-  updatePsychiatristProfile
+  updatePsychiatristProfile,
+  addPsychiatristQualification,
+  addPsychiatristExperience
 } from '../controllers/PsychiatristController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { isAdmin, isAuthenticated, isProfessional, isClient } from '../middlewares/auth';
@@ -45,9 +46,13 @@ router.get('/:id', getPsychiatristById);
 router.patch('/:id/availability', isAuthenticated, isProfessional, updatePsychiatristAvailability);
 
 // Update psychiatrist status (approve/reject)
-router.patch('/:id/status', isAuthenticated, isAdmin, updatePsychiatristStatus);
+//router.patch('/:id/status', isAuthenticated, isAdmin, updatePsychiatristStatus);
 
 // Psychiatrist can view a client's daily moods
 router.get('/clients/:clientId/moods', isAuthenticated, isProfessional, getUserDailyMoods);
+
+// Add qualification and experience routes
+router.post('/qualifications', isAuthenticated, isProfessional, addPsychiatristQualification);
+router.post('/experiences', isAuthenticated, isProfessional, addPsychiatristExperience);
 
 export default router;

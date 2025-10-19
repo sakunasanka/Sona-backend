@@ -24,16 +24,6 @@ router.get(
   clientController.getClientById
 );
 
-router.patch(
-  '/:id/status',
-  [
-    check('status')
-      .isIn(['active', 'inactive', 'banned'])
-      .withMessage('Invalid status value')
-  ],
-  clientController.updateClientStatus
-);
-
 // Student package management routes
 router.get(
   '/students/pending',
@@ -42,11 +32,6 @@ router.get(
 
 router.post(
   '/:clientId/student-package/approve',
-  [
-    check('packageId')
-      .notEmpty()
-      .withMessage('Package ID is required')
-  ],
   clientController.approveStudentPackage
 );
 
@@ -58,6 +43,12 @@ router.post(
       .withMessage('Rejection reason is required')
   ],
   clientController.rejectStudentPackage
+);
+
+// New revoke route
+router.post(
+  '/:clientId/student-package/revoke',
+  clientController.revokeStudentPackage
 );
 
 export default router;

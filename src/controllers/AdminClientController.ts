@@ -7,7 +7,6 @@ class AdminClientController {
     try {
       const filters: ClientFilters = {
         search: req.query.search as string,
-        status: req.query.status as string,
         clientType: req.query.clientType as string,
         page: parseInt(req.query.page as string) || 1,
         limit: parseInt(req.query.limit as string) || 50
@@ -75,40 +74,6 @@ class AdminClientController {
     }
   }
 
-  async updateClientStatus(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
-
-      if (!['active', 'inactive', 'suspended'].includes(status)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid status'
-        });
-      }
-
-      const success = await clientService.updateClientStatus(parseInt(id), status);
-
-      if (!success) {
-        return res.status(404).json({
-          success: false,
-          message: 'Client not found or update failed'
-        });
-      }
-
-      res.json({
-        success: true,
-        message: 'Client status updated successfully'
-      });
-    } catch (error) {
-      console.error('Error updating client status:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error'
-      });
-    }
-  }
-
   async approveStudentPackage(req: Request, res: Response) {
     try {
       const { clientId } = req.params;
@@ -140,10 +105,24 @@ class AdminClientController {
         });
       }
 
+      // Get the current admin user ID from the authenticated request
+      const rejectedById = req.user?.dbUser.id;
+
+      if (!rejectedById) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
+      }
+
+      console.log('Rejection Reason:', rejectionReason);
+      console.log('Rejected By User ID:', rejectedById);
+
       await studentService.updateStudentApplicationStatus(
         parseInt(clientId), 
         'rejected', 
-        rejectionReason
+        rejectionReason,
+        rejectedById  // Pass the admin user ID
       );
 
       res.json({
@@ -152,6 +131,41 @@ class AdminClientController {
       });
     } catch (error) {
       console.error('Error rejecting student package:', error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error'
+      });
+    }
+  }
+
+  // New revoke student package method
+  async revokeStudentPackage(req: Request, res: Response) {
+    try {
+      const { clientId } = req.params;
+
+      // Get the current admin user ID from the authenticated request
+      const revokedById = req.user?.dbUser.id;
+
+      if (!revokedById) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
+      }
+
+      await studentService.updateStudentApplicationStatus(
+        parseInt(clientId), 
+        'pending', 
+        undefined, // No rejection reason for revocation
+        revokedById  // Pass the admin user ID
+      );
+
+      res.json({
+        success: true,
+        message: 'Student package revoked successfully. Status reset to pending.'
+      });
+    } catch (error) {
+      console.error('Error revoking student package:', error);
       res.status(500).json({
         success: false,
         message: error instanceof Error ? error.message : 'Internal server error'

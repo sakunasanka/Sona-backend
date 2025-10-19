@@ -34,6 +34,8 @@ export class StudentService {
         throw error;
       }
       console.error('Error creating student application:', error);
+      console.error('Error details:', error instanceof Error ? error.message : error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       throw new DatabaseError('Failed to create student application');
     }
   }

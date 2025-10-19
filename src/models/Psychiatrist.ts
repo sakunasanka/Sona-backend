@@ -2,6 +2,8 @@ import { DataTypes, Model, QueryTypes } from 'sequelize';
 import { sequelize } from '../config/db';
 import User from './User';
 import { DatabaseError } from '../utils/errors';
+import EduQualification from './EduQualification'; 
+import Experience from './Experience'; 
 
 class Psychiatrist extends User {
   public title!: string;
@@ -22,6 +24,8 @@ class Psychiatrist extends User {
   public x?: string;
   public website?: string;
   public languages?: string[];
+  public eduQualifications?: EduQualification[];
+  public experiences?: Experience[];
 
   static async createPsychiatrist(userData: {
     firebaseId: string;
@@ -46,6 +50,8 @@ class Psychiatrist extends User {
     x?: string;
     website?: string;
     languages?: string[];
+    eduQualifications?: any[];
+    experiences?: any[];
   }) {
     const transaction = await sequelize.transaction();
 
@@ -84,31 +90,69 @@ class Psychiatrist extends User {
                 "createdAt",
                 "updatedAt"
             )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW())
+        VALUES (:userId, :title, :specialities::text[], :address, :contact_no, :license_no, :idCard, :isVolunteer, :isAvailable, :description, :rating, :sessionFee, :status, :coverImage, :instagram, :linkedin, :x, :website, :languages::jsonb, NOW(), NOW())
       `, {
-        bind: [
-          user.id,
-          userData.title,
-          userData.specialities,
-          userData.address,
-          userData.contact_no,
-          userData.license_no,
-          userData.idCard,
-          userData.isVolunteer !== undefined ? userData.isVolunteer : null,
-          userData.isAvailable !== undefined ? userData.isAvailable : null,
-          userData.description || null,
-          userData.rating !== undefined ? userData.rating : null,
-          userData.sessionFee !== undefined ? userData.sessionFee : null,
-          userData.status || 'pending',
-          userData.coverImage || null,
-          userData.instagram || null,
-          userData.linkedin || null,
-          userData.x || null,
-          userData.website || null,
-          userData.languages || null,
-        ],
+        replacements: {
+          userId: user.id,
+          title: userData.title,
+          specialities: `{${userData.specialities.map(s => `"${s}"`).join(',')}}`,
+          address: userData.address,
+          contact_no: userData.contact_no,
+          license_no: userData.license_no,
+          idCard: userData.idCard,
+          isVolunteer: userData.isVolunteer !== undefined ? userData.isVolunteer : null,
+          isAvailable: userData.isAvailable !== undefined ? userData.isAvailable : null,
+          description: userData.description || null,
+          rating: userData.rating !== undefined ? userData.rating : null,
+          sessionFee: userData.sessionFee !== undefined ? userData.sessionFee : null,
+          status: userData.status || 'pending',
+          coverImage: userData.coverImage || null,
+          instagram: userData.instagram || null,
+          linkedin: userData.linkedin || null,
+          x: userData.x || null,
+          website: userData.website || null,
+          languages: userData.languages ? JSON.stringify(userData.languages) : null,
+        },
         transaction
       });
+
+      // Create educational qualifications if provided
+      if (userData.eduQualifications && userData.eduQualifications.length > 0) {
+        for (const qual of userData.eduQualifications) {
+          await EduQualification.create({
+            userId: user.id,
+            institution: qual.institution,
+            degree: qual.degree || null,
+            field: qual.field || null,
+            startDate: qual.startDate || null,
+            endDate: qual.endDate || null,
+            grade: qual.grade || null,
+            document: qual.document || null,
+            title: qual.title || null,
+            year: qual.year || null,
+            proof: qual.proof || null,
+            status: 'pending'
+          }, { transaction });
+        }
+      }
+
+      // Create experiences if provided
+      if (userData.experiences && userData.experiences.length > 0) {
+        for (const exp of userData.experiences) {
+          await Experience.create({
+            userId: user.id,
+            position: exp.position,
+            company: exp.company,
+            title: exp.title || exp.position,
+            description: exp.description,
+            startDate: exp.startDate,
+            endDate: exp.endDate,
+            proof: exp.proof || null,
+            document: exp.document || null,
+            status: 'pending'
+          }, { transaction });
+        }
+      }
 
       await transaction.commit();
 
@@ -331,23 +375,101 @@ class Psychiatrist extends User {
     });
   }
 
-  // Update psychiatrist status
-  static async updatePsychiatristStatus(id: number, status: string): Promise<Psychiatrist | null> {
-    try {
-      await sequelize.query(`
-        UPDATE psychiatrists
-        SET status = $1, "updatedAt" = NOW()
-        WHERE "userId" = $2
-      `, {
-        bind: [status, id],
-        type: QueryTypes.UPDATE
-      });
+ 
+// Update psychiatrist status
+// Update psychiatrist status
+static async updatePsychiatristStatus(
+  id: number,
+  status: 'pending' | 'approved' | 'rejected' | 'unset',
+  rejectionReason?: string,
+  rejectedById?: number
+): Promise<Psychiatrist | null> {
+  const transaction = await sequelize.transaction();
 
-      return this.findPsychiatristById(id);
-    } catch (error) {
-      throw new DatabaseError(`Failed to update psychiatrist status: ` + (error instanceof Error ? error.message : 'Unknown error'));
+  try {
+    // Check if psychiatrist exists
+    const existing = await sequelize.query(
+      `SELECT * FROM psychiatrists WHERE "userId" = :id`,
+      {
+        replacements: { id },
+        type: QueryTypes.SELECT,
+        transaction,
+      }
+    );
+
+    if (existing.length === 0) {
+      await transaction.rollback();
+      return null;
     }
+
+    // Update psychiatrist status
+    await sequelize.query(
+      `UPDATE psychiatrists
+       SET status = :status, "updatedAt" = NOW()
+       WHERE "userId" = :id`,
+      {
+        replacements: { id, status },
+        type: QueryTypes.UPDATE,
+        transaction,
+      }
+    );
+
+    // If rejected, insert rejection reason with rejectedBy
+    if (status === 'rejected' && rejectionReason) {
+      if (!rejectedById) {
+        throw new Error('rejectedById is required when rejecting a psychiatrist');
+      }
+
+      // First, delete any existing rejection reason for this user
+      await sequelize.query(
+        `DELETE FROM rejection_reasons WHERE "userId" = :userId`,
+        {
+          replacements: { userId: id },
+          type: QueryTypes.DELETE,
+          transaction,
+        }
+      );
+
+      // Insert new rejection reason with rejectedBy information
+      await sequelize.query(
+        `INSERT INTO rejection_reasons ("userId", reason, "rejectedBy", "createdAt")
+         VALUES (:userId, :reason, :rejectedBy, NOW())`,
+        {
+          replacements: {
+            userId: id,
+            reason: rejectionReason,
+            rejectedBy: rejectedById,
+          },
+          type: QueryTypes.INSERT,
+          transaction,
+        }
+      );
+    } else if (status !== 'rejected') {
+      // Remove rejection reason if status is changed from rejected to something else
+      await sequelize.query(
+        `DELETE FROM rejection_reasons WHERE "userId" = :userId`,
+        {
+          replacements: { userId: id },
+          type: QueryTypes.DELETE,
+          transaction,
+        }
+      );
+    }
+
+    await transaction.commit();
+
+    // Return updated psychiatrist
+    return await this.findPsychiatristByIdForAdmin(id);
+  } catch (error) {
+    await transaction.rollback();
+    console.error('❌ Error updating psychiatrist status:', error);
+    throw new Error(
+      `Failed to update psychiatrist status: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`
+    );
   }
+}
 
   // Update psychiatrist availability
   static async updatePsychiatristAvailability(id: number, isAvailable: boolean): Promise<Psychiatrist | null> {
@@ -366,6 +488,154 @@ class Psychiatrist extends User {
       throw new DatabaseError(`Failed to update psychiatrist availability: ` + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
+
+    // Update findPsychiatristById to include education qualifications AND experiences
+  static async findPsychiatristByIdForAdmin(id: number): Promise<Psychiatrist | null> {
+    const result = await sequelize.query(`
+      SELECT 
+        u.id, u."firebaseId", u.name, u.email, u.avatar, u.role, u."createdAt", u."updatedAt",
+        p.title, p.specialities, p.address, p.contact_no, p."licenseNo", p."idCard", 
+        p."isVolunteer", p."isAvailable", p.description, p.rating, p."sessionFee", p.status,
+        p."coverImage", p.instagram, p.linkedin, p.x, p.website, p.languages
+      FROM users u
+      JOIN psychiatrists p ON u.id = p."userId"
+      WHERE u.id = ? AND u.role = 'Psychiatrist'
+    `, {
+      replacements: [id],
+      type: QueryTypes.SELECT
+    });
+
+    if (result.length === 0) return null;
+
+    const data = result[0] as any;
+    const psychiatrist = new Psychiatrist();
+
+    // Set all properties
+    psychiatrist.id = data.id;
+    psychiatrist.firebaseId = data.firebaseId;
+    psychiatrist.name = data.name;
+    psychiatrist.email = data.email;
+    psychiatrist.avatar = data.avatar;
+    psychiatrist.title = data.title;
+    psychiatrist.specialities = data.specialities;
+    psychiatrist.address = data.address;
+    psychiatrist.contact_no = data.contact_no;
+    psychiatrist.license_no = data.licenseNo;
+    psychiatrist.idCard = data.idCard;
+    psychiatrist.isVolunteer = data.isVolunteer;
+    psychiatrist.isAvailable = data.isAvailable;
+    psychiatrist.description = data.description;
+    psychiatrist.rating = data.rating;
+    psychiatrist.sessionFee = data.sessionFee;
+    psychiatrist.status = data.status;
+    psychiatrist.coverImage = data.coverImage;
+    psychiatrist.instagram = data.instagram;
+    psychiatrist.linkedin = data.linkedin;
+    psychiatrist.x = data.x;
+    psychiatrist.website = data.website;
+    psychiatrist.languages = data.languages;
+
+    // Fetch education qualifications
+    psychiatrist.eduQualifications = await EduQualification.findAll({
+      where: { userId: id },
+      order: [['year', 'DESC']]
+    });
+
+    // Fetch experiences
+    psychiatrist.experiences = await Experience.findAll({
+      where: { userId: id },
+      order: [['date', 'DESC']]
+    });
+
+    return psychiatrist;
+  }
+
+  // Update findAllPsychiatrists to include education qualifications AND experiences
+  static async findAllPsychiatristsForAdmin(): Promise<Psychiatrist[]> {
+    const results = await sequelize.query(`
+      SELECT 
+        u.id, 
+        u."firebaseId", 
+        u."name", 
+        u."email", 
+        u."avatar", 
+        u."role", 
+        u."createdAt", 
+        u."updatedAt",
+        p."title", 
+        p."specialities", 
+        p."address", 
+        p."contact_no", 
+        p."licenseNo", 
+        p."idCard",
+        p."isVolunteer", 
+        p."isAvailable", 
+        p."description", 
+        p."rating", 
+        p."sessionFee",
+        p."status",
+        p."coverImage", 
+        p."instagram", 
+        p."linkedin", 
+        p."x", 
+        p."website",
+        p."languages"
+      FROM users u
+      JOIN psychiatrists p ON u.id = p."userId"
+      WHERE u."role" = 'Psychiatrist'
+      ORDER BY u."name" ASC
+    `, {
+      type: QueryTypes.SELECT
+    });
+
+    const psychiatrists = await Promise.all(
+      results.map(async (data: any) => {
+        const psychiatrist = new Psychiatrist();
+        psychiatrist.id = data.id;
+        psychiatrist.firebaseId = data.firebaseId;
+        psychiatrist.name = data.name;
+        psychiatrist.email = data.email;
+        psychiatrist.avatar = data.avatar;
+        psychiatrist.role = data.role;
+        psychiatrist.title = data.title;
+        psychiatrist.specialities = data.specialities;
+        psychiatrist.address = data.address;
+        psychiatrist.contact_no = data.contact_no;
+        psychiatrist.license_no = data.licenseNo;
+        psychiatrist.idCard = data.idCard;
+        psychiatrist.isVolunteer = data.isVolunteer;
+        psychiatrist.isAvailable = data.isAvailable;
+        psychiatrist.description = data.description;
+        psychiatrist.rating = data.rating;
+        psychiatrist.sessionFee = data.sessionFee;
+        psychiatrist.status = data.status;
+        psychiatrist.coverImage = data.coverImage;
+        psychiatrist.instagram = data.instagram;
+        psychiatrist.linkedin = data.linkedin;
+        psychiatrist.x = data.x;
+        psychiatrist.website = data.website;
+        psychiatrist.languages = data.languages;
+
+        // Fetch education qualifications for each psychiatrist
+        psychiatrist.eduQualifications = await EduQualification.findAll({
+          where: { userId: data.id },
+          order: [['year', 'DESC']]
+        });
+
+        // Fetch experiences for each psychiatrist
+        psychiatrist.experiences = await Experience.findAll({
+          where: { userId: data.id },
+          order: [['date', 'DESC']]
+        });
+
+        return psychiatrist;
+      })
+    );
+
+    return psychiatrists;
+  }
+
 }
+
 
 export default Psychiatrist;

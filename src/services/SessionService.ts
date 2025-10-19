@@ -716,14 +716,14 @@ class SessionService {
 
     const roomName = session!.link || '';
 
-    return `https://sona.org.lk/${roomName}?jwt=${this.generateToken(sessionId, userId, context, roomName)}`;
+    return `https://meet.sona.org.lk/${roomName}?jwt=${this.generateToken(sessionId, userId, context, roomName)}`;
   }
 
   private generateToken(roomId: number, userId: number, context: any, roomName: string): string {
     const payload = {
       aud: '123456', //need to be changed for better app id
       iss: '123456', //need to be changed for better app id
-      sub: 'sona.org.lk',
+      sub: 'meet.sona.org.lk',
       room: roomName,
       exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hour expiration
       
@@ -769,6 +769,29 @@ class SessionService {
 
     }catch (error) {
       return 'Error fetching booked sessions';
+    }
+  }
+
+  //meeting status update
+  async updateMeetingStatus(roomName: string, status: string): Promise<string> {
+    try {
+      const meeting = await Session.findOne({ where: { link: { [Op.iLike]: roomName } } });
+
+      if (!meeting) {
+        throw new Error('Meeting not found');
+      }
+
+      if(status === 'muc-room-created') {
+        meeting.status = 'ongoing'
+      } else if(status === 'muc-room-destroyed') {
+        meeting.status = 'completed'
+      }
+      await meeting.save();
+
+      return 'Meeting status updated successfully';
+    } catch (error) {
+      console.error('Error updating meeting status:', error);
+      throw new Error('Error updating meeting status');
     }
   }
 }

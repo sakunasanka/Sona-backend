@@ -11,6 +11,7 @@ import * as path from "path";
 import Client from "../models/Client";
 import { QueryTypes } from "sequelize";
 import { sequelize } from "../config/db";
+import { NotificationHelper } from "../utils/NotificationHelper";
 
 
 const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY!;
@@ -67,7 +68,9 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
       isAvailable: additionalData.isAvailable !== undefined ? additionalData.isAvailable : true,
       description: additionalData.description || "",
       rating: additionalData.rating || 0,
-      sessionFee: additionalData.sessionFee || 0
+      sessionFee: additionalData.sessionFee || 0,
+      eduQualifications: additionalData.eduQualifications || [],
+      experiences: additionalData.experiences || []
     };
 
     if (process.env.DEBUG === 'true') {
@@ -76,6 +79,14 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
     const result = await UserService.createUser(counselorData);
     
     if (result) {
+      // Send notification to admins and MT members
+      try {
+        await NotificationHelper.newUserApplication('Counselor', displayName, result.dbUser.id);
+      } catch (notificationError) {
+        console.error('Failed to send new counselor application notification:', notificationError);
+        // Don't fail the signup if notification fails
+      }
+
       ApiResponseUtil.created(res, {
         user: result.dbUser,
         firebaseUser: {
@@ -132,7 +143,9 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
       linkedin: additionalData.linkedin || null,
       x: additionalData.x || null,
       website: additionalData.website || null,
-      languages: additionalData.languages || []
+      languages: additionalData.languages || [],
+      eduQualifications: additionalData.eduQualifications || [],
+      experiences: additionalData.experiences || []
     };
 
     if (process.env.DEBUG === 'true') {
@@ -141,6 +154,14 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
     const result = await UserService.createUser(psychiatristData);
     
     if (result) {
+      // Send notification to admins and MT members
+      try {
+        await NotificationHelper.newUserApplication('Psychiatrist', displayName, result.dbUser.id);
+      } catch (notificationError) {
+        console.error('Failed to send new psychiatrist application notification:', notificationError);
+        // Don't fail the signup if notification fails
+      }
+
       ApiResponseUtil.created(res, {
         user: result.dbUser,
         firebaseUser: {

@@ -16,7 +16,8 @@ import {
   getCounselorSessions,
   getRemainingStudentSessions,
   getCounselorMonthlyAvailability,
-  getBooked
+  getBooked,
+  updateMeetingStatus
 } from '../controllers/SessionController';
 import { authenticateToken } from '../middlewares/auth';
 
@@ -27,6 +28,10 @@ router.get('/counselors', getCounselors);
 router.get('/counselors/:id', getCounselorById);
 router.get('/timeslots/:counselorId/:date', getAvailableTimeSlots);
 router.get('/counselors/:id/availability/:year/:month', getCounselorMonthlyAvailability);
+
+//jitsi endpoint for updating meeting details
+router.post('/jitsi/events/room/destroyed', updateMeetingStatus);
+router.post('/jitsi/events/room/created', updateMeetingStatus);
 
 // Psychiatrist routes
 router.get('/psychiatrists', getPsychiatrists);

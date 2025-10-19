@@ -25,6 +25,7 @@ export interface CreateClientData extends CreateUserData {
 
 export interface CreateCounselorData extends CreateUserData {
     userType: 'Counselor';
+    firebaseId?: string;
     title: string;
     specialities: string[];
     address: string;
@@ -36,10 +37,13 @@ export interface CreateCounselorData extends CreateUserData {
     description?: string;
     rating?: number;
     sessionFee?: number;
+    eduQualifications?: any[];
+    experiences?: any[];
 }
 
 export interface CreatePsychiatristData extends CreateUserData {
     userType: 'Psychiatrist';
+    firebaseId?: string;
     title: string;
     specialities: string[];
     address: string;
@@ -58,6 +62,8 @@ export interface CreatePsychiatristData extends CreateUserData {
     x?: string;
     website?: string;
     languages?: string[];
+    eduQualifications?: any[];
+    experiences?: any[];
 }
 
 export interface SignInData {
@@ -170,8 +176,10 @@ export class UserService {
                     isAvailable: counselorData.isAvailable,
                     description: counselorData.description, 
                     rating: counselorData.rating,
-                    sessionFee: counselorData.sessionFee
-                })
+                    sessionFee: counselorData.sessionFee,
+                    eduQualifications: counselorData.eduQualifications,
+                    experiences: counselorData.experiences
+                });
             }
 
             else if(validatedData.userType === 'Admin') {
@@ -210,7 +218,9 @@ export class UserService {
                     linkedin: psychiatristData.linkedin,
                     x: psychiatristData.x,
                     website: psychiatristData.website,
-                    languages: psychiatristData.languages
+                    languages: psychiatristData.languages,
+                    eduQualifications: psychiatristData.eduQualifications,
+                    experiences: psychiatristData.experiences
                 });
             }
 
