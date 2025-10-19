@@ -39,38 +39,40 @@ class AdminStudentServices {
 
  // In AdminStudentServices.ts
 async updateStudentApplicationStatus(
-  clientId: number, 
-  status: 'approved' | 'rejected', 
-  rejectionReason?: string,
-  rejectedById?: number  // Add this parameter
-) {
-  try {
-    const studentApplication = await Student.findByClientId(clientId);
-    if (!studentApplication) throw new Error('Student application not found');
+    clientId: number, 
+    status: 'approved' | 'rejected' | 'pending',  // Added 'pending' to status type
+    rejectionReason?: string,
+    rejectedById?: number
+  ) {
+    try {
+      const studentApplication = await Student.findByClientId(clientId);
+      if (!studentApplication) throw new Error('Student application not found');
 
-    const updatedApplication = await Student.updateApplicationStatusInAdmin(
-      studentApplication.id,
-      status,
-      rejectionReason || undefined,
-      rejectedById  // Pass to the model
-    );
+      const updatedApplication = await Student.updateApplicationStatusInAdmin(
+        studentApplication.id,
+        status,
+        rejectionReason || undefined,
+        rejectedById
+      );
 
-    console.log('Rejection Reason in Service:', rejectionReason);
-    console.log('Rejected By in Service:', rejectedById);
+      console.log('Status in Service:', status);
+      console.log('Rejection Reason in Service:', rejectionReason);
+      console.log('Rejected By in Service:', rejectedById);
 
-    if (status === 'rejected') {
-      await Client.updateClient(clientId, { isStudent: false });
+      // Update client's isStudent status based on the new status
+      if (status === 'rejected' || status === 'pending') {
+        await Client.updateClient(clientId, { isStudent: false });
+      }
+
+      if (status === 'approved') {
+        await Client.updateClient(clientId, { isStudent: true });
+      }
+
+      return updatedApplication;
+    } catch (error) {
+      throw error;
     }
-
-    if (status === 'approved') {
-      await Client.updateClient(clientId, { isStudent: true });
-    }
-
-    return updatedApplication;
-  } catch (error) {
-    throw error;
   }
-}
 
   async getPendingApplications() {
     return await Student.findAll('pending');

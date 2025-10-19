@@ -45,4 +45,10 @@ router.post(
   clientController.rejectStudentPackage
 );
 
+// New revoke route
+router.post(
+  '/:clientId/student-package/revoke',
+  clientController.revokeStudentPackage
+);
+
 export default router;
