@@ -37,36 +37,40 @@ class AdminStudentServices {
 //     }
 //   }
 
-  async updateStudentApplicationStatus(
-    clientId: number, 
-    status: 'approved' | 'rejected', 
-    rejectionReason?: string
-  ) {
-    try {
-      const studentApplication = await Student.findByClientId(clientId);
-      if (!studentApplication) throw new Error('Student application not found');
+ // In AdminStudentServices.ts
+async updateStudentApplicationStatus(
+  clientId: number, 
+  status: 'approved' | 'rejected', 
+  rejectionReason?: string,
+  rejectedById?: number  // Add this parameter
+) {
+  try {
+    const studentApplication = await Student.findByClientId(clientId);
+    if (!studentApplication) throw new Error('Student application not found');
 
-      const updatedApplication = await Student.updateApplicationStatus(
-        studentApplication.id,
-        status,
-        rejectionReason || undefined // Pass undefined instead of null if rejectionReason is not provided
-      );
+    const updatedApplication = await Student.updateApplicationStatusInAdmin(
+      studentApplication.id,
+      status,
+      rejectionReason || undefined,
+      rejectedById  // Pass to the model
+    );
 
-      console.log('Rejection Reason in Service:', rejectionReason); // Debug log for rejectionReason
+    console.log('Rejection Reason in Service:', rejectionReason);
+    console.log('Rejected By in Service:', rejectedById);
 
-      if (status === 'rejected') {
-        await Client.updateClient(clientId, { isStudent: false });
-      }
-
-      if (status === 'approved') {
-        await Client.updateClient(clientId, { isStudent: true });
-      }
-
-      return updatedApplication;
-    } catch (error) {
-      throw error;
+    if (status === 'rejected') {
+      await Client.updateClient(clientId, { isStudent: false });
     }
+
+    if (status === 'approved') {
+      await Client.updateClient(clientId, { isStudent: true });
+    }
+
+    return updatedApplication;
+  } catch (error) {
+    throw error;
   }
+}
 
   async getPendingApplications() {
     return await Student.findAll('pending');

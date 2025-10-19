@@ -95,38 +95,51 @@ class AdminClientController {
     }
   }
 
-  async rejectStudentPackage(req: Request, res: Response) {
-    try {
-      const { clientId } = req.params;
-      const { rejectionReason } = req.body;
+  // In AdminClientController.ts
+async rejectStudentPackage(req: Request, res: Response) {
+  try {
+    const { clientId } = req.params;
+    const { rejectionReason } = req.body;
 
-      if (!rejectionReason) {
-        return res.status(400).json({
-          success: false,
-          message: 'Rejection reason is required'
-        });
-      }
-
-      console.log('Rejection Reason:', rejectionReason); // Debug log for rejectionReason
-
-      await studentService.updateStudentApplicationStatus(
-        parseInt(clientId), 
-        'rejected', 
-        rejectionReason
-      );
-
-      res.json({
-        success: true,
-        message: 'Student package rejected successfully'
-      });
-    } catch (error) {
-      console.error('Error rejecting student package:', error);
-      res.status(500).json({
+    if (!rejectionReason) {
+      return res.status(400).json({
         success: false,
-        message: error instanceof Error ? error.message : 'Internal server error'
+        message: 'Rejection reason is required'
       });
     }
+
+    // Get the current admin user ID from the authenticated request
+    const rejectedById = req.user?.dbUser.id;
+
+    if (!rejectedById) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    console.log('Rejection Reason:', rejectionReason);
+    console.log('Rejected By User ID:', rejectedById);
+
+    await studentService.updateStudentApplicationStatus(
+      parseInt(clientId), 
+      'rejected', 
+      rejectionReason,
+      rejectedById  // Pass the admin user ID
+    );
+
+    res.json({
+      success: true,
+      message: 'Student package rejected successfully'
+    });
+  } catch (error) {
+    console.error('Error rejecting student package:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Internal server error'
+    });
   }
+}
 
   async getPendingStudentApplications(req: Request, res: Response) {
     try {
