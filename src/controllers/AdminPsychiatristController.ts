@@ -1,119 +1,122 @@
 import { Request, Response } from 'express';
 import Psychiatrist from '../models/Psychiatrist';
 import { validationResult } from 'express-validator';
+import { sequelize } from '../config/db';
+import { QueryTypes } from 'sequelize';
 
 class AdminPsychiatristController {
-  // Get all psychiatrists
-  async getAllPsychiatrists(req: Request, res: Response) {
-    try {
-      const { status, search } = req.query;
-      
-      let psychiatrists = await Psychiatrist.findAllPsychiatristsForAdmin();
+ 
+// Get all psychiatrists
+async getAllPsychiatrists(req: Request, res: Response) {
+  try {
+    const { status, search } = req.query;
+    
+    // Define interface for psychiatrist data
+    interface PsychiatristData {
+      id: number;
+      firebaseId: string;
+      name: string;
+      email: string;
+      avatar?: string;
+      role: string;
+      createdAt: string;
+      updatedAt: string;
+      title: string;
+      specialities: string[];
+      address: string;
+      contact_no: string;
+      license_no: string;
+      idCard: string;
+      isVolunteer?: boolean;
+      isAvailable?: boolean;
+      description?: string;
+      rating?: number;
+      sessionFee?: number;
+      status: string;
+      coverImage?: string;
+      instagram?: string;
+      linkedin?: string;
+      x?: string;
+      website?: string;
+      languages?: string[];
+      rejectionReason?: string;
+      rejectedBy?: number;
+      rejectedByName?: string;
+      rejectedByRole?: string;
+    }
 
-      if (status && status !== 'unset') {
-        psychiatrists = psychiatrists.filter(psych => psych.status === status);
-      }
+    // Use raw SQL to get psychiatrists with rejection info
+    let psychiatrists = await sequelize.query<PsychiatristData>(`
+      SELECT 
+        u.id, 
+        u."firebaseId", 
+        u.name, 
+        u.email, 
+        u.avatar, 
+        u.role, 
+        u."createdAt", 
+        u."updatedAt",
+        p.title, 
+        p.specialities, 
+        p.address, 
+        p.contact_no, 
+        p."licenseNo" as license_no, 
+        p."idCard",
+        p."isVolunteer", 
+        p."isAvailable", 
+        p.description, 
+        p.rating, 
+        p."sessionFee",
+        p.status,
+        p."coverImage", 
+        p.instagram, 
+        p.linkedin, 
+        p.x, 
+        p.website,
+        p.languages,
+        rr.reason as "rejectionReason",
+        rr."rejectedBy",
+        admin_user.name as "rejectedByName",
+        admin_user.role as "rejectedByRole"
+      FROM users u
+      JOIN psychiatrists p ON u.id = p."userId"
+      LEFT JOIN rejection_reasons rr ON u.id = rr."userId"
+      LEFT JOIN users admin_user ON rr."rejectedBy" = admin_user.id
+      WHERE u."role" = 'Psychiatrist'
+      ORDER BY u."name" ASC
+    `, {
+      type: QueryTypes.SELECT
+    });
 
-      if (search) {
-        const searchTerm = (search as string).toLowerCase();
-        psychiatrists = psychiatrists.filter(psych => 
-          psych.name.toLowerCase().includes(searchTerm) ||
-          psych.email.toLowerCase().includes(searchTerm) ||
-          psych.title?.toLowerCase().includes(searchTerm) ||
-          psych.specialities?.some(spec => spec.toLowerCase().includes(searchTerm)) ||
-          psych.license_no?.toLowerCase().includes(searchTerm) ||
-          psych.contact_no?.toLowerCase().includes(searchTerm) ||
-          psych.address?.toLowerCase().includes(searchTerm) ||
-          psych.description?.toLowerCase().includes(searchTerm) ||
-          psych.languages?.some(lang => lang.toLowerCase().includes(searchTerm)) ||
-          // Search in education qualifications
-          psych.eduQualifications?.some(edu => 
-            edu.institution.toLowerCase().includes(searchTerm) ||
-            edu.degree?.toLowerCase().includes(searchTerm) ||
-            edu.field?.toLowerCase().includes(searchTerm) ||
-            edu.title?.toLowerCase().includes(searchTerm)
-          ) ||
-          // Search in experiences
-          psych.experiences?.some(exp => 
-            exp.title.toLowerCase().includes(searchTerm) ||
-            exp.description.toLowerCase().includes(searchTerm)
-          )
-        );
-      }
+    // Apply filters if provided
+    if (status && status !== 'unset') {
+      psychiatrists = psychiatrists.filter(psych => psych.status === status);
+    }
 
-      const response = psychiatrists.map(psych => ({
-        id: psych.id,
-        firebaseId: psych.firebaseId,
-        name: psych.name,
-        email: psych.email,
-        avatar: psych.avatar,
-        role: psych.role,
-        title: psych.title,
-        specialities: psych.specialities,
-        address: psych.address,
-        contact_no: psych.contact_no,
-        license_no: psych.license_no,
-        idCard: psych.idCard,
-        isVolunteer: psych.isVolunteer,
-        isAvailable: psych.isAvailable,
-        description: psych.description,
-        rating: psych.rating,
-        sessionFee: psych.sessionFee,
-        status: psych.status,
-        coverImage: psych.coverImage,
-        instagram: psych.instagram,
-        linkedin: psych.linkedin,
-        x: psych.x,
-        website: psych.website,
-        languages: psych.languages,
-        eduQualifications: psych.eduQualifications?.map(edu => ({
-          id: edu.id,
-          institution: edu.institution,
-          degree: edu.degree,
-          field: edu.field,
-          startDate: edu.startDate,
-          endDate: edu.endDate,
-          grade: edu.grade,
-          document: edu.document,
-          title: edu.title,
-          year: edu.year,
-          status: edu.status,
-          proof: edu.proof,
-          approvedAt: edu.approvedAt,
-          createdAt: edu.createdAt,
-          updatedAt: edu.updatedAt
-        })) || [],
-        experiences: psych.experiences?.map(exp => ({
-          id: exp.id,
-          userId: exp.userId,
-          position: exp.position,
-          company: exp.company,
-          title: exp.title,
-          description: exp.description,
-          startDate: exp.startDate,
-          endDate: exp.endDate,
-          status: exp.status,
-          proof: exp.proof,
-          document: exp.document,
-          approvedAt: exp.approvedAt,
-          approvedBy: exp.approvedBy,
-          createdAt: exp.createdAt,
-          updatedAt: exp.updatedAt
-        })) || [],
-        createdAt: psych.createdAt,
-        updatedAt: psych.updatedAt
-      }));
+    if (search) {
+      const searchTerm = (search as string).toLowerCase();
+      psychiatrists = psychiatrists.filter(psych => 
+        psych.name.toLowerCase().includes(searchTerm) ||
+        psych.email.toLowerCase().includes(searchTerm) ||
+        psych.title?.toLowerCase().includes(searchTerm) ||
+        psych.specialities?.some(spec => spec.toLowerCase().includes(searchTerm)) ||
+        psych.license_no?.toLowerCase().includes(searchTerm) ||
+        psych.contact_no?.toLowerCase().includes(searchTerm) ||
+        psych.address?.toLowerCase().includes(searchTerm) ||
+        psych.description?.toLowerCase().includes(searchTerm)
+      );
+    }
 
-      res.status(200).json(response);
-    } catch (error) {
-      console.error('Error fetching psychiatrists:', error);
-      if (error instanceof Error) {
-        res.status(500).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'An unknown error occurred' });
-      }
+    res.status(200).json(psychiatrists);
+  } catch (error) {
+    console.error('Error fetching psychiatrists:', error);
+    if (error instanceof Error) {
+      res.status(500).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: 'An unknown error occurred' });
     }
   }
+}
 
   async getPsychiatristById(req: Request, res: Response) {
     try {
@@ -198,48 +201,85 @@ class AdminPsychiatristController {
     }
   }
   
-  // Update psychiatrist status
-  async updatePsychiatristStatus(req: Request, res: Response) {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
+  
+// Update psychiatrist status
+async updatePsychiatristStatus(req: Request, res: Response) {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-      const { id } = req.params;
-      const { status, rejectionReason } = req.body;
+    const { id } = req.params;
+    const { status, rejectionReason } = req.body;
 
-      if (status === 'rejected' && !rejectionReason) {
-        return res
-          .status(400)
-          .json({ message: 'Rejection reason is required when status is rejected' });
-      }
+    if (status === 'rejected' && !rejectionReason) {
+      return res
+        .status(400)
+        .json({ message: 'Rejection reason is required when status is rejected' });
+    }
 
-      const updatedPsychiatrist = await Psychiatrist.updatePsychiatristStatus(
-        parseInt(id),
-        status,
-        rejectionReason
-      );
+    // Get the current admin user ID from the authenticated request
+    const rejectedById = req.user?.dbUser.id;
 
-      if (!updatedPsychiatrist) {
-        return res.status(404).json({ message: 'Psychiatrist not found' });
-      }
+    if (status === 'rejected' && !rejectedById) {
+      return res.status(401).json({ 
+        message: 'Authentication required for rejection' 
+      });
+    }
 
-      const response = {
-        ...updatedPsychiatrist.get({ plain: true }),
-        rejectionReason: status === 'rejected' ? rejectionReason : undefined,
-      };
+    const updatedPsychiatrist = await Psychiatrist.updatePsychiatristStatus(
+      parseInt(id),
+      status,
+      rejectionReason,
+      rejectedById
+    );
 
-      res.status(200).json(response);
-    } catch (error) {
-      console.error('Error updating psychiatrist status:', error);
-      if (error instanceof Error) {
-        res.status(500).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'An unknown error occurred' });
-      }
+    if (!updatedPsychiatrist) {
+      return res.status(404).json({ message: 'Psychiatrist not found' });
+    }
+
+    // Define interface for rejection info
+    interface RejectionInfo {
+      rejectionReason: string;
+      rejectedBy: number;
+      rejectedByName: string;
+      rejectedByRole: string;
+    }
+
+    // Get rejection information separately
+    const rejectionInfo = await sequelize.query<RejectionInfo>(`
+      SELECT 
+        rr.reason as "rejectionReason",
+        rr."rejectedBy",
+        admin_user.name as "rejectedByName",
+        admin_user.role as "rejectedByRole"
+      FROM rejection_reasons rr
+      LEFT JOIN users admin_user ON rr."rejectedBy" = admin_user.id
+      WHERE rr."userId" = :userId
+    `, {
+      replacements: { userId: parseInt(id) },
+      type: QueryTypes.SELECT
+    });
+
+    const response = {
+      ...updatedPsychiatrist.get({ plain: true }),
+      rejectionReason: rejectionInfo[0]?.rejectionReason || null,
+      rejectedBy: rejectionInfo[0]?.rejectedBy || null,
+      rejectedByName: rejectionInfo[0]?.rejectedByName || null,
+      rejectedByRole: rejectionInfo[0]?.rejectedByRole || null,
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Error updating psychiatrist status:', error);
+    if (error instanceof Error) {
+      res.status(500).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: 'An unknown error occurred' });
     }
   }
+}
 
   // Get psychiatrist counts
   async getPsychiatristCounts(req: Request, res: Response) {

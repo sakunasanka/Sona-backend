@@ -337,10 +337,12 @@ class Psychiatrist extends User {
 
  
 // Update psychiatrist status
+// Update psychiatrist status
 static async updatePsychiatristStatus(
   id: number,
   status: 'pending' | 'approved' | 'rejected' | 'unset',
-  rejectionReason?: string
+  rejectionReason?: string,
+  rejectedById?: number
 ): Promise<Psychiatrist | null> {
   const transaction = await sequelize.transaction();
 
@@ -372,17 +374,43 @@ static async updatePsychiatristStatus(
       }
     );
 
-    // If rejected, insert rejection reason
+    // If rejected, insert rejection reason with rejectedBy
     if (status === 'rejected' && rejectionReason) {
+      if (!rejectedById) {
+        throw new Error('rejectedById is required when rejecting a psychiatrist');
+      }
+
+      // First, delete any existing rejection reason for this user
       await sequelize.query(
-        `INSERT INTO rejection_reasons ("userId", reason, "createdAt")
-         VALUES (:userId, :reason, NOW())`,
+        `DELETE FROM rejection_reasons WHERE "userId" = :userId`,
+        {
+          replacements: { userId: id },
+          type: QueryTypes.DELETE,
+          transaction,
+        }
+      );
+
+      // Insert new rejection reason with rejectedBy information
+      await sequelize.query(
+        `INSERT INTO rejection_reasons ("userId", reason, "rejectedBy", "createdAt")
+         VALUES (:userId, :reason, :rejectedBy, NOW())`,
         {
           replacements: {
             userId: id,
             reason: rejectionReason,
+            rejectedBy: rejectedById,
           },
           type: QueryTypes.INSERT,
+          transaction,
+        }
+      );
+    } else if (status !== 'rejected') {
+      // Remove rejection reason if status is changed from rejected to something else
+      await sequelize.query(
+        `DELETE FROM rejection_reasons WHERE "userId" = :userId`,
+        {
+          replacements: { userId: id },
+          type: QueryTypes.DELETE,
           transaction,
         }
       );
@@ -391,7 +419,7 @@ static async updatePsychiatristStatus(
     await transaction.commit();
 
     // Return updated psychiatrist
-    return await this.findPsychiatristById(id);
+    return await this.findPsychiatristByIdForAdmin(id);
   } catch (error) {
     await transaction.rollback();
     console.error('❌ Error updating psychiatrist status:', error);
@@ -402,7 +430,6 @@ static async updatePsychiatristStatus(
     );
   }
 }
-
 
   // Update psychiatrist availability
   static async updatePsychiatristAvailability(id: number, isAvailable: boolean): Promise<Psychiatrist | null> {
