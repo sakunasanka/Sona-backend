@@ -39,6 +39,10 @@ Experience.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    company: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     title: {
       type: DataTypes.STRING,
       allowNull: false,

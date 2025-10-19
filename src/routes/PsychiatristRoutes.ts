@@ -6,7 +6,9 @@ import {
   getAllPsychiatrists,
   uploadPrescription,
   getPrescriptionsByPsychiatrist,
-  updatePsychiatristProfile
+  updatePsychiatristProfile,
+  addPsychiatristQualification,
+  addPsychiatristExperience
 } from '../controllers/PsychiatristController';
 import { asyncHandler } from '../utils/asyncHandler';
 import { isAdmin, isAuthenticated, isProfessional } from '../middlewares/auth';
@@ -44,5 +46,9 @@ router.patch('/:id/availability', isAuthenticated, isProfessional, updatePsychia
 
 // Psychiatrist can view a client's daily moods
 router.get('/clients/:clientId/moods', isAuthenticated, isProfessional, getUserDailyMoods);
+
+// Add qualification and experience routes
+router.post('/qualifications', isAuthenticated, isProfessional, addPsychiatristQualification);
+router.post('/experiences', isAuthenticated, isProfessional, addPsychiatristExperience);
 
 export default router;
