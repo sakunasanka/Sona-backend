@@ -3,6 +3,7 @@ import { ApiResponseUtil } from "../utils/apiResponse";
 import { asyncHandler } from "../utils/asyncHandler";
 import { StudentService } from "../services/StudentService";
 import { ValidationError } from "../utils/errors";
+import { NotificationHelper } from "../utils/NotificationHelper";
 
 /**
  * @desc    Apply for student plan
@@ -30,6 +31,15 @@ export const applyForStudentPlan = asyncHandler(async (req: Request, res: Respon
     studentIDCopy,
     uniEmail,
   });
+
+  // Send notifications
+  try {
+    await NotificationHelper.studentPackApplied(clientId);
+    await NotificationHelper.studentPackApplicationToAdmins(fullName, studentApplication.id);
+  } catch (notificationError) {
+    console.error('Failed to send student pack application notifications:', notificationError);
+    // Don't fail the application if notifications fail
+  }
 
   ApiResponseUtil.success(res, {
     studentApplication: {

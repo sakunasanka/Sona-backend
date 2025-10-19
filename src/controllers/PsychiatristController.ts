@@ -6,6 +6,7 @@ import { ValidationError, ItemNotFoundError } from '../utils/errors';
 import Prescription from '../models/Prescription';
 import { validateData, updateCounselorProfileSchema } from '../schema/ValidationSchema';
 import { asyncHandler } from '../utils/asyncHandler';
+import { NotificationHelper } from '../utils/NotificationHelper';
 
 // Helper for consistent API responses
 const apiResponse = {
@@ -676,6 +677,17 @@ export const uploadPrescription = async (req: Request, res: Response): Promise<v
       description,
       prescription
     });
+
+    // Send notification to client
+    try {
+      const psychiatrist = await require('../models/User').default.findByPk(userId);
+      if (psychiatrist) {
+        await NotificationHelper.prescriptionUploaded(parseInt(clientId), psychiatrist.name);
+      }
+    } catch (notificationError) {
+      console.error('Failed to send prescription notification:', notificationError);
+      // Don't fail the prescription upload if notification fails
+    }
 
     res.status(201).json(apiResponse.success(
       'Prescription uploaded successfully',
