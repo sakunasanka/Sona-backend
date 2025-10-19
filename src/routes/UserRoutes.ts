@@ -9,6 +9,7 @@ import {
 import { asyncHandler } from '../utils/asyncHandler';
 import { getUserDailyMoods, createUserDailyMood } from '../controllers/DailyMoodController';
 import { isAdmin } from '../middlewares/auth';
+import { handleUrgentClient } from '../controllers/UrgentClientHandle';
 
 const router = express.Router();
 
@@ -23,6 +24,7 @@ const router = express.Router();
 // Client student status endpoints
 router.get('/client/is-student', authenticateToken, asyncHandler(checkIsStudent));
 router.put('/client/is-student', authenticateToken, asyncHandler(updateClientStudentStatus));
+router.post('/client/urgent-help', authenticateToken, asyncHandler(handleUrgentClient));
 
 // Admin routes for client student status
 router.get('/admin/client/:clientId/is-student', authenticateToken, asyncHandler(checkClientIsStudentById));
