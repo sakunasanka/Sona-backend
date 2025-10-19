@@ -207,15 +207,17 @@ class AdminPsychiatristController {
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { id } = req.params;
+      const { id } = req.params; // psychiatrist's userId (PK)
       const { status, rejectionReason } = req.body;
 
+      // Validate rejection reason for rejected status
       if (status === 'rejected' && !rejectionReason) {
         return res
           .status(400)
           .json({ message: 'Rejection reason is required when status is rejected' });
       }
 
+      // Update psychiatrist status using the model
       const updatedPsychiatrist = await Psychiatrist.updatePsychiatristStatus(
         parseInt(id),
         status,
@@ -226,31 +228,32 @@ class AdminPsychiatristController {
         return res.status(404).json({ message: 'Psychiatrist not found' });
       }
 
-    // Send notification to psychiatrist
-    try {
-      if (status === 'approved') {
-        await NotificationHelper.profileApproved(parseInt(id), 'Psychiatrist');
-      } else if (status === 'rejected') {
-        await NotificationHelper.profileRejected(parseInt(id), 'Psychiatrist', rejectionReason);
+      // Send notification to psychiatrist
+      try {
+        if (status === 'approved') {
+          await NotificationHelper.profileApproved(parseInt(id), 'Psychiatrist');
+        } else if (status === 'rejected') {
+          await NotificationHelper.profileRejected(parseInt(id), 'Psychiatrist', rejectionReason);
+        }
+      } catch (notificationError) {
+        console.error('Failed to send psychiatrist status notification:', notificationError);
+        // Don't fail the status update if notification fails
       }
-    } catch (notificationError) {
-      console.error('Failed to send psychiatrist status notification:', notificationError);
-      // Don't fail the status update if notification fails
-    }
 
-    // ✅ Return updated data (after reload)
-    const response = {
-      ...updatedPsychiatrist.get({ plain: true }),
-      rejectionReason: status === 'rejected' ? rejectionReason : undefined,
-    };
+      // ✅ Return updated data (after reload)
+      const response = {
+        ...updatedPsychiatrist.get({ plain: true }),
+        rejectionReason: status === 'rejected' ? rejectionReason : undefined,
+      };
 
-    res.status(200).json(response);
-  } catch (error) {
-    console.error('Error updating psychiatrist status:', error);
-    if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: 'An unknown error occurred' });
+      res.status(200).json(response);
+    } catch (error) {
+      console.error('Error updating psychiatrist status:', error);
+      if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'An unknown error occurred' });
+      }
     }
   }
 
