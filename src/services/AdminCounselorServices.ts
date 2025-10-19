@@ -418,21 +418,23 @@ export const updateCounselorStatus = async (
   }
 };
 
-export const getCounselorCounts = async (): Promise<CounselorCounts> => {
+export const getCounselorCounts = async (): Promise<CounselorCounts & { totalCounselors: number }> => {
   const counselors = await Counselor.findAll({
     attributes: ['userId', 'status']
   });
 
-  const initialCounts: CounselorCounts = {
+  const initialCounts: CounselorCounts & { totalCounselors: number } = {
     pending: 0,
     approved: 0,
     rejected: 0,
-    unset: 0
+    unset: 0,
+    totalCounselors: 0
   };
 
   return counselors.reduce((acc, c) => {
     const status = (c.status || 'unset').toLowerCase() as keyof CounselorCounts;
     acc[status] = (acc[status] || 0) + 1;
+    acc.totalCounselors += 1;
     return acc;
   }, initialCounts);
 };

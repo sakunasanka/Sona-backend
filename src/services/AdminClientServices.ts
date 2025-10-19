@@ -24,6 +24,7 @@ export interface ClientWithStudentInfo {
     status?: 'pending' | 'approved' | 'rejected';
     appliedDate?: string;
     school?: string;
+    studentIDCopy?: string;
     clientID?: string;
     rejectionReason?: string;
   };
@@ -69,6 +70,7 @@ class AdminClientServices {
         s."university" AS "school",
         s."clientID",
         s."rejectionReason",
+        s."studentIDCopy",
         s."createdAt" AS "appliedDate",
         COALESCE(sess."sessionsCompleted", 0) AS "sessionsCompleted",
         COALESCE(sess."totalSpent", 0) AS "totalSpent"
@@ -107,6 +109,7 @@ class AdminClientServices {
             appliedDate: client.appliedDate,
             school: client.school,
             clientID: client.clientID,
+            studentIDCopy: client.studentIDCopy,
             rejectionReason: client.rejectionReason,
           }
         : { applied: false };
@@ -147,6 +150,7 @@ class AdminClientServices {
         s."applicationStatus" AS "status",
         s."university" AS "school",
         s."clientID",
+        s."studentIDCopy",
         s."rejectionReason",
         s."createdAt" AS "appliedDate",
         COALESCE(sess."sessionsCompleted", 0) AS "sessionsCompleted",
@@ -186,6 +190,7 @@ class AdminClientServices {
           appliedDate: client.appliedDate,
           school: client.school,
           clientID: client.clientID,
+          studentIDCopy: client.studentIDCopy,
           rejectionReason: client.rejectionReason,
         }
       : { applied: false };
