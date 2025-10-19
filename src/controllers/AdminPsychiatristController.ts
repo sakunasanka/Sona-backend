@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Psychiatrist from '../models/Psychiatrist';
 import { validationResult } from 'express-validator';
+import { NotificationHelper } from '../utils/NotificationHelper';
 
 class AdminPsychiatristController {
   // Get all psychiatrists
@@ -225,19 +226,31 @@ class AdminPsychiatristController {
         return res.status(404).json({ message: 'Psychiatrist not found' });
       }
 
-      const response = {
-        ...updatedPsychiatrist.get({ plain: true }),
-        rejectionReason: status === 'rejected' ? rejectionReason : undefined,
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      console.error('Error updating psychiatrist status:', error);
-      if (error instanceof Error) {
-        res.status(500).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'An unknown error occurred' });
+    // Send notification to psychiatrist
+    try {
+      if (status === 'approved') {
+        await NotificationHelper.profileApproved(parseInt(id), 'Psychiatrist');
+      } else if (status === 'rejected') {
+        await NotificationHelper.profileRejected(parseInt(id), 'Psychiatrist', rejectionReason);
       }
+    } catch (notificationError) {
+      console.error('Failed to send psychiatrist status notification:', notificationError);
+      // Don't fail the status update if notification fails
+    }
+
+    // ✅ Return updated data (after reload)
+    const response = {
+      ...updatedPsychiatrist.get({ plain: true }),
+      rejectionReason: status === 'rejected' ? rejectionReason : undefined,
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Error updating psychiatrist status:', error);
+    if (error instanceof Error) {
+      res.status(500).json({ message: error.message });
+    } else {
+      res.status(500).json({ message: 'An unknown error occurred' });
     }
   }
 

@@ -3,6 +3,7 @@ import ComplaintService, { CreateComplaintData, UpdateComplaintData } from '../s
 import { validateData, createComplaintSchema, updateComplaintStatusSchema } from '../schema/ValidationSchema';
 import { ValidationError, AuthenticationError } from '../utils/errors';
 import { ApiResponseUtil } from '../utils/apiResponse';
+import { NotificationHelper } from '../utils/NotificationHelper';
 
 export class ComplaintController {
   /**
@@ -36,6 +37,15 @@ export class ComplaintController {
 
       // Create the complaint
       const complaint = await ComplaintService.createComplaint(complaintData);
+
+      // Send notification to admins and MT members
+      try {
+        const clientName = req.user.dbUser.name;
+        await NotificationHelper.newComplaintToAdmins(clientName, complaint.complaintId);
+      } catch (notificationError) {
+        console.error('Failed to send new complaint notification:', notificationError);
+        // Don't fail the complaint creation if notification fails
+      }
 
       // Return response
       const responseData = {

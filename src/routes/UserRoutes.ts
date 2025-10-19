@@ -9,6 +9,7 @@ import {
 import { asyncHandler } from '../utils/asyncHandler';
 import { getUserDailyMoods, createUserDailyMood } from '../controllers/DailyMoodController';
 import { isAdmin } from '../middlewares/auth';
+import { ReviewController } from '../controllers/ReviewController';
 import { handleUrgentClient } from '../controllers/UrgentClientHandle';
 
 const router = express.Router();
@@ -34,5 +35,10 @@ router.put('/admin/client/:clientId/is-student', authenticateToken, asyncHandler
 router.get('/:id/moods', authenticateToken, getUserDailyMoods);
 router.get('/admin/:id/moods', authenticateToken, isAdmin, getUserDailyMoods);
 router.post('/:id/moods', authenticateToken, createUserDailyMood);
+
+// Reviews
+router.post('/reviews', authenticateToken, asyncHandler(ReviewController.createReview));
+router.get('/reviews/session/most-recent', authenticateToken, asyncHandler(ReviewController.getMostRecentUnreviewedSession));
+router.get('/reviews/session/:sessionId(\\d+)', authenticateToken, asyncHandler(ReviewController.checkReviewStatus));
 
 export default router;
