@@ -6,6 +6,7 @@ import { ValidationError, ItemNotFoundError } from '../utils/errors';
 import Prescription from '../models/Prescription';
 import { validateData, updateCounselorProfileSchema } from '../schema/ValidationSchema';
 import { asyncHandler } from '../utils/asyncHandler';
+import { NotificationHelper } from '../utils/NotificationHelper';
 
 // Helper for consistent API responses
 const apiResponse = {
@@ -677,6 +678,17 @@ export const uploadPrescription = async (req: Request, res: Response): Promise<v
       prescription
     });
 
+    // Send notification to client
+    try {
+      const psychiatrist = await require('../models/User').default.findByPk(userId);
+      if (psychiatrist) {
+        await NotificationHelper.prescriptionUploaded(parseInt(clientId), psychiatrist.name);
+      }
+    } catch (notificationError) {
+      console.error('Failed to send prescription notification:', notificationError);
+      // Don't fail the prescription upload if notification fails
+    }
+
     res.status(201).json(apiResponse.success(
       'Prescription uploaded successfully',
       {
@@ -767,6 +779,64 @@ export const getPrescriptionsByPsychiatrist = async (req: Request, res: Response
 };
 
 /**
+ * @desc    Get client's own prescriptions from all psychiatrists
+ * @route   GET /api/psychiatrists/my-prescriptions
+ * @access  Private (Client only)
+ */
+export const getClientPrescriptions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?.dbUser?.id;
+    const userRole = (req as any).user?.dbUser?.userType;
+
+    if (!userId) {
+      res.status(401).json(apiResponse.error(
+        'Unauthorized',
+        'User authentication required'
+      ));
+      return;
+    }
+
+    if (userRole !== 'Client') {
+      res.status(403).json(apiResponse.error(
+        'Forbidden',
+        'Only clients can view their prescriptions'
+      ));
+      return;
+    }
+
+    // Get all prescriptions for this client from all psychiatrists
+    const prescriptions = await Prescription.findAll({
+      where: { 
+        clientId: userId
+      },
+      order: [['createdAt', 'DESC']],
+      include: [
+        {
+          model: require('../models/User').default,
+          as: 'psychiatrist',
+          attributes: ['id', 'name', 'email', 'avatar']
+        }
+      ]
+    });
+
+    res.status(200).json(apiResponse.success(
+      'Prescriptions fetched successfully',
+      {
+        prescriptions,
+        count: prescriptions.length,
+        clientId: userId
+      }
+    ));
+  } catch (error) {
+    console.error('Error fetching client prescriptions:', error);
+    res.status(500).json(apiResponse.error(
+      'Failed to fetch prescriptions',
+      error instanceof Error ? error.message : 'Unknown error'
+    ));
+  }
+};
+
+/**
  * @desc    Update psychiatrist profile
  * @route   PUT /api/psychiatrists/profile
  * @access  Private (Psychiatrist only)
@@ -791,5 +861,79 @@ export const updatePsychiatristProfile = asyncHandler(async (req: Request, res: 
     success: true,
     message: 'Profile updated successfully',
     data: updatedProfile
+  });
+});
+
+/**
+ * @desc    Add educational qualification for psychiatrist
+ * @route   POST /api/psychiatrists/qualifications
+ * @access  Private (psychiatrist only)
+ */
+export const addPsychiatristQualification = asyncHandler(async (req: Request, res: Response) => {
+  const psychiatristId = req.user?.dbUser.id;
+  const qualificationData = req.body;
+
+  if (!psychiatristId) {
+    res.status(401).json({
+      success: false,
+      message: 'Unauthorized',
+      error: 'User authentication required'
+    });
+    return;
+  }
+
+  // Ensure the userId in payload matches the authenticated user
+  if (qualificationData.userId !== psychiatristId) {
+    res.status(400).json({
+      success: false,
+      message: 'User ID mismatch',
+      error: 'User ID in payload must match authenticated user'
+    });
+    return;
+  }
+
+  const qualification = await PsychiatristService.addQualification(psychiatristId, qualificationData);
+
+  res.status(201).json({
+    success: true,
+    message: 'Educational qualification added successfully',
+    data: { qualification }
+  });
+});
+
+/**
+ * @desc    Add experience for psychiatrist
+ * @route   POST /api/psychiatrists/experiences
+ * @access  Private (psychiatrist only)
+ */
+export const addPsychiatristExperience = asyncHandler(async (req: Request, res: Response) => {
+  const psychiatristId = req.user?.dbUser.id;
+  const experienceData = req.body;
+
+  if (!psychiatristId) {
+    res.status(401).json({
+      success: false,
+      message: 'Unauthorized',
+      error: 'User authentication required'
+    });
+    return;
+  }
+
+  // Ensure the userId in payload matches the authenticated user
+  if (experienceData.userId !== psychiatristId) {
+    res.status(400).json({
+      success: false,
+      message: 'User ID mismatch',
+      error: 'User ID in payload must match authenticated user'
+    });
+    return;
+  }
+
+  const experience = await PsychiatristService.addExperience(psychiatristId, experienceData);
+
+  res.status(201).json({
+    success: true,
+    message: 'Experience added successfully',
+    data: { experience }
   });
 });

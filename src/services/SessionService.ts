@@ -8,6 +8,7 @@ import TimeSlot from '../models/TimeSlot';
 import PaymentMethod from '../models/PaymentMethod';
 import { sequelize } from '../config/db'; // Fixed import for sequelize
 import jwt from 'jsonwebtoken';
+import { ChatServices } from './ChatServices';
 
 export interface BookSessionParams {
   userId: number;
@@ -231,6 +232,15 @@ class SessionService {
       status: 'scheduled',
       link: roomName
     });
+
+    const chatRoomId = await ChatServices.getChatRoomFromCounselorId(counselorId, userId);
+    console.log("chatRoom  :", chatRoomId)
+    // Optionally, create or get chat room for this session
+    if (!chatRoomId) {
+      await ChatServices.createDirectChat(counselorId, userId);
+    }else{
+      console.log("Chat room already exists:", chatRoomId);
+    }
     
     // Mark the time slot as booked
     await slot.update({ isBooked: true });
@@ -769,6 +779,29 @@ class SessionService {
 
     }catch (error) {
       return 'Error fetching booked sessions';
+    }
+  }
+
+  //meeting status update
+  async updateMeetingStatus(roomName: string, status: string): Promise<string> {
+    try {
+      const meeting = await Session.findOne({ where: { link: { [Op.iLike]: roomName } } });
+
+      if (!meeting) {
+        throw new Error('Meeting not found');
+      }
+
+      if(status === 'muc-room-created') {
+        meeting.status = 'ongoing'
+      } else if(status === 'muc-room-destroyed') {
+        meeting.status = 'completed'
+      }
+      await meeting.save();
+
+      return 'Meeting status updated successfully';
+    } catch (error) {
+      console.error('Error updating meeting status:', error);
+      throw new Error('Error updating meeting status');
     }
   }
 }

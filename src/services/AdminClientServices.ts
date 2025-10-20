@@ -24,8 +24,13 @@ export interface ClientWithStudentInfo {
     status?: 'pending' | 'approved' | 'rejected';
     appliedDate?: string;
     school?: string;
+    uniEmail?: string;
+    studentIDCopy?: string;
     clientID?: string;
     rejectionReason?: string;
+    rejectedBy?: number;
+    rejectedByName?: string;
+    rejectedByRole?: string;
   };
 }
 
@@ -67,14 +72,20 @@ class AdminClientServices {
         c."concerns",
         s."applicationStatus" AS "status",
         s."university" AS "school",
+        s."uniEmail",
         s."clientID",
         s."rejectionReason",
+        s."rejectedBy",
+        admin_user."name" AS "rejectedByName",
+        admin_user."role" AS "rejectedByRole",
+        s."studentIDCopy",
         s."createdAt" AS "appliedDate",
         COALESCE(sess."sessionsCompleted", 0) AS "sessionsCompleted",
         COALESCE(sess."totalSpent", 0) AS "totalSpent"
       FROM users u
       JOIN clients c ON u.id = c."userId"
       LEFT JOIN students s ON c."userId" = s."clientID"
+      LEFT JOIN users admin_user ON s."rejectedBy" = admin_user.id
       LEFT JOIN (
         SELECT 
           "userId",
@@ -106,8 +117,13 @@ class AdminClientServices {
             status: client.status,
             appliedDate: client.appliedDate,
             school: client.school,
+            uniEmail: client.uniEmail,
             clientID: client.clientID,
+            studentIDCopy: client.studentIDCopy,
             rejectionReason: client.rejectionReason,
+            rejectedBy: client.rejectedBy,
+            rejectedByName: client.rejectedByName,
+            rejectedByRole: client.rejectedByRole,
           }
         : { applied: false };
 
@@ -146,14 +162,20 @@ class AdminClientServices {
         c."concerns",
         s."applicationStatus" AS "status",
         s."university" AS "school",
+        s."uniEmail",
         s."clientID",
+        s."studentIDCopy",
         s."rejectionReason",
+        s."rejectedBy",
+        admin_user."name" AS "rejectedByName",
+        admin_user."role" AS "rejectedByRole",
         s."createdAt" AS "appliedDate",
         COALESCE(sess."sessionsCompleted", 0) AS "sessionsCompleted",
         COALESCE(sess."totalSpent", 0) AS "totalSpent"
       FROM users u
       JOIN clients c ON u.id = c."userId"
       LEFT JOIN students s ON c."userId" = s."clientID"
+      LEFT JOIN users admin_user ON s."rejectedBy" = admin_user.id
       LEFT JOIN (
         SELECT 
           "userId",
@@ -185,8 +207,13 @@ class AdminClientServices {
           status: client.status,
           appliedDate: client.appliedDate,
           school: client.school,
+          uniEmail: client.uniEmail,
           clientID: client.clientID,
+          studentIDCopy: client.studentIDCopy,
           rejectionReason: client.rejectionReason,
+          rejectedBy: client.rejectedBy,
+          rejectedByName: client.rejectedByName,
+          rejectedByRole: client.rejectedByRole,
         }
       : { applied: false };
 

@@ -22,7 +22,9 @@ import {
   getCounselorVolunteerStatus,
   getCounselorEarningsSummary,
   getCounselorMonthlyEarnings,
-  getCounselorEarningsPerClient
+  getCounselorEarningsPerClient,
+  addCounselorQualification,
+  addCounselorExperience
 } from '../controllers/CounselorController';
 import { getUserDailyMoods } from '../controllers/DailyMoodController';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -65,6 +67,10 @@ router.get('/earnings/per-client/:clientId', isAuthenticated, isProfessional, ge
 
 // Client moods for counselor
 router.get('/clients/:clientId/moods', isAuthenticated, isProfessional, getUserDailyMoods);
+
+// Add qualification and experience routes
+router.post('/qualifications', isAuthenticated, isProfessional, addCounselorQualification);
+router.post('/experiences', isAuthenticated, isProfessional, addCounselorExperience);
 
 // Dynamic routes (put these AFTER static routes to avoid conflicts)
 // Get counselor by ID

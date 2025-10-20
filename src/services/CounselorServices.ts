@@ -249,6 +249,21 @@ export class CounselorService {
    */
   static async getDashboardStatistics(counselorId: number) {
     try {
+      // First get the user's role to determine which table to query for rating
+      const userResult = await sequelize.query(`
+        SELECT role FROM users WHERE id = ?
+      `, {
+        replacements: [counselorId],
+        type: QueryTypes.SELECT
+      });
+
+      if (userResult.length === 0) {
+        throw new ItemNotFoundError('User not found');
+      }
+
+      const userRole = (userResult[0] as any).role;
+      const tableName = userRole === 'Psychiatrist' ? 'psychiatrists' : 'counselors';
+
       const [
         totalSessionsResult,
         upcomingSessionsResult, 
@@ -290,15 +305,15 @@ export class CounselorService {
       const monthlyEarnings = (monthlyData.count || 0) * (monthlyData.avgprice || 0);
       const totalBlogs = (totalBlogsResult[0] as any).count || 0;
 
-      // Get counselor's current rating
-      const counselorData = await sequelize.query(`
-        SELECT rating FROM counselors WHERE "userId" = ?
+      // Get professional's current rating from the appropriate table
+      const ratingData = await sequelize.query(`
+        SELECT rating FROM ${tableName} WHERE "userId" = ?
       `, {
         replacements: [counselorId],
         type: QueryTypes.SELECT
       });
 
-      const averageRating = counselorData.length > 0 ? (counselorData[0] as any).rating || 0 : 0;
+      const averageRating = ratingData.length > 0 ? (ratingData[0] as any).rating || 0 : 0;
 
       return {
         totalSessions: parseInt(totalSessions),
@@ -1022,6 +1037,62 @@ export class CounselorService {
       }));
     } catch (error) {
       throw new DatabaseError('Failed to get counselor earnings per client');
+    }
+  }
+
+  /**
+   * Add educational qualification for a counselor
+   */
+  static async addQualification(counselorId: number, qualificationData: any) {
+    try {
+      // Import EduQualification model
+      const EduQualification = (await import('../models/EduQualification')).default;
+
+      const qualification = await EduQualification.create({
+        userId: counselorId,
+        institution: qualificationData.institution,
+        degree: qualificationData.degree || null,
+        field: qualificationData.field || null,
+        startDate: qualificationData.startDate || null,
+        endDate: qualificationData.endDate || null,
+        grade: qualificationData.grade || null,
+        document: qualificationData.document || null,
+        title: qualificationData.title || null,
+        year: qualificationData.year || null,
+        proof: qualificationData.proof || null,
+        status: 'pending' // Default status
+      });
+
+      return qualification;
+    } catch (error) {
+      throw new DatabaseError('Failed to add educational qualification');
+    }
+  }
+
+  /**
+   * Add experience for a counselor
+   */
+  static async addExperience(counselorId: number, experienceData: any) {
+    try {
+      // Import Experience model
+      const Experience = (await import('../models/Experience')).default;
+
+      const experience = await Experience.create({
+        userId: counselorId,
+        position: experienceData.position,
+        company: experienceData.company,
+        title: experienceData.title || experienceData.position, // Use position as title if not provided
+        description: experienceData.description,
+        startDate: experienceData.startDate,
+        endDate: experienceData.endDate,
+        proof: experienceData.proof || null,
+        document: experienceData.document || null,
+        status: 'pending' // Default status
+      });
+
+      return experience;
+    } catch (error) {
+      throw new DatabaseError('Failed to add experience');
     }
   }
 }
