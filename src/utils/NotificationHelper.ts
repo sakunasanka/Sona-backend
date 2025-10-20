@@ -325,7 +325,7 @@ export class NotificationHelper {
         type: NotificationType.INFO,
         title: 'New Prescription Available',
         message: `Dr. ${psychiatristName} has uploaded a new prescription for you. Please check your prescriptions.`,
-        relatedURL: '/prescriptions'
+        relatedURL: '(hidden)/profile/prescription_history'
       });
     } catch (error) {
       console.error('Failed to send prescription uploaded notification:', error);
