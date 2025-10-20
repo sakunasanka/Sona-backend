@@ -6,7 +6,9 @@ import { UserService } from "./UserSerives";
 
 export class ChatServices {
     static async createDirectChat(counselorId: number, clientId: number): Promise<ChatRoom> {
-        return await ChatRoom.createDirectChat(counselorId, clientId);
+        const chatRoom =  ChatRoom.createDirectChat(counselorId, clientId);
+        console.log("chatRoom  :", chatRoom);
+        return chatRoom;
     }
 
     static async sendMessage(data : {
@@ -122,7 +124,7 @@ export class ChatServices {
     }
 
     static async getChatRoomFromCounselorId(counselorId: number, clientId: number): Promise<ChatRoom | null> {
-        return await ChatRoom.findOne({
+        return ChatRoom.findOne({
             where: {
                 counselorId,
                 clientId

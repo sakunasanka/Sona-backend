@@ -233,10 +233,13 @@ class SessionService {
       link: roomName
     });
 
-    const chatRoomId = ChatServices.getChatRoomFromCounselorId(counselorId, userId);
+    const chatRoomId = await ChatServices.getChatRoomFromCounselorId(counselorId, userId);
+    console.log("chatRoom  :", chatRoomId)
     // Optionally, create or get chat room for this session
     if (!chatRoomId) {
       await ChatServices.createDirectChat(counselorId, userId);
+    }else{
+      console.log("Chat room already exists:", chatRoomId);
     }
     
     // Mark the time slot as booked
