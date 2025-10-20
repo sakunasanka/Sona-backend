@@ -6,10 +6,13 @@ import {
   getAllPsychiatrists,
   uploadPrescription,
   getPrescriptionsByPsychiatrist,
-  updatePsychiatristProfile
+  getClientPrescriptions,
+  updatePsychiatristProfile,
+  addPsychiatristQualification,
+  addPsychiatristExperience
 } from '../controllers/PsychiatristController';
 import { asyncHandler } from '../utils/asyncHandler';
-import { isAdmin, isAuthenticated, isProfessional } from '../middlewares/auth';
+import { isAdmin, isAuthenticated, isProfessional, isClient } from '../middlewares/auth';
 import { getUserDailyMoods } from '../controllers/DailyMoodController';
 
 const router = express.Router();
@@ -24,6 +27,9 @@ router.post('/prescription', isAuthenticated, isProfessional, uploadPrescription
 
 // Get all prescriptions by psychiatrist for a specific client (Psychiatrist only)
 router.get('/prescriptions/:clientId', isAuthenticated, isProfessional, getPrescriptionsByPsychiatrist);
+
+// Get client's own prescriptions from all psychiatrists (Client only)
+router.get('/my-prescriptions', isAuthenticated, isClient, getClientPrescriptions);
 
 // Update psychiatrist's own profile
 router.put('/profile', isAuthenticated, isProfessional, updatePsychiatristProfile);
@@ -44,5 +50,9 @@ router.patch('/:id/availability', isAuthenticated, isProfessional, updatePsychia
 
 // Psychiatrist can view a client's daily moods
 router.get('/clients/:clientId/moods', isAuthenticated, isProfessional, getUserDailyMoods);
+
+// Add qualification and experience routes
+router.post('/qualifications', isAuthenticated, isProfessional, addPsychiatristQualification);
+router.post('/experiences', isAuthenticated, isProfessional, addPsychiatristExperience);
 
 export default router;

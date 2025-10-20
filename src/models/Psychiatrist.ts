@@ -50,6 +50,8 @@ class Psychiatrist extends User {
     x?: string;
     website?: string;
     languages?: string[];
+    eduQualifications?: any[];
+    experiences?: any[];
   }) {
     const transaction = await sequelize.transaction();
 
@@ -88,31 +90,69 @@ class Psychiatrist extends User {
                 "createdAt",
                 "updatedAt"
             )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW())
+        VALUES (:userId, :title, :specialities::text[], :address, :contact_no, :license_no, :idCard, :isVolunteer, :isAvailable, :description, :rating, :sessionFee, :status, :coverImage, :instagram, :linkedin, :x, :website, :languages::jsonb, NOW(), NOW())
       `, {
-        bind: [
-          user.id,
-          userData.title,
-          userData.specialities,
-          userData.address,
-          userData.contact_no,
-          userData.license_no,
-          userData.idCard,
-          userData.isVolunteer !== undefined ? userData.isVolunteer : null,
-          userData.isAvailable !== undefined ? userData.isAvailable : null,
-          userData.description || null,
-          userData.rating !== undefined ? userData.rating : null,
-          userData.sessionFee !== undefined ? userData.sessionFee : null,
-          userData.status || 'pending',
-          userData.coverImage || null,
-          userData.instagram || null,
-          userData.linkedin || null,
-          userData.x || null,
-          userData.website || null,
-          userData.languages || null,
-        ],
+        replacements: {
+          userId: user.id,
+          title: userData.title,
+          specialities: `{${userData.specialities.map(s => `"${s}"`).join(',')}}`,
+          address: userData.address,
+          contact_no: userData.contact_no,
+          license_no: userData.license_no,
+          idCard: userData.idCard,
+          isVolunteer: userData.isVolunteer !== undefined ? userData.isVolunteer : null,
+          isAvailable: userData.isAvailable !== undefined ? userData.isAvailable : null,
+          description: userData.description || null,
+          rating: userData.rating !== undefined ? userData.rating : null,
+          sessionFee: userData.sessionFee !== undefined ? userData.sessionFee : null,
+          status: userData.status || 'pending',
+          coverImage: userData.coverImage || null,
+          instagram: userData.instagram || null,
+          linkedin: userData.linkedin || null,
+          x: userData.x || null,
+          website: userData.website || null,
+          languages: userData.languages ? JSON.stringify(userData.languages) : null,
+        },
         transaction
       });
+
+      // Create educational qualifications if provided
+      if (userData.eduQualifications && userData.eduQualifications.length > 0) {
+        for (const qual of userData.eduQualifications) {
+          await EduQualification.create({
+            userId: user.id,
+            institution: qual.institution,
+            degree: qual.degree || null,
+            field: qual.field || null,
+            startDate: qual.startDate || null,
+            endDate: qual.endDate || null,
+            grade: qual.grade || null,
+            document: qual.document || null,
+            title: qual.title || null,
+            year: qual.year || null,
+            proof: qual.proof || null,
+            status: 'pending'
+          }, { transaction });
+        }
+      }
+
+      // Create experiences if provided
+      if (userData.experiences && userData.experiences.length > 0) {
+        for (const exp of userData.experiences) {
+          await Experience.create({
+            userId: user.id,
+            position: exp.position,
+            company: exp.company,
+            title: exp.title || exp.position,
+            description: exp.description,
+            startDate: exp.startDate,
+            endDate: exp.endDate,
+            proof: exp.proof || null,
+            document: exp.document || null,
+            status: 'pending'
+          }, { transaction });
+        }
+      }
 
       await transaction.commit();
 
@@ -337,10 +377,12 @@ class Psychiatrist extends User {
 
  
 // Update psychiatrist status
+// Update psychiatrist status
 static async updatePsychiatristStatus(
   id: number,
   status: 'pending' | 'approved' | 'rejected' | 'unset',
-  rejectionReason?: string
+  rejectionReason?: string,
+  rejectedById?: number
 ): Promise<Psychiatrist | null> {
   const transaction = await sequelize.transaction();
 
@@ -372,17 +414,43 @@ static async updatePsychiatristStatus(
       }
     );
 
-    // If rejected, insert rejection reason
+    // If rejected, insert rejection reason with rejectedBy
     if (status === 'rejected' && rejectionReason) {
+      if (!rejectedById) {
+        throw new Error('rejectedById is required when rejecting a psychiatrist');
+      }
+
+      // First, delete any existing rejection reason for this user
       await sequelize.query(
-        `INSERT INTO rejection_reasons ("userId", reason, "createdAt")
-         VALUES (:userId, :reason, NOW())`,
+        `DELETE FROM rejection_reasons WHERE "userId" = :userId`,
+        {
+          replacements: { userId: id },
+          type: QueryTypes.DELETE,
+          transaction,
+        }
+      );
+
+      // Insert new rejection reason with rejectedBy information
+      await sequelize.query(
+        `INSERT INTO rejection_reasons ("userId", reason, "rejectedBy", "createdAt")
+         VALUES (:userId, :reason, :rejectedBy, NOW())`,
         {
           replacements: {
             userId: id,
             reason: rejectionReason,
+            rejectedBy: rejectedById,
           },
           type: QueryTypes.INSERT,
+          transaction,
+        }
+      );
+    } else if (status !== 'rejected') {
+      // Remove rejection reason if status is changed from rejected to something else
+      await sequelize.query(
+        `DELETE FROM rejection_reasons WHERE "userId" = :userId`,
+        {
+          replacements: { userId: id },
+          type: QueryTypes.DELETE,
           transaction,
         }
       );
@@ -391,7 +459,7 @@ static async updatePsychiatristStatus(
     await transaction.commit();
 
     // Return updated psychiatrist
-    return await this.findPsychiatristById(id);
+    return await this.findPsychiatristByIdForAdmin(id);
   } catch (error) {
     await transaction.rollback();
     console.error('❌ Error updating psychiatrist status:', error);
@@ -402,7 +470,6 @@ static async updatePsychiatristStatus(
     );
   }
 }
-
 
   // Update psychiatrist availability
   static async updatePsychiatristAvailability(id: number, isAvailable: boolean): Promise<Psychiatrist | null> {

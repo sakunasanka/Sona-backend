@@ -16,6 +16,9 @@ class Post extends Model {
   public isAnonymous!: boolean;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
+  public actionBy?: number;
+  public actionAt?: Date;
+  public rejectedReason?: string;
 
   // Association
   public readonly user?: User;
@@ -68,7 +71,7 @@ Post.init(
       allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM('pending', 'approved', 'rejected', 'unset', 'edited'),
+      type: DataTypes.ENUM('pending', 'approved', 'rejected', 'edited'),
       defaultValue: 'pending',
       allowNull: true,
     },
@@ -77,16 +80,42 @@ Post.init(
       defaultValue: false,
       allowNull: false,
     },
+    actionBy: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id',
+      }
+    },
+    actionAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    rejectedReason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     sequelize,
     modelName: 'post',
     tableName: 'posts',
+    hooks: {
+      beforeUpdate: (post: Post) => {
+        // If content changes and post was previously approved/rejected, set status to 'edited'
+        if (post.changed('content') && 
+            (post.previous('status') === 'approved' || post.previous('status') === 'rejected')) {
+          post.status = 'edited';
+        }
+      }
+    }
   }
 );
 
 // Define associations
 Post.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+Post.belongsTo(User, { foreignKey: 'actionBy', as: 'actionUser' });
 User.hasMany(Post, { foreignKey: 'userId', as: 'posts' });
 
 export default Post;

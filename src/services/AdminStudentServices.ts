@@ -37,24 +37,30 @@ class AdminStudentServices {
 //     }
 //   }
 
-  async updateStudentApplicationStatus(
+ // In AdminStudentServices.ts
+async updateStudentApplicationStatus(
     clientId: number, 
-    status: 'approved' | 'rejected', 
-    rejectionReason?: string
+    status: 'approved' | 'rejected' | 'pending',  // Added 'pending' to status type
+    rejectionReason?: string,
+    rejectedById?: number
   ) {
     try {
       const studentApplication = await Student.findByClientId(clientId);
       if (!studentApplication) throw new Error('Student application not found');
 
-      const updatedApplication = await Student.updateApplicationStatus(
+      const updatedApplication = await Student.updateApplicationStatusInAdmin(
         studentApplication.id,
         status,
-        rejectionReason || undefined // Pass undefined instead of null if rejectionReason is not provided
+        rejectionReason || undefined,
+        rejectedById
       );
 
-      console.log('Rejection Reason in Service:', rejectionReason); // Debug log for rejectionReason
+      console.log('Status in Service:', status);
+      console.log('Rejection Reason in Service:', rejectionReason);
+      console.log('Rejected By in Service:', rejectedById);
 
-      if (status === 'rejected') {
+      // Update client's isStudent status based on the new status
+      if (status === 'rejected' || status === 'pending') {
         await Client.updateClient(clientId, { isStudent: false });
       }
 

@@ -68,7 +68,9 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
       isAvailable: additionalData.isAvailable !== undefined ? additionalData.isAvailable : true,
       description: additionalData.description || "",
       rating: additionalData.rating || 0,
-      sessionFee: additionalData.sessionFee || 0
+      sessionFee: additionalData.sessionFee || 0,
+      eduQualifications: additionalData.eduQualifications || [],
+      experiences: additionalData.experiences || []
     };
 
     if (process.env.DEBUG === 'true') {
@@ -141,7 +143,9 @@ export const signup = async (req: Request, res: Response, next: NextFunction) =>
       linkedin: additionalData.linkedin || null,
       x: additionalData.x || null,
       website: additionalData.website || null,
-      languages: additionalData.languages || []
+      languages: additionalData.languages || [],
+      eduQualifications: additionalData.eduQualifications || [],
+      experiences: additionalData.experiences || []
     };
 
     if (process.env.DEBUG === 'true') {

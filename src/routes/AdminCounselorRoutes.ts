@@ -34,6 +34,13 @@ router.put(
   counselorController.updateCounselorStatus
 );
 
+// New revoke counselor status route
+router.post(
+  '/:id/revoke',
+  authenticateToken,
+  counselorController.revokeCounselorStatus
+);
+
 // Get counselor counts
 router.get(
   '/stats/counts',

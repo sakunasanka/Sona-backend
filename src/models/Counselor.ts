@@ -2,6 +2,8 @@ import { DataTypes, Model, QueryTypes } from 'sequelize';
 import { sequelize } from '../config/db';
 import User from './User';
 import { DatabaseError } from '../utils/errors';
+import EduQualification from './EduQualification';
+import Experience from './Experience';
 
 class Counselor extends User {
   public title!: string;
@@ -46,6 +48,8 @@ class Counselor extends User {
     x?: string;
     website?: string;
     languages?: string[];
+    eduQualifications?: any[];
+    experiences?: any[];
   }) {
     const transaction = await sequelize.transaction();
 
@@ -84,31 +88,69 @@ class Counselor extends User {
                 "createdAt",
                 "updatedAt"
             )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW())
+        VALUES (:userId, :title, :specialities::text[], :address, :contact_no, :license_no, :idCard, :isVolunteer, :isAvailable, :description, :rating, :sessionFee, :status, :coverImage, :instagram, :linkedin, :x, :website, :languages::jsonb, NOW(), NOW())
       `, {
-        bind: [
-          user.id,
-          userData.title,
-          userData.specialities,
-          userData.address,
-          userData.contact_no,
-          userData.license_no,
-          userData.idCard,
-          userData.isVolunteer,
-          userData.isAvailable,
-          userData.description,
-          userData.rating,
-          userData.sessionFee,
-          userData.status || 'pending', // Default status is pending
-          userData.coverImage,
-          userData.instagram,
-          userData.linkedin,
-          userData.x,
-          userData.website,
-          userData.languages,
-        ],
+        replacements: {
+          userId: user.id,
+          title: userData.title,
+          specialities: `{${userData.specialities.map(s => `"${s}"`).join(',')}}`,
+          address: userData.address,
+          contact_no: userData.contact_no,
+          license_no: userData.license_no,
+          idCard: userData.idCard,
+          isVolunteer: userData.isVolunteer !== undefined ? userData.isVolunteer : null,
+          isAvailable: userData.isAvailable !== undefined ? userData.isAvailable : true,
+          description: userData.description || null,
+          rating: userData.rating !== undefined ? userData.rating : 0,
+          sessionFee: userData.sessionFee !== undefined ? userData.sessionFee : 0,
+          status: userData.status || 'pending',
+          coverImage: userData.coverImage || null,
+          instagram: userData.instagram || null,
+          linkedin: userData.linkedin || null,
+          x: userData.x || null,
+          website: userData.website || null,
+          languages: userData.languages ? JSON.stringify(userData.languages) : null,
+        },
         transaction
       });
+
+      // Create educational qualifications if provided
+      if (userData.eduQualifications && userData.eduQualifications.length > 0) {
+        for (const qual of userData.eduQualifications) {
+          await EduQualification.create({
+            userId: user.id,
+            institution: qual.institution,
+            degree: qual.degree || null,
+            field: qual.field || null,
+            startDate: qual.startDate || null,
+            endDate: qual.endDate || null,
+            grade: qual.grade || null,
+            document: qual.document || null,
+            title: qual.title || null,
+            year: qual.year || null,
+            proof: qual.proof || null,
+            status: 'pending'
+          }, { transaction });
+        }
+      }
+
+      // Create experiences if provided
+      if (userData.experiences && userData.experiences.length > 0) {
+        for (const exp of userData.experiences) {
+          await Experience.create({
+            userId: user.id,
+            position: exp.position,
+            company: exp.company,
+            title: exp.title || exp.position,
+            description: exp.description,
+            startDate: exp.startDate,
+            endDate: exp.endDate,
+            proof: exp.proof || null,
+            document: exp.document || null,
+            status: 'pending'
+          }, { transaction });
+        }
+      }
 
       await transaction.commit();
 
