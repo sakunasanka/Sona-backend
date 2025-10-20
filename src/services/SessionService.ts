@@ -8,6 +8,7 @@ import TimeSlot from '../models/TimeSlot';
 import PaymentMethod from '../models/PaymentMethod';
 import { sequelize } from '../config/db'; // Fixed import for sequelize
 import jwt from 'jsonwebtoken';
+import { ChatServices } from './ChatServices';
 
 export interface BookSessionParams {
   userId: number;
@@ -231,6 +232,12 @@ class SessionService {
       status: 'scheduled',
       link: roomName
     });
+
+    const chatRoomId = ChatServices.getChatRoomFromCounselorId(counselorId, userId);
+    // Optionally, create or get chat room for this session
+    if (!chatRoomId) {
+      await ChatServices.createDirectChat(counselorId, userId);
+    }
     
     // Mark the time slot as booked
     await slot.update({ isBooked: true });
