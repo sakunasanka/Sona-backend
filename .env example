@@ -1,0 +1,31 @@
+NODE_ENV=development
+
+PORT=5001
+DB_HOST=
+DB_PORT=
+DB_USER= 
+DB_PASSWORD=
+DB_NAME=
+
+# Connection URL (for Sequelize)
+DATABASE_URL=
+
+JWT_SECRET=
+FIREBASE_API_KEY=
+
+GMAIL_USER=
+GMAIL_PASS=
+
+LOGO_URL=/assets/icon.png
+DEBUGGER=true
+
+PAYHERE_MERCHANT_ID=
+PAYHERE_MERCHANT_SECRET=
+PAYHERE_BASE_URL=https://sandbox.payhere.lk/pay/authorize
+
+# URLs
+FRONTEND_URL=http://localhost:3000
+BACKEND_URL=http://localhost:5001 
+
+JITSI_APP_SECTRET=
+ENCRYPTION_KEY=
